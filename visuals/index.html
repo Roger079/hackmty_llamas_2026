@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Banorte Móvil — Mockup Interactivo de Banca Digital</title>
+  
+  <!-- Tipografías Oficiales Recomendadas -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            banorte: {
+              red: {
+                DEFAULT: '#EB0029',
+                hover: '#C70023',
+                dark: '#9E001B',
+                light: '#FFF0F2',
+                subtle: '#FDE2E4',
+              },
+              gold: {
+                DEFAULT: '#C59B27',
+                light: '#F6E8B7',
+                dark: '#936F11',
+              },
+              graphite: {
+                900: '#1C1E21',
+                800: '#2C3036',
+                700: '#4A515E',
+                500: '#7A8290',
+                300: '#C4C9D2',
+                100: '#EAEFF5',
+                50: '#F4F6F9',
+              },
+              semantic: {
+                success: '#008744',
+                danger: '#D32F2F',
+                warning: '#E67E22',
+                info: '#0066CC',
+              }
+            }
+          },
+          fontFamily: {
+            sans: ['Montserrat', 'Inter', '-apple-system', 'sans-serif'],
+            mono: ['"Roboto Mono"', 'monospace'],
+          },
+          borderRadius: {
+            'banorte-btn': '12px',
+            'banorte-card': '18px',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background-color: #0F172A;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    /* Estilos de scrollbar personalizados */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #a1a1a1;
+    }
+    .perspective-1000 {
+      perspective: 1000px;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col items-center justify-start p-2 sm:p-6 select-none antialiased">
+
+  <!-- BARRA SUPERIOR DE CONTROL DEL MOCKUP (PARA HACKATHON Y TESTING) -->
+  <header class="w-full max-w-5xl mb-4 bg-slate-900/90 backdrop-blur border border-slate-800 text-white rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-2xl">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-[#EB0029] flex items-center justify-center font-bold text-white shadow-md shadow-red-500/30">
+        B
+      </div>
+      <div>
+        <h1 class="text-sm font-bold flex items-center gap-2">
+          Banorte Móvil — Mockup Interactivo
+          <span class="text-[10px] bg-red-600/30 text-red-300 px-2 py-0.5 rounded-full border border-red-500/30">Hackathon Kit</span>
+        </h1>
+        <p class="text-xs text-slate-400">Guía de Identidad Oficial • Prototipo Funcional de Frontend</p>
+      </div>
+    </div>
+
+    <!-- Controles de Vista -->
+    <div class="flex items-center gap-2 text-xs">
+      <span class="text-slate-400 hidden sm:inline">Modo de Vista:</span>
+      <button id="viewMobileBtn" class="px-3 py-1.5 rounded-lg bg-[#EB0029] font-medium text-white shadow-sm flex items-center gap-1.5 transition">
+        <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+        <span>Smartphone</span>
+      </button>
+      <button id="viewFullBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 font-medium text-slate-300 border border-slate-700 flex items-center gap-1.5 transition">
+        <i data-lucide="monitor" class="w-3.5 h-3.5"></i>
+        <span>Expandido</span>
+      </button>
+      <button id="resetDataBtn" title="Reiniciar datos de prueba" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition">
+        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL DE LA APP -->
+  <div id="deviceContainer" class="w-full max-w-sm sm:max-w-md bg-[#F4F6F9] rounded-[36px] shadow-2xl overflow-hidden border-[6px] border-slate-900 flex flex-col relative transition-all duration-300 min-h-[780px]">
+
+    <!-- STATUS BAR DEL SMARTPHONE -->
+    <div class="bg-[#EB0029] text-white px-6 pt-3 pb-1 flex justify-between items-center text-xs tracking-tight z-30 font-medium">
+      <span id="statusBarClock">10:42</span>
+      <!-- Notch / Parlante -->
+      <div class="w-16 h-3 bg-black/30 rounded-full"></div>
+      <div class="flex items-center gap-1.5">
+        <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+        <i data-lucide="battery-charging" class="w-3.5 h-3.5"></i>
+        <span class="text-[10px]">98%</span>
+      </div>
+    </div>
+
+    <!-- BANORTE APP HEADER -->
+    <div class="bg-[#EB0029] text-white px-5 pt-2 pb-5 rounded-b-[28px] shadow-lg shadow-red-900/20 relative z-20">
+      <div class="flex justify-between items-center">
+        <!-- Logo Banorte SVG Oficial con Isotipo -->
+        <div class="flex items-center gap-2">
+          <svg class="h-6 w-auto" viewBox="0 0 240 44" fill="none">
+            <g fill="#FFFFFF">
+              <path d="M6 34 L18 10 L25 10 L13 34 Z" />
+              <path d="M17 34 L29 10 L36 10 L24 34 Z" />
+              <path d="M28 34 L40 10 L47 10 L35 34 Z" />
+              <polygon points="39,10 47,10 41,22 33,22" />
+            </g>
+            <text x="56" y="28" font-family="'Montserrat', sans-serif" font-size="22" font-weight="800" letter-spacing="1.5" fill="#FFFFFF">
+              BANORTE
+            </text>
+          </svg>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Indicador Token Móvil Activo -->
+          <div class="hidden sm:flex items-center gap-1 bg-black/20 text-white/90 text-[10px] font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm border border-white/10">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Token Activo</span>
+          </div>
+
+          <!-- Campana de Notificaciones con Badge -->
+          <button class="relative p-2 rounded-full hover:bg-white/10 transition">
+            <i data-lucide="bell" class="w-5 h-5"></i>
+            <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-300"></span>
+          </button>
+
+          <!-- Avatar del Usuario -->
+          <div class="w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center font-bold text-xs">
+            AR
+          </div>
+        </div>
+      </div>
+
+      <!-- Saludo personalizado del cliente -->
+      <div class="mt-3 flex justify-between items-end">
+        <div>
+          <p class="text-xs text-red-100 font-medium">Bienvenido a tu banca móvil</p>
+          <h2 class="text-lg font-bold tracking-tight text-white">¡Hola, Alejandro Ramírez!</h2>
+        </div>
+        <div class="text-right">
+          <span class="text-[11px] text-white/80 bg-red-700/60 px-2 py-0.5 rounded-md border border-red-400/30">
+            Cliente Banorte Preferente
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENIDO SCROLLEABLE -->
+    <main class="flex-1 overflow-y-auto px-4 py-4 space-y-5 pb-24">
+
+      <!-- TARJETA BANCARIA INTERACTIVA (HERO CARD) -->
+      <section>
+        <div class="flex justify-between items-center mb-2 px-1">
+          <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mis Cuentas</span>
+          <div class="flex gap-1.5">
+            <button id="cardTabNomina" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#EB0029] text-white transition">Nómina</button>
+            <button id="cardTabOro" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-600 hover:bg-slate-300 transition">Oro</button>
+          </div>
+        </div>
+
+        <!-- Tarjeta Renderizada -->
+        <div id="creditCardContainer" class="relative w-full h-52 rounded-2xl p-5 text-white overflow-hidden shadow-xl bg-gradient-to-br from-[#EB0029] via-[#C70023] to-[#8C0018] transition-all duration-300">
+          <!-- Patrón decorativo de fondo -->
+          <div class="absolute -right-8 -bottom-10 w-44 h-44 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
+          <div class="absolute right-4 top-3 opacity-15 font-black text-6xl tracking-widest pointer-events-none">///</div>
+
+          <!-- Cabecera de la Tarjeta -->
+          <div class="flex justify-between items-start relative z-10">
+            <div>
+              <span id="cardTypeText" class="text-[11px] font-semibold tracking-wider uppercase text-white/80">Débito Enlace Digital</span>
+              <div class="text-xs font-extrabold tracking-widest text-white">BANORTE</div>
+            </div>
+            <!-- Chip EMV y Contactless -->
+            <div class="flex items-center gap-2">
+              <i data-lucide="rss" class="w-4 h-4 text-white/80 rotate-90"></i>
+              <div class="w-9 h-6 rounded bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 border border-amber-600/30 flex items-center justify-center shadow-inner">
+                <div class="w-5 h-3.5 border border-amber-800/40 rounded-[2px]"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Saldo con Toggle de visibilidad -->
+          <div class="my-3 relative z-10">
+            <div class="text-xs text-white/80 flex items-center gap-1.5">
+              <span>Saldo disponible</span>
+              <button id="toggleBalanceBtn" class="p-1 text-white/80 hover:text-white transition">
+                <i id="balanceEyeIcon" data-lucide="eye" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            <div id="balanceValueDisplay" class="text-2xl font-bold tracking-tight tabular-nums mt-0.5">
+              $ 48,650.00 <span class="text-sm font-medium text-white/80">MXN</span>
+            </div>
+          </div>
+
+          <!-- Footer de Tarjeta -->
+          <div class="flex justify-between items-end relative z-10 pt-2 border-t border-white/20">
+            <div>
+              <div id="cardMaskedNumber" class="text-xs font-mono tracking-widest text-white/95">
+                •••• •••• •••• 1234
+              </div>
+              <div id="cardHolderText" class="text-[11px] uppercase tracking-wider font-semibold text-white/85 truncate max-w-[180px]">
+                ALEJANDRO RAMIREZ
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <button id="openCvvBtn" class="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-[11px] font-bold tracking-wide backdrop-blur-sm border border-white/30 transition flex items-center gap-1">
+                <i data-lucide="shield-check" class="w-3 h-3"></i>
+                <span>CVV Digital</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BOTONES DE ACCIÓN RÁPIDA (QUICK ACTIONS) -->
+      <section>
+        <div class="grid grid-cols-4 gap-2 text-center">
+          <!-- 1. Transferir SPEI -->
+          <button id="openTransferModalBtn" class="flex flex-col items-center group cursor-pointer focus:outline-none">
+            <div class="w-13 h-13 p-3 rounded-2xl bg-white border border-slate-200 text-[#EB0029] group-hover:bg-[#EB0029] group-hover:text-white group-hover:border-[#EB0029] shadow-sm transition-all duration-200">
+              <i data-lucide="arrow-left-right" class="w-6 h-6"></i>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-700 mt-1.5 group-hover:text-[#EB0029]">Transferir</span>
+          </button>
+
+          <!-- 2. Pagar Tarjeta -->
+          <button id="payCardBtn" class="flex flex-col items-center group cursor-pointer focus:outline-none">
+            <div class="w-13 h-13 p-3 rounded-2xl bg-white border border-slate-200 text-[#EB0029] group-hover:bg-[#EB0029] group-hover:text-white group-hover:border-[#EB0029] shadow-sm transition-all duration-200">
+              <i data-lucide="credit-card" class="w-6 h-6"></i>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-700 mt-1.5 group-hover:text-[#EB0029]">Pagar</span>
+          </button>
+
+          <!-- 3. CoDi / QR -->
+          <button id="codiBtn" class="flex flex-col items-center group cursor-pointer focus:outline-none">
+            <div class="w-13 h-13 p-3 rounded-2xl bg-white border border-slate-200 text-[#EB0029] group-hover:bg-[#EB0029] group-hover:text-white group-hover:border-[#EB0029] shadow-sm transition-all duration-200">
+              <i data-lucide="qr-code" class="w-6 h-6"></i>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-700 mt-1.5 group-hover:text-[#EB0029]">CoDi®</span>
+          </button>
+
+          <!-- 4. Retiro sin Tarjeta -->
+          <button id="atmWithdrawBtn" class="flex flex-col items-center group cursor-pointer focus:outline-none">
+            <div class="w-13 h-13 p-3 rounded-2xl bg-white border border-slate-200 text-[#EB0029] group-hover:bg-[#EB0029] group-hover:text-white group-hover:border-[#EB0029] shadow-sm transition-all duration-200">
+              <i data-lucide="banknote" class="w-6 h-6"></i>
+            </div>
+            <span class="text-[11px] font-semibold text-slate-700 mt-1.5 group-hover:text-[#EB0029]">Sin Tarjeta</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- BANNER PROMOCIONAL / PRODUCTO BANORTE -->
+      <section class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-4 text-white flex items-center justify-between shadow-sm relative overflow-hidden">
+        <div class="relative z-10">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400">Pagaré Banorte</span>
+          <h3 class="text-sm font-bold mt-0.5">Rendimiento de hasta 11.25%</h3>
+          <p class="text-[11px] text-slate-300">Invierte desde tu app en 1 minuto</p>
+        </div>
+        <button class="relative z-10 px-3 py-1.5 bg-[#EB0029] hover:bg-[#C70023] text-white text-xs font-bold rounded-xl transition">
+          Invertir
+        </button>
+        <div class="absolute -right-6 -bottom-8 w-24 h-24 rounded-full bg-red-600/20 blur-xl"></div>
+      </section>
+
+      <!-- LISTA DE MOVIMIENTOS RECIENTES -->
+      <section class="space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-sm font-bold text-[#1C1E21] flex items-center gap-1.5">
+            <span>Movimientos Recientes</span>
+            <span id="txCountBadge" class="text-[11px] bg-slate-200 text-slate-700 font-semibold px-2 py-0.2 rounded-full">4</span>
+          </h3>
+          <!-- Filtros de transacción -->
+          <div class="flex gap-1 text-[11px]">
+            <button data-filter="all" class="filter-btn active-filter px-2 py-0.5 rounded-md font-medium text-white bg-[#EB0029]">Todos</button>
+            <button data-filter="charges" class="filter-btn px-2 py-0.5 rounded-md font-medium text-slate-600 bg-white border border-slate-200">Cargos</button>
+            <button data-filter="deposits" class="filter-btn px-2 py-0.5 rounded-md font-medium text-slate-600 bg-white border border-slate-200">Abonos</button>
+          </div>
+        </div>
+
+        <!-- Contenedor de Items de Transacción -->
+        <div id="transactionsList" class="space-y-2">
+          <!-- Los items se renderizan dinámicamente vía JavaScript -->
+        </div>
+      </section>
+    </main>
+
+    <!-- BOTTOM NAVIGATION BAR (BANCA MÓVIL NATIVA) -->
+    <nav class="bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-2.5 flex justify-between items-center absolute bottom-0 left-0 right-0 z-30">
+      <button class="nav-item flex flex-col items-center text-[#EB0029]">
+        <i data-lucide="home" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold mt-1">Inicio</span>
+      </button>
+      <button class="nav-item flex flex-col items-center text-slate-400 hover:text-slate-700 transition">
+        <i data-lucide="receipt" class="w-5 h-5"></i>
+        <span class="text-[10px] font-medium mt-1">Movimientos</span>
+      </button>
+      <button id="navTransferShortcut" class="nav-item flex flex-col items-center text-slate-400 hover:text-[#EB0029] transition">
+        <div class="w-10 h-10 -mt-5 bg-[#EB0029] text-white rounded-full shadow-lg shadow-red-500/30 flex items-center justify-center">
+          <i data-lucide="plus" class="w-6 h-6"></i>
+        </div>
+        <span class="text-[10px] font-bold mt-0.5 text-[#EB0029]">Transferir</span>
+      </button>
+      <button class="nav-item flex flex-col items-center text-slate-400 hover:text-slate-700 transition">
+        <i data-lucide="credit-card" class="w-5 h-5"></i>
+        <span class="text-[10px] font-medium mt-1">Tarjetas</span>
+      </button>
+      <button class="nav-item flex flex-col items-center text-slate-400 hover:text-slate-700 transition">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+        <span class="text-[10px] font-medium mt-1">Más</span>
+      </button>
+    </nav>
+
+    <!-- ============================================== -->
+    <!-- MODAL 1: TRANSFERENCIA SPEI                    -->
+    <!-- ============================================== -->
+    <div id="transferModal" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div class="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92%] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom duration-200">
+        <!-- Cabecera Modal -->
+        <div class="bg-[#EB0029] text-white px-5 py-4 flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
+            <h3 class="font-bold text-sm">Nueva Transferencia SPEI</h3>
+          </div>
+          <button id="closeTransferModalBtn" class="p-1 rounded-full hover:bg-white/20 text-white transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Formulario -->
+        <form id="speiForm" class="p-5 space-y-3.5 overflow-y-auto text-xs">
+          <!-- Origen -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Cuenta de Cargo</label>
+            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex justify-between items-center">
+              <div>
+                <span class="font-bold text-slate-800">Débito Nómina (*1234)</span>
+                <p class="text-[10px] text-slate-500">Saldo: $ 48,650.00 MXN</p>
+              </div>
+              <span class="text-[10px] font-semibold text-[#008744]">Disponible</span>
+            </div>
+          </div>
+
+          <!-- Destinatario -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Nombre del Beneficiario</label>
+            <input id="beneficiaryInput" type="text" required placeholder="Ej. MARÍA FERNANDA RÍOS" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#EB0029] focus:ring-1 focus:ring-[#EB0029] font-medium uppercase text-slate-800">
+          </div>
+
+          <!-- Banco -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Banco Receptor</label>
+            <select id="bankSelect" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#EB0029] font-medium text-slate-800 bg-white">
+              <option value="BBVA México">BBVA México (012)</option>
+              <option value="Santander">Santander México (014)</option>
+              <option value="Nu México">Nu México (638)</option>
+              <option value="Mercado Pago">Mercado Pago (722)</option>
+              <option value="Hey Banco / Banregio">Hey Banco (058)</option>
+              <option value="Banorte">Otro Banorte (072)</option>
+            </select>
+          </div>
+
+          <!-- CLABE o Tarjeta -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">CLABE Interbancaria (18 dígitos)</label>
+            <input id="clabeInput" type="text" maxlength="18" required placeholder="012 180 01594839201 9" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#EB0029] focus:ring-1 focus:ring-[#EB0029] font-mono tracking-wider text-slate-800">
+            <span id="clabeHelp" class="text-[10px] text-slate-500">Debe contener exactamente 18 números.</span>
+          </div>
+
+          <!-- Monto -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Monto a Transferir (MXN)</label>
+            <div class="relative">
+              <span class="absolute left-3 top-2.5 font-bold text-slate-500 text-sm">$</span>
+              <input id="amountInput" type="number" step="0.01" min="1" max="50000" required placeholder="0.00" class="w-full pl-7 pr-12 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#EB0029] font-bold text-base tabular-nums text-slate-800">
+              <span class="absolute right-3 top-3 font-semibold text-[10px] text-slate-400">MXN</span>
+            </div>
+          </div>
+
+          <!-- Concepto -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Concepto de Pago</label>
+            <input id="conceptInput" type="text" maxlength="35" required placeholder="Ej. Pago cena / Renta" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#EB0029] font-medium text-slate-800">
+          </div>
+
+          <!-- Botón de Envío -->
+          <div class="pt-2">
+            <button type="submit" id="submitTransferBtn" class="w-full py-3 rounded-xl bg-[#EB0029] hover:bg-[#C70023] font-bold text-white text-sm shadow-md shadow-red-500/30 transition flex items-center justify-center gap-2">
+              <span>Continuar Transferencia</span>
+              <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL 2: COMPROBANTE OFICIAL SPEI              -->
+    <!-- ============================================== -->
+    <div id="receiptModal" class="hidden absolute inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+        <!-- Encabezado de Éxito SPEI -->
+        <div class="bg-[#008744] text-white px-5 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-lg">
+              ✓
+            </div>
+            <div>
+              <h4 class="font-bold text-sm uppercase tracking-wide">Transferencia Exitosa</h4>
+              <p class="text-[10px] text-white/90">SPEI Procesado y Liquidado</p>
+            </div>
+          </div>
+          <button id="closeReceiptBtn" class="text-white/80 hover:text-white p-1">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Monto -->
+        <div class="p-5 text-center bg-slate-50/70 border-b border-slate-100">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Monto Transferido</span>
+          <div id="receiptAmount" class="text-3xl font-extrabold text-[#1C1E21] tabular-nums mt-0.5">
+            $ 1,500.00 <span class="text-sm font-semibold text-slate-500">MXN</span>
+          </div>
+          <div id="receiptConcept" class="text-xs text-slate-600 mt-1 italic">
+            "Pago proyecto hackathon"
+          </div>
+        </div>
+
+        <!-- Datos del Recibo -->
+        <div class="p-5 space-y-2.5 text-xs">
+          <div class="flex justify-between">
+            <span class="text-slate-500">Beneficiario:</span>
+            <span id="receiptBeneficiary" class="font-bold text-slate-800 text-right">MARIANA LOPEZ</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Banco Receptor:</span>
+            <span id="receiptBank" class="font-semibold text-slate-800">BBVA México</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Cuenta / CLABE:</span>
+            <span id="receiptClabe" class="font-mono text-[11px] text-slate-800 tracking-wider">012 180 01594839201 9</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Clave de Rastreo:</span>
+            <span id="receiptTracking" class="font-mono text-[10px] text-slate-800 tracking-tight font-semibold">BNTE0100260911004928</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Fecha y Hora:</span>
+            <span id="receiptTimestamp" class="text-slate-700 text-[11px]">11 Sep 2026, 14:40 hrs</span>
+          </div>
+          <div class="flex justify-between border-t border-slate-100 pt-2">
+            <span class="text-slate-500">Comisión por envío:</span>
+            <span class="font-bold text-[#008744] text-[11px]">$ 0.00 MXN</span>
+          </div>
+        </div>
+
+        <!-- Acciones del Recibo -->
+        <div class="p-4 bg-slate-50 border-t border-slate-100 flex gap-2">
+          <button id="shareReceiptBtn" class="flex-1 py-2.5 rounded-xl border border-slate-300 font-bold text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+            <span>Compartir</span>
+          </button>
+          <button id="doneReceiptBtn" class="flex-1 py-2.5 rounded-xl bg-[#EB0029] hover:bg-[#C70023] font-bold text-xs text-white flex items-center justify-center gap-1.5 transition">
+            <span>Finalizar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL 3: CVV DINÁMICO (SEGURIDAD DIGITAL)      -->
+    <!-- ============================================== -->
+    <div id="cvvModal" class="hidden absolute inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-xs rounded-3xl p-5 text-center shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200">
+        <div class="w-12 h-12 mx-auto rounded-full bg-red-100 text-[#EB0029] flex items-center justify-center mb-3">
+          <i data-lucide="shield" class="w-6 h-6"></i>
+        </div>
+        <h4 class="font-bold text-sm text-[#1C1E21]">CVV Dinámico Banorte</h4>
+        <p class="text-[11px] text-slate-500 mt-0.5">Usa este código de seguridad para compras seguras en internet.</p>
+
+        <!-- Código de 3 dígitos -->
+        <div class="my-4 py-3 bg-slate-50 rounded-2xl border border-slate-200">
+          <span id="cvvNumberDisplay" class="font-mono text-3xl font-extrabold tracking-widest text-[#EB0029]">
+            742
+          </span>
+        </div>
+
+        <!-- Temporizador Circular / Barra -->
+        <div class="text-xs text-slate-500 flex items-center justify-center gap-1 mb-4">
+          <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-500"></i>
+          <span>Expira en: <strong id="cvvTimerText" class="text-slate-800 tabular-nums">04:59</strong> min</span>
+        </div>
+
+        <button id="closeCvvBtn" class="w-full py-2.5 bg-[#EB0029] hover:bg-[#C70023] text-white font-bold text-xs rounded-xl transition">
+          Entendido
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JAVASCRIPT DE INTERACTIVIDAD BANCARIA -->
+  <script>
+    // Inicializar Iconos
+    lucide.createIcons();
+
+    // Estado de la Aplicación
+    const state = {
+      balanceNomina: 48650.00,
+      balanceOro: 125000.00,
+      activeCard: 'nomina',
+      showBalance: true,
+      transactions: [
+        { id: 1, name: 'Walmart Supercenter', category: 'Supermercado', icon: 'shopping-cart', amount: -1159.20, date: 'Hoy, 11:15 AM', type: 'charge' },
+        { id: 2, name: 'OXXO Gas Sucursal 42', category: 'Gasolina', icon: 'fuel', amount: -550.00, date: 'Ayer, 4:45 PM', type: 'charge' },
+        { id: 3, name: 'Transferencia SPEI Recibida', category: 'Nómina Quincenal', icon: 'arrow-down-left', amount: 15000.00, date: '10 Sep, 9:30 AM', type: 'deposit' },
+        { id: 4, name: 'Comisión Mensual Cuenta', category: 'Comisiones Banorte', icon: 'landmark', amount: -50.00, date: '08 Sep, 2:00 AM', type: 'charge' }
+      ],
+      filter: 'all',
+      cvvTimer: 299, // 5 minutos
+      cvvInterval: null
+    };
+
+    // Referencias DOM
+    const balanceValueDisplay = document.getElementById('balanceValueDisplay');
+    const toggleBalanceBtn = document.getElementById('toggleBalanceBtn');
+    const balanceEyeIcon = document.getElementById('balanceEyeIcon');
+    const transactionsList = document.getElementById('transactionsList');
+    const txCountBadge = document.getElementById('txCountBadge');
+    const filterButtons = document.querySelectorAll('.filter-btn');
+
+    // Modales
+    const transferModal = document.getElementById('transferModal');
+    const receiptModal = document.getElementById('receiptModal');
+    const cvvModal = document.getElementById('cvvModal');
+
+    // Botones de Apertura
+    document.getElementById('openTransferModalBtn').addEventListener('click', () => transferModal.classList.remove('hidden'));
+    document.getElementById('navTransferShortcut').addEventListener('click', () => transferModal.classList.remove('hidden'));
+    document.getElementById('closeTransferModalBtn').addEventListener('click', () => transferModal.classList.add('hidden'));
+
+    document.getElementById('openCvvBtn').addEventListener('click', () => {
+      cvvModal.classList.remove('hidden');
+      startCvvTimer();
+    });
+    document.getElementById('closeCvvBtn').addEventListener('click', () => cvvModal.classList.add('hidden'));
+    document.getElementById('closeReceiptBtn').addEventListener('click', () => receiptModal.classList.add('hidden'));
+    document.getElementById('doneReceiptBtn').addEventListener('click', () => receiptModal.classList.add('hidden'));
+
+    // Toggle Mostrar/Ocultar Saldo
+    toggleBalanceBtn.addEventListener('click', () => {
+      state.showBalance = !state.showBalance;
+      updateBalanceDisplay();
+    });
+
+    function updateBalanceDisplay() {
+      const currentBalance = state.activeCard === 'nomina' ? state.balanceNomina : state.balanceOro;
+      if (state.showBalance) {
+        balanceValueDisplay.innerHTML = `$ ${currentBalance.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span class="text-sm font-medium text-white/80">MXN</span>`;
+        balanceEyeIcon.setAttribute('data-lucide', 'eye');
+      } else {
+        balanceValueDisplay.innerHTML = `•••••••••••• <span class="text-sm font-medium text-white/80">MXN</span>`;
+        balanceEyeIcon.setAttribute('data-lucide', 'eye-off');
+      }
+      lucide.createIcons();
+    }
+
+    // Selector de Tarjeta (Nómina vs Oro)
+    const cardContainer = document.getElementById('creditCardContainer');
+    const cardTypeText = document.getElementById('cardTypeText');
+    const cardMaskedNumber = document.getElementById('cardMaskedNumber');
+    const cardTabNomina = document.getElementById('cardTabNomina');
+    const cardTabOro = document.getElementById('cardTabOro');
+
+    cardTabNomina.addEventListener('click', () => {
+      state.activeCard = 'nomina';
+      cardTabNomina.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#EB0029] text-white transition";
+      cardTabOro.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-600 hover:bg-slate-300 transition";
+      cardContainer.className = "relative w-full h-52 rounded-2xl p-5 text-white overflow-hidden shadow-xl bg-gradient-to-br from-[#EB0029] via-[#C70023] to-[#8C0018] transition-all duration-300";
+      cardTypeText.textContent = "Débito Enlace Digital";
+      cardMaskedNumber.textContent = "•••• •••• •••• 1234";
+      updateBalanceDisplay();
+    });
+
+    cardTabOro.addEventListener('click', () => {
+      state.activeCard = 'oro';
+      cardTabOro.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#C59B27] text-white transition";
+      cardTabNomina.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-600 hover:bg-slate-300 transition";
+      cardContainer.className = "relative w-full h-52 rounded-2xl p-5 text-white overflow-hidden shadow-xl bg-gradient-to-br from-[#C59B27] via-[#A68018] to-[#5C4509] transition-all duration-300";
+      cardTypeText.textContent = "Banorte Oro • Crédito";
+      cardMaskedNumber.textContent = "•••• •••• •••• 9840";
+      updateBalanceDisplay();
+    });
+
+    // Renderizar Movimientos
+    function renderTransactions() {
+      const filtered = state.transactions.filter(item => {
+        if (state.filter === 'charges') return item.type === 'charge';
+        if (state.filter === 'deposits') return item.type === 'deposit';
+        return true;
+      });
+
+      txCountBadge.textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        transactionsList.innerHTML = `<div class="p-6 text-center text-xs text-slate-400 bg-white rounded-xl">No hay transacciones en este filtro</div>`;
+        return;
+      }
+
+      transactionsList.innerHTML = filtered.map(item => {
+        const isDeposit = item.amount > 0;
+        const amountColor = isDeposit ? 'text-[#008744]' : 'text-[#1C1E21]';
+        const formattedAmount = `${isDeposit ? '+' : ''}$ ${Math.abs(item.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`;
+
+        return `
+          <div class="flex items-center justify-between p-3.5 bg-white rounded-xl border border-slate-100 shadow-sm hover:border-slate-300 transition cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full ${isDeposit ? 'bg-emerald-50 text-[#008744]' : 'bg-red-50 text-[#EB0029]'} flex items-center justify-center font-bold">
+                <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <div class="font-bold text-xs text-[#1C1E21]">${item.name}</div>
+                <div class="text-[10px] text-slate-400">${item.date} • ${item.category}</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="font-bold text-xs tabular-nums ${amountColor}">${formattedAmount}</div>
+              <div class="text-[10px] text-slate-400">Aplicado</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // Filtros de Movimientos
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterButtons.forEach(b => {
+          b.className = "filter-btn px-2 py-0.5 rounded-md font-medium text-slate-600 bg-white border border-slate-200";
+        });
+        btn.className = "filter-btn active-filter px-2 py-0.5 rounded-md font-medium text-white bg-[#EB0029]";
+        state.filter = btn.getAttribute('data-filter');
+        renderTransactions();
+      });
+    });
+
+    // Envío del Formulario SPEI
+    const speiForm = document.getElementById('speiForm');
+    const submitTransferBtn = document.getElementById('submitTransferBtn');
+
+    speiForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const beneficiary = document.getElementById('beneficiaryInput').value.trim();
+      const bank = document.getElementById('bankSelect').value;
+      const clabe = document.getElementById('clabeInput').value.trim();
+      const amount = parseFloat(document.getElementById('amountInput').value);
+      const concept = document.getElementById('conceptInput').value.trim();
+
+      if (clabe.length !== 18) {
+        alert('Por favor introduce una CLABE válida de 18 dígitos.');
+        return;
+      }
+
+      if (amount > state.balanceNomina) {
+        alert('Fondos insuficientes para realizar esta operación.');
+        return;
+      }
+
+      // Simular Proceso de Seguridad / Token
+      submitTransferBtn.disabled = true;
+      submitTransferBtn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Autenticando con Token Móvil...`;
+
+      setTimeout(() => {
+        // Reducir Saldo
+        state.balanceNomina -= amount;
+        updateBalanceDisplay();
+
+        // Agregar al Historial
+        const newTx = {
+          id: Date.now(),
+          name: beneficiary,
+          category: `SPEI a ${bank}`,
+          icon: 'arrow-up-right',
+          amount: -amount,
+          date: 'Hoy, ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+          type: 'charge'
+        };
+        state.transactions.unshift(newTx);
+        renderTransactions();
+
+        // Generar Clave de Rastreo Banorte Única
+        const trackingKey = 'BNTE0100' + Math.floor(100000000000 + Math.random() * 900000000000);
+
+        // Llenar Comprobante
+        document.getElementById('receiptAmount').innerHTML = `$ ${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} <span class="text-sm font-semibold text-slate-500">MXN</span>`;
+        document.getElementById('receiptBeneficiary').textContent = beneficiary;
+        document.getElementById('receiptBank').textContent = bank;
+        document.getElementById('receiptClabe').textContent = clabe.replace(/(\d{3})(\d{3})(\d{11})(\d{1})/, '$1 $2 $3 $4');
+        document.getElementById('receiptTracking').textContent = trackingKey;
+        document.getElementById('receiptConcept').textContent = `"${concept}"`;
+        document.getElementById('receiptTimestamp').textContent = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) + ' hrs';
+
+        // Cerrar Formulario y Abrir Comprobante
+        submitTransferBtn.disabled = false;
+        submitTransferBtn.innerHTML = `<span>Continuar Transferencia</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>`;
+        transferModal.classList.add('hidden');
+        speiForm.reset();
+        receiptModal.classList.remove('hidden');
+        lucide.createIcons();
+      }, 1200);
+    });
+
+    // Compartir Comprobante
+    document.getElementById('shareReceiptBtn').addEventListener('click', () => {
+      alert('Comprobante SPEI copiado al portapapeles en formato oficial Banorte.');
+    });
+
+    // Temporizador CVV Dinámico
+    function startCvvTimer() {
+      state.cvvTimer = 299;
+      // Generar 3 dígitos aleatorios
+      document.getElementById('cvvNumberDisplay').textContent = Math.floor(100 + Math.random() * 900);
+      
+      if (state.cvvInterval) clearInterval(state.cvvInterval);
+      state.cvvInterval = setInterval(() => {
+        state.cvvTimer--;
+        const mins = String(Math.floor(state.cvvTimer / 60)).padStart(2, '0');
+        const secs = String(state.cvvTimer % 60).padStart(2, '0');
+        document.getElementById('cvvTimerText').textContent = `${mins}:${secs}`;
+        if (state.cvvTimer <= 0) {
+          clearInterval(state.cvvInterval);
+          startCvvTimer();
+        }
+      }, 1000);
+    }
+
+    // Switch de Modo de Pantalla (Móvil vs Expandido)
+    const deviceContainer = document.getElementById('deviceContainer');
+    const viewMobileBtn = document.getElementById('viewMobileBtn');
+    const viewFullBtn = document.getElementById('viewFullBtn');
+
+    viewMobileBtn.addEventListener('click', () => {
+      deviceContainer.className = "w-full max-w-sm sm:max-w-md bg-[#F4F6F9] rounded-[36px] shadow-2xl overflow-hidden border-[6px] border-slate-900 flex flex-col relative transition-all duration-300 min-h-[780px]";
+      viewMobileBtn.className = "px-3 py-1.5 rounded-lg bg-[#EB0029] font-medium text-white shadow-sm flex items-center gap-1.5 transition";
+      viewFullBtn.className = "px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 font-medium text-slate-300 border border-slate-700 flex items-center gap-1.5 transition";
+    });
+
+    viewFullBtn.addEventListener('click', () => {
+      deviceContainer.className = "w-full max-w-3xl bg-[#F4F6F9] rounded-2xl shadow-2xl overflow-hidden border-2 border-slate-800 flex flex-col relative transition-all duration-300 min-h-[780px]";
+      viewFullBtn.className = "px-3 py-1.5 rounded-lg bg-[#EB0029] font-medium text-white shadow-sm flex items-center gap-1.5 transition";
+      viewMobileBtn.className = "px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 font-medium text-slate-300 border border-slate-700 flex items-center gap-1.5 transition";
+    });
+
+    // Reiniciar Datos
+    document.getElementById('resetDataBtn').addEventListener('click', () => {
+      state.balanceNomina = 48650.00;
+      state.balanceOro = 125000.00;
+      updateBalanceDisplay();
+      renderTransactions();
+    });
+
+    // Reloj en tiempo real
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('statusBarClock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Render Inicial
+    updateBalanceDisplay();
+    renderTransactions();
+  </script>
+</body>
+</html>
