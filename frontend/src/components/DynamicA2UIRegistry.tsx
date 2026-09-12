@@ -165,7 +165,7 @@ function normalizeProps(component?: string, rawProps?: Record<string, any>): Rec
       }
 
       const numericKeys = keys.filter(k => k !== p.categoryKey && (typeof firstRow[k] === 'number' || (!isNaN(Number(firstRow[k])) && firstRow[k] !== '')));
-      const chartPalette = ['#EB0029', '#0066CC', '#008744', '#C59B27', '#7C3AED', '#E67E22', '#0F766E', '#D32F2F'];
+      const chartPalette = ['#E4003B', '#0A5CA8', '#008A5A', '#C89319', '#617A96', '#9AAABD'];
 
       if (!p.series || !p.series.length) {
         if (numericKeys.length > 1) {

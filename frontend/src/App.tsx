@@ -309,7 +309,9 @@ export const App: React.FC = () => {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const blocks = buffer.split('\n\n');
+        // EventSourceResponse uses CRLF framing in this environment. Accept both
+        // SSE wire formats so a completed response always updates the placeholder.
+        const blocks = buffer.split(/\r?\n\r?\n/);
         buffer = blocks.pop() || '';
 
         for (const block of blocks) {

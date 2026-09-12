@@ -30,7 +30,7 @@ interface FinancialHealthGaugeProps {
 export const FinancialHealthGauge: React.FC<FinancialHealthGaugeProps> = (props) => {
   const score = props.overallScore ?? props.overall_score ?? 64;
   const status = props.status ?? (score < 70 ? 'MODERADO' : 'ÓPTIMO');
-  const color = props.statusColor ?? props.status_color ?? (score < 70 ? '#F59E0B' : '#10B981');
+  const color = props.statusColor ?? props.status_color ?? (score < 70 ? '#C89319' : '#008A5A');
   const utilization = props.metrics?.credit_utilization_pct ?? 48.1;
 
   return (

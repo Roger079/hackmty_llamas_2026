@@ -1,6 +1,8 @@
 import type { Dynamic, RecordRow, SemaforoStatus, ValueFormat } from './types';
-export const palette = ['#EB0029','#0066CC','#008744','#C59B27','#7C3AED','#E67E22','#0F766E','#D32F2F'];
-export const statusColor: Record<SemaforoStatus, string> = { good:'#008744', warning:'#E67E22', bad:'#D32F2F', neutral:'#7A8290' };
+// A restrained institutional palette: Banorte red leads, with banking-blue,
+// emerald and muted neutrals reserved for comparison and semantic status.
+export const palette = ['#E4003B','#0A5CA8','#008A5A','#C89319','#617A96','#9AAABD','#D95D74','#2E6D8C'];
+export const statusColor: Record<SemaforoStatus, string> = { good:'#008A5A', warning:'#C89319', bad:'#C7354F', neutral:'#617A96' };
 export function pointer(source: unknown, path?: string): unknown { if (!path) return source; return path.replace(/^\//,'').split('/').filter(Boolean).reduce<unknown>((value, key) => value && typeof value === 'object' ? (value as Record<string, unknown>)[key.replace(/~1/g,'/').replace(/~0/g,'~')] : undefined, source); }
 export function resolve<T>(value: Dynamic<T> | undefined, data?: Record<string, unknown>): T | undefined { if (value && typeof value === 'object') { const dynamicObj = value as { path?: string; value?: T }; if (dynamicObj.path) return pointer(data, dynamicObj.path) as T; if ('value' in dynamicObj) return dynamicObj.value; } return value as T | undefined; }
 export function rows(data: unknown, path?: string): RecordRow[] {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LockKeyhole, Cpu } from 'lucide-react';
+import { LockKeyhole, Cpu, ChevronDown } from 'lucide-react';
 import banorteLogo from '../assets/12ui/banorte-logo.png';
 
 export interface BanortePortalHeaderProps {
@@ -78,19 +78,23 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
 
           {/* Real SQLite Customer Profile & Switcher */}
           <div className="flex items-center gap-2 border-l border-white/20 pl-2 sm:pl-3">
-            <div className="text-right">
+            <div className="min-w-0">
               {onSelectUser ? (
-                <div className="flex items-center justify-end">
+                <div className="relative">
                   <select
                     value={selectedUserId}
                     onChange={(e) => onSelectUser(e.target.value)}
-                    className="bg-black/25 hover:bg-black/35 text-white font-bold text-[13px] rounded-xl px-2.5 py-1 border border-white/30 focus:outline-none cursor-pointer text-right appearance-none transition"
+                    className="block h-8 max-w-[190px] appearance-none rounded-full border border-white/25 bg-white/10 py-1 pl-3 pr-8 text-left text-[13px] font-bold text-white transition hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                     title="Seleccionar cliente bancario registrado en SQLite"
                   >
                     <option value="C001" className="bg-[#9D0027] text-white">Ana Martínez (Nómina)</option>
                     <option value="C002" className="bg-[#9D0027] text-white">Carlos Ramírez (Deuda)</option>
                     <option value="C003" className="bg-[#9D0027] text-white">Silvia Carrasco (Patrimonial)</option>
                   </select>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/75"
+                  />
                 </div>
               ) : (
                 <p className="text-[13px] font-bold text-white leading-tight">{clientName}</p>

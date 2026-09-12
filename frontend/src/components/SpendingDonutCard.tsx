@@ -26,11 +26,11 @@ interface SpendingDonutCardProps {
 
 export const SpendingDonutCard: React.FC<SpendingDonutCardProps> = (props) => {
   const rawCats = Array.isArray(props.categories) && props.categories.length > 0 ? props.categories : [
-    { name: 'Supermercado', amount: 5420, percentage: 36.5, color: '#EB0029' },
-    { name: 'Restaurantes', amount: 3280, percentage: 22.1, color: '#FF5A70' },
-    { name: 'Servicios', amount: 2650, percentage: 17.8, color: '#4A5568' },
-    { name: 'Transporte', amount: 1950, percentage: 13.1, color: '#718096' },
-    { name: 'Entretenimiento', amount: 1550, percentage: 10.5, color: '#CBD5E0' }
+    { name: 'Supermercado', amount: 5420, percentage: 36.5, color: '#E4003B' },
+    { name: 'Restaurantes', amount: 3280, percentage: 22.1, color: '#0A5CA8' },
+    { name: 'Servicios', amount: 2650, percentage: 17.8, color: '#008A5A' },
+    { name: 'Transporte', amount: 1950, percentage: 13.1, color: '#C89319' },
+    { name: 'Entretenimiento', amount: 1550, percentage: 10.5, color: '#617A96' }
   ];
 
   const cats: CategoryItem[] = rawCats.map((c: any) => ({
