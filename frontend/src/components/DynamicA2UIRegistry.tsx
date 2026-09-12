@@ -8,6 +8,8 @@ import { BanorteBalanceCard } from './BanorteBalanceCard';
 import { InvestmentSimulatorCard } from './InvestmentSimulatorCard';
 import { SpendingDonutCard } from './SpendingDonutCard';
 import { AmortizationScheduleCard } from './AmortizationScheduleCard';
+import { BanorteChartCard } from './BanorteChartCard';
+import { Chart } from './Chart';
 
 interface DynamicA2UIRegistryProps {
   payload: A2UIPayload;
@@ -28,6 +30,11 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   InvestmentSimulatorCard,
   SpendingDonutCard,
   AmortizationScheduleCard,
+  BanorteChartCard,
+  Chart,
+  SankeyChart: BanorteChartCard,
+  HeatmapChart: BanorteChartCard,
+  CalendarHeatmap: BanorteChartCard,
   AmortizationCard: AmortizationScheduleCard,
   AmortizationSchedule: AmortizationScheduleCard,
   TablaAmortizacionCard: AmortizationScheduleCard,
@@ -138,9 +145,29 @@ function normalizeProps(component?: string, rawProps?: Record<string, any>): Rec
     p.estimatedGain = p.estimatedGain ?? p.estimated_gain;
     p.totalMaturity = p.totalMaturity ?? p.total_maturity;
   } else if (
-    ['StackedBarChart', 'BarChart', 'GroupedBarChart', 'LineChart', 'AreaChart', 'StackedAreaChart', 'BanorteChartCard', 'MultiLineChart', 'ProjectionChart'].includes(comp) ||
+    ['StackedBarChart', 'BarChart', 'GroupedBarChart', 'LineChart', 'AreaChart', 'StackedAreaChart', 'BanorteChartCard', 'MultiLineChart', 'ProjectionChart', 'Chart', 'SankeyChart', 'HeatmapChart', 'CalendarHeatmap'].includes(comp) ||
     comp.toLowerCase().includes('chart')
   ) {
+    if (p.chartType === 'sankey' || comp === 'SankeyChart') {
+      p.chartType = 'sankey';
+      const nodes = p.nodes || (p.data && typeof p.data === 'object' ? (p.data as any).nodes : undefined);
+      const links = p.links || (p.data && typeof p.data === 'object' ? (p.data as any).links : undefined);
+      if (nodes || links) {
+        p.data = { ...(p.data || {}), nodes: nodes || [], links: links || [] };
+        return p;
+      }
+    } else if (p.chartType === 'calendarHeatmap' || p.chartType === 'heatmap' || comp === 'CalendarHeatmap' || comp === 'HeatmapChart') {
+      p.chartType = 'calendarHeatmap';
+      const daily = p.daily_spending || p.days || (p.data && typeof p.data === 'object' ? ((p.data as any).daily_spending || (p.data as any).days || (p.data as any).data) : undefined);
+      if (Array.isArray(daily) && daily.length > 0) {
+        p.data = { data: daily };
+        p.dataPath = '/data';
+        p.dateKey = p.dateKey || 'date';
+        p.valueKey = p.valueKey || 'value';
+        return p;
+      }
+    }
+
     let rawList: any[] = [];
     if (Array.isArray(p.data)) {
       rawList = p.data;

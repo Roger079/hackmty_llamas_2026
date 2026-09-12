@@ -271,7 +271,7 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
                 },
                 "props": {
                     "type": "OBJECT",
-                    "description": "Propiedades requeridas por el componente React para su renderizado según el catálogo banca_visuals_catalog.json",
+                    "description": "Propiedades requeridas por el componente React para su renderizado según el catálogo banca_visuals_catalog.json. Para BanorteChartCard o Chart, incluye chartType ('sankey', 'calendarHeatmap', 'bar', 'line', 'treemap', 'waterfall') y su estructura de datos.",
                     "properties": {}
                 }
             },

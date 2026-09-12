@@ -836,7 +836,114 @@ class McpClient:
             uid = args.get("user_id", "USR-BANORTE-8842")
             return self.get_user_cognitive_profile(uid)
 
+        elif tool_name in ["get_sankey_cashflow", "get_cash_flow_sankey"]:
+            uid = args.get("user_id", "C001")
+            return self.get_sankey_cashflow(uid)
+
+        elif tool_name in ["get_spending_heatmap", "get_calendar_heatmap"]:
+            uid = args.get("user_id", "C001")
+            return self.get_spending_heatmap(uid)
+
+        elif tool_name in ["get_historical_spending_trend", "get_monthly_spending_trend"]:
+            return [
+                {"mes": "Abr 2026", "monto": 7450.00},
+                {"mes": "May 2026", "monto": 7100.00},
+                {"mes": "Jun 2026", "monto": 7800.00},
+                {"mes": "Jul 2026", "monto": 6900.00},
+                {"mes": "Ago 2026", "monto": 7200.00},
+                {"mes": "Sep 2026", "monto": 6450.00}
+            ]
+
         return {"error": f"Herramienta '{tool_name}' no reconocida por el servidor MCP"}
+
+    def get_sankey_cashflow(self, user_id: str = "C001") -> Dict[str, Any]:
+        """Generates authentic multi-stage cash flow graph nodes and links for Sankey diagrams"""
+        real_state = self.get_real_customer_state(user_id)
+        client_name = real_state.get("client_name") or "Cliente Banorte"
+        avail_bal = float(real_state.get("total_available_balance", 27900.0))
+
+        analytics = self._execute_mock("get_spending_analytics", {"user_id": user_id})
+        cats = analytics.get("categories", [])
+        total_spent = float(analytics.get("total_spent", 6450.0))
+        nomina_income = round(avail_bal + total_spent, 2)
+        if nomina_income <= total_spent:
+            nomina_income = round(total_spent * 1.8, 2)
+
+        fijos_amt = sum(c["amount"] for c in cats if any(k in c["name"].lower() for k in ["super", "servicios", "tarjeta", "renta"]))
+        if fijos_amt <= 0:
+            fijos_amt = round(total_spent * 0.65, 2)
+        var_amt = round(total_spent - fijos_amt, 2)
+        if var_amt < 0:
+            var_amt = 0.0
+            fijos_amt = total_spent
+        ahorro_amt = round(nomina_income - total_spent, 2)
+
+        palette_colors = ["#EB0029", "#4A5568", "#FF5A70", "#718096", "#0A5CA8", "#C89319", "#008A5A"]
+
+        nodes = [
+            {"id": "nomina", "label": "Ingresos / Nómina Banorte", "color": "#0A5CA8"},
+            {"id": "fijos", "label": "Gastos Fijos", "color": "#EB0029"},
+            {"id": "variables", "label": "Gastos Variables", "color": "#C89319"},
+            {"id": "ahorro", "label": "Remanente / Ahorro", "color": "#008A5A"},
+        ]
+        links = [
+            {"source": "nomina", "target": "fijos", "value": fijos_amt},
+            {"source": "nomina", "target": "variables", "value": var_amt},
+            {"source": "nomina", "target": "ahorro", "value": ahorro_amt},
+        ]
+
+        for idx, c in enumerate(cats):
+            c_id = f"cat_{idx}"
+            is_fijo = any(k in c["name"].lower() for k in ["super", "servicios", "tarjeta", "renta"])
+            parent = "fijos" if is_fijo else "variables"
+            nodes.append({
+                "id": c_id,
+                "label": c["name"],
+                "color": c.get("color") or palette_colors[idx % len(palette_colors)]
+            })
+            links.append({
+                "source": parent,
+                "target": c_id,
+                "value": float(c["amount"])
+            })
+
+        nodes.append({"id": "inversion", "label": "Pagaré / Inversión Banorte", "color": "#008A5A"})
+        links.append({"source": "ahorro", "target": "inversion", "value": ahorro_amt})
+
+        return {
+            "client": client_name,
+            "period": analytics.get("period", "Septiembre 2026"),
+            "total_income": nomina_income,
+            "total_spent": total_spent,
+            "net_remainder": ahorro_amt,
+            "nodes": nodes,
+            "links": links
+        }
+
+    def get_spending_heatmap(self, user_id: str = "C001") -> Dict[str, Any]:
+        """Generates 30-day daily spend distribution for calendar heatmaps"""
+        real_state = self.get_real_customer_state(user_id)
+        client_name = real_state.get("client_name") or "Cliente Banorte"
+        analytics = self._execute_mock("get_spending_analytics", {"user_id": user_id})
+        total_spent = float(analytics.get("total_spent", 6450.0))
+
+        daily = []
+        weights = {1: 0.22, 15: 0.28, 5: 0.10, 8: 0.08, 12: 0.07, 18: 0.09, 22: 0.06, 26: 0.05, 29: 0.05}
+        for d in range(1, 31):
+            date_str = f"2026-09-{d:02d}"
+            amt = round(total_spent * weights.get(d, 0.0), 2)
+            daily.append({
+                "date": date_str,
+                "day": d,
+                "value": amt
+            })
+
+        return {
+            "client": client_name,
+            "period": "Septiembre 2026",
+            "total_spent": total_spent,
+            "daily_spending": daily
+        }
 
 # Instancia singleton del cliente MCP
 mcp_client = McpClient()

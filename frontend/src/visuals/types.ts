@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 export type ValueFormat = 'number' | 'currency' | 'percent' | 'text' | 'date';
 export type SemaforoStatus = 'good' | 'warning' | 'bad' | 'neutral';
-export type ChartType = 'line' | 'multiLine' | 'bar' | 'barHorizontal' | 'groupedBar' | 'stackedBar' | 'area' | 'stackedArea' | 'pie' | 'donut' | 'treemap' | 'sunburst' | 'sankey' | 'waterfall' | 'gauge' | 'radar' | 'scatter' | 'bubble' | 'calendarHeatmap' | 'candlestick' | 'boxplot' | 'histogram' | 'bullet';
+export type ChartType = 'line' | 'multiLine' | 'bar' | 'barHorizontal' | 'groupedBar' | 'stackedBar' | 'area' | 'stackedArea' | 'pie' | 'donut' | 'treemap' | 'sunburst' | 'sankey' | 'waterfall' | 'gauge' | 'radar' | 'scatter' | 'bubble' | 'calendarHeatmap' | 'heatmap' | 'candlestick' | 'boxplot' | 'histogram' | 'bullet';
 export type Dynamic<T> = T | { value?: T; path?: string };
 export type RecordRow = Record<string, unknown>;
 

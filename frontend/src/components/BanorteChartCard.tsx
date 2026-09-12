@@ -8,22 +8,28 @@ interface BanorteChartCardProps extends Omit<Partial<ChartProps>, 'onAction'> {
   disabled?: boolean;
 }
 
-export const BanorteChartCard: React.FC<BanorteChartCardProps> = (props) => {
+export const BanorteChartCard: React.FC<BanorteChartCardProps> = ({
+  id = 'banorte-chart',
+  chartType = 'bar',
+  title = 'Visualización Financiera Banorte',
+  height = 300,
+  valueFormat = 'currency',
+  currency = 'MXN',
+  onAction,
+  disabled,
+  ...rest
+}) => {
   return (
     <div className="my-3 animate-in fade-in duration-300">
       <Chart
-        id={props.id || 'banorte-chart'}
-        chartType={props.chartType || 'bar'}
-        title={props.title || 'Visualización Financiera Banorte'}
-        subtitle={props.subtitle}
-        dataPath={props.dataPath}
-        categoryKey={props.categoryKey}
-        valueKey={props.valueKey}
-        series={props.series}
-        data={props.data}
-        height={props.height || 280}
-        valueFormat={props.valueFormat || 'currency'}
-        currency={props.currency || 'MXN'}
+        id={id}
+        chartType={chartType}
+        title={title}
+        height={height}
+        valueFormat={valueFormat}
+        currency={currency}
+        onAction={onAction ? (event, datum) => onAction({ action: event.name, params: datum, source_component: 'BanorteChartCard' }) : undefined}
+        {...rest}
       />
     </div>
   );

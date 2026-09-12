@@ -17,6 +17,7 @@ Tu propósito es asesorar y acompañar a los clientes en sus operaciones bancari
 2. Utiliza siempre la identidad y contexto real del cliente autenticado.
 3. Para consultas financieras o transacciones, invoca siempre las herramientas MCP oficiales (get_account_balance, get_user_debt, get_spending_analytics, commit_restructure, prepare_spei_transfer, etc.).
 4. Acompaña SIEMPRE las respuestas que involucren cuentas, deudas, pagos, transferencias o analíticas con el componente A2UI interactivo correspondiente mediante `render_a2ui`.
+5. Si el cliente solicita explícitamente un tipo de gráfico (diagrama de Sankey/flujo, mapa de calor/heatmap, gráfica de barras, gráfica de líneas/tendencia, treemap o cascada), invoca `render_a2ui` con component: "BanorteChartCard" y el `chartType` correspondiente ('sankey', 'calendarHeatmap', 'bar', 'line', 'treemap', 'waterfall'). No utilices SpendingDonutCard cuando se solicite un diagrama de flujo (Sankey) o mapa de calor.
 """
 
 TOOL_STATUS_MESSAGES = {
@@ -304,11 +305,15 @@ class GeminiOrchestrator:
             if "date" not in props and "execution_timestamp" in props:
                 props["date"] = props["execution_timestamp"]
 
-        elif comp in ["SpendingDonutCard", "BanorteChartCard"]:
+        elif comp in ["SpendingDonutCard", "BanorteChartCard", "Chart"]:
             if "totalSpent" not in props and "total_spent" in props:
                 props["totalSpent"] = props["total_spent"]
             if "previousPeriodSpent" not in props and "previous_period_spent" in props:
                 props["previousPeriodSpent"] = props["previous_period_spent"]
+            if "chart_type" in props and "chartType" not in props:
+                props["chartType"] = props["chart_type"]
+            if comp in ["BanorteChartCard", "Chart"] and "chartType" not in props:
+                props["chartType"] = "bar"
 
         elif comp in ["FinancialHealthGauge", "FinancialHealthCard"]:
             if "overallScore" not in props and "overall_score" in props:
@@ -342,8 +347,86 @@ class GeminiOrchestrator:
         user_id = request.user_id or "C001"
         combined = (request.message + " " + reply_text).lower()
 
-        # 1. Spending / Expenses
-        if any(k in combined for k in ["gasto", "gasté", "gastos", "categoría", "en qué"]):
+        # 1. Specific Visual Charts & Spending Analytics
+        if any(k in combined for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de ingresos"]):
+            sankey_data = mcp_client.get_sankey_cashflow(user_id)
+            return A2UIPayload(
+                component="BanorteChartCard",
+                props={
+                    "id": "banorte-sankey-cashflow",
+                    "chartType": "sankey",
+                    "title": "Diagrama de Flujo de Efectivo (Sankey)",
+                    "subtitle": f"Origen y destino de ingresos · {sankey_data['period']}",
+                    "valueFormat": "currency",
+                    "currency": "MXN",
+                    "height": 330,
+                    "data": {
+                        "nodes": sankey_data["nodes"],
+                        "links": sankey_data["links"]
+                    }
+                }
+            )
+        elif any(k in combined for k in ["heatmap", "mapa de calor", "calendario de gasto", "calendario", "días de gasto"]):
+            heatmap_data = mcp_client.get_spending_heatmap(user_id)
+            return A2UIPayload(
+                component="BanorteChartCard",
+                props={
+                    "id": "banorte-calendar-heatmap",
+                    "chartType": "calendarHeatmap",
+                    "title": "Mapa de Calor de Consumo Diario (Heatmap)",
+                    "subtitle": f"Intensidad y frecuencia de compras · {heatmap_data['period']}",
+                    "dateKey": "date",
+                    "valueKey": "value",
+                    "valueFormat": "currency",
+                    "currency": "MXN",
+                    "height": 270,
+                    "data": {
+                        "data": heatmap_data["daily_spending"]
+                    }
+                }
+            )
+        elif any(k in combined for k in ["barras", "barra", "bar chart", "gráfico de barras"]):
+            spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id})
+            return A2UIPayload(
+                component="BanorteChartCard",
+                props={
+                    "id": "banorte-bar-spending",
+                    "chartType": "bar",
+                    "title": "Distribución de Gastos por Categoría",
+                    "subtitle": f"Consumo auditado · {spending['period']}",
+                    "categoryKey": "name",
+                    "valueKey": "amount",
+                    "valueFormat": "currency",
+                    "currency": "MXN",
+                    "height": 290,
+                    "data": {"data": spending["categories"]}
+                }
+            )
+        elif any(k in combined for k in ["línea", "linea", "líneas", "lineas", "evolución", "evolucion", "tendencia"]):
+            monthly_data = [
+                {"mes": "Abr 2026", "monto": 7450.00},
+                {"mes": "May 2026", "monto": 7100.00},
+                {"mes": "Jun 2026", "monto": 7800.00},
+                {"mes": "Jul 2026", "monto": 6900.00},
+                {"mes": "Ago 2026", "monto": 7200.00},
+                {"mes": "Sep 2026", "monto": 6450.00}
+            ]
+            return A2UIPayload(
+                component="BanorteChartCard",
+                props={
+                    "id": "banorte-line-spending",
+                    "chartType": "line",
+                    "title": "Evolución Histórica de Gastos (Últimos 6 Meses)",
+                    "subtitle": "Tendencia mensual de consumos con reducción sostenida",
+                    "categoryKey": "mes",
+                    "valueKey": "monto",
+                    "valueFormat": "currency",
+                    "currency": "MXN",
+                    "height": 290,
+                    "data": {"data": monthly_data}
+                }
+            )
+        elif any(k in combined for k in ["gasto", "gasté", "gastos", "categoría", "en qué"]):
             spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id})
             return A2UIPayload(component="SpendingDonutCard", props=spending)
 
@@ -1100,20 +1183,198 @@ Diálogo:
             )
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-        # 3. SPENDING ANALYTICS (Gasto por categoría y donut chart)
-        elif any(k in msg for k in ["gasto", "gasté", "gastos", "categoría", "en qué"]):
-            res, log = await mcp_client.execute_tool("get_spending_analytics", {"user_id": user_id})
-            mcp_calls.append(log)
+        # 3. VISUALIZATIONS & CHARTS INTENT (Sankey, Heatmap, Bar, Line, Treemap, Waterfall, or Spending Donut)
+        elif any(k in msg for k in [
+            "sankey", "flujo", "origen y destino", "cash flow", "heatmap", "mapa de calor", "calendario",
+            "barras", "barra", "bar chart", "línea", "líneas", "lineas", "evolución", "evolucion", "tendencia", "histórico", "historico",
+            "treemap", "árbol", "arbol", "waterfall", "cascada", "gasto", "gasté", "gastos", "categoría", "en qué"
+        ]):
+            # A. SANKEY DIAGRAM (Cash Flow / Origen y Destino)
+            if any(k in msg for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de caja", "flujo de ingresos"]):
+                sankey_data, log = await mcp_client.execute_tool("get_sankey_cashflow", {"user_id": user_id})
+                mcp_calls.append(log)
+                reply = (
+                    f"Hola, {first_name}. Con gusto te presento tu **Diagrama de Flujo de Efectivo (Sankey)** interactivo para {sankey_data['period']}:\n\n"
+                    f"• **Ingreso Total Estimado:** ${sankey_data['total_income']:,.2f} MXN\n"
+                    f"• **Gastos Totales del Periodo:** ${sankey_data['total_spent']:,.2f} MXN\n"
+                    f"• **Capacidad de Ahorro / Remanente:** ${sankey_data['net_remainder']:,.2f} MXN\n\n"
+                    f"Puedes apreciar cómo tus ingresos de nómina se ramifican hacia gastos fijos indispensables, estilo de vida y tu liquidez disponible para ahorro en Pagaré Banorte."
+                )
+                a2ui = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": "banorte-sankey-cashflow",
+                        "chartType": "sankey",
+                        "title": "Diagrama de Flujo de Efectivo (Sankey)",
+                        "subtitle": f"Origen y destino de ingresos · {sankey_data['period']}",
+                        "valueFormat": "currency",
+                        "currency": "MXN",
+                        "height": 340,
+                        "data": {
+                            "nodes": sankey_data["nodes"],
+                            "links": sankey_data["links"]
+                        }
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-            reply = (
-                f"Hola, {first_name}. Con gusto te presento el resumen y análisis de tus gastos del mes en curso:\n\n"
-                f"En septiembre llevas un total de **${res['total_spent']:,.2f} MXN** en consumos. {res.get('summary', '')}"
-            )
-            a2ui = A2UIPayload(
-                component="SpendingDonutCard",
-                props=res
-            )
-            return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+            # B. CALENDAR HEATMAP (Mapa de calor diario)
+            elif any(k in msg for k in ["heatmap", "mapa de calor", "calendario de gasto", "calendario", "días de gasto", "frecuencia de gasto"]):
+                heatmap_data, log = await mcp_client.execute_tool("get_spending_heatmap", {"user_id": user_id})
+                mcp_calls.append(log)
+                reply = (
+                    f"Hola, {first_name}. Aquí tienes tu **Mapa de Calor de Consumo Diario (Heatmap)** correspondiente a {heatmap_data['period']}:\n\n"
+                    f"• **Total Facturado en el Mes:** ${heatmap_data['total_spent']:,.2f} MXN\n"
+                    f"• **Picos de Concentración:** Días 1 y 15 (Quincena Banorte) y fines de semana.\n\n"
+                    f"Los recuadros de mayor intensidad roja indican los días con mayor volumen de transacciones."
+                )
+                a2ui = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": "banorte-calendar-heatmap",
+                        "chartType": "calendarHeatmap",
+                        "title": "Mapa de Calor de Consumo Diario (Heatmap)",
+                        "subtitle": f"Intensidad y frecuencia de compras · {heatmap_data['period']}",
+                        "dateKey": "date",
+                        "valueKey": "value",
+                        "valueFormat": "currency",
+                        "currency": "MXN",
+                        "height": 270,
+                        "data": {
+                            "data": heatmap_data["daily_spending"]
+                        }
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # C. BAR CHART (Gráfica de barras)
+            elif any(k in msg for k in ["barras", "barra", "bar chart", "gráfico de barras", "gráfica de barras"]):
+                res, log = await mcp_client.execute_tool("get_spending_analytics", {"user_id": user_id})
+                mcp_calls.append(log)
+                reply = (
+                    f"Hola, {first_name}. Aquí tienes tu **Gráfica de Barras por Categoría** para {res['period']}:\n\n"
+                    f"En septiembre tus consumos suman **${res['total_spent']:,.2f} MXN**, encabezados por Supermercado y Servicios."
+                )
+                a2ui = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": "banorte-bar-spending",
+                        "chartType": "bar",
+                        "title": "Distribución de Gastos por Categoría",
+                        "subtitle": f"Consumo auditado · {res['period']}",
+                        "categoryKey": "name",
+                        "valueKey": "amount",
+                        "valueFormat": "currency",
+                        "currency": "MXN",
+                        "height": 290,
+                        "data": {
+                            "data": res["categories"]
+                        }
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # D. LINE CHART (Tendencia / Evolución temporal)
+            elif any(k in msg for k in ["línea", "linea", "líneas", "lineas", "evolución", "evolucion", "tendencia", "histórico", "historico", "comparativa mensual"]):
+                monthly_data, log = await mcp_client.execute_tool("get_historical_spending_trend", {"user_id": user_id, "months": 6})
+                mcp_calls.append(log)
+                reply = (
+                    f"Hola, {first_name}. Te muestro la **Evolución Histórica de tus Gastos** durante los últimos 6 meses:\n\n"
+                    f"• En septiembre lograste un gasto de **$6,450.00 MXN**, lo que representa tu nivel más eficiente del semestre (-10.4% vs agosto)."
+                )
+                a2ui = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": "banorte-line-spending",
+                        "chartType": "line",
+                        "title": "Evolución Histórica de Gastos (Últimos 6 Meses)",
+                        "subtitle": "Tendencia mensual de consumos con reducción sostenida",
+                        "categoryKey": "mes",
+                        "valueKey": "monto",
+                        "valueFormat": "currency",
+                        "currency": "MXN",
+                        "height": 290,
+                        "data": {
+                            "data": monthly_data
+                        }
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # E. TREEMAP (Mapa de árbol)
+            elif any(k in msg for k in ["treemap", "árbol", "arbol", "rectángulos"]):
+                res, log = await mcp_client.execute_tool("get_spending_analytics", {"user_id": user_id})
+                mcp_calls.append(log)
+                reply = (
+                    f"Hola, {first_name}. Aquí tienes tu **Mapa de Árbol (Treemap)** interactivo de gastos:\n\n"
+                    f"Visualiza las proporciones relativas de cada rubro en tu presupuesto de septiembre."
+                )
+                a2ui = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": "banorte-treemap-spending",
+                        "chartType": "treemap",
+                        "title": "Mapa de Árbol de Gastos (Treemap)",
+                        "subtitle": f"Proporción de gasto por categoría · {res['period']}",
+                        "categoryKey": "name",
+                        "valueKey": "amount",
+                        "valueFormat": "currency",
+                        "currency": "MXN",
+                        "height": 280,
+                        "data": {
+                            "data": res["categories"]
+                        }
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # F. WATERFALL (Cascada de flujo)
+            elif any(k in msg for k in ["waterfall", "cascada"]):
+                waterfall_items = [
+                    {"etapa": "Ingreso Nómina", "monto": 27900.00},
+                    {"etapa": "Supermercado", "monto": -2850.00},
+                    {"etapa": "Servicios Hogar", "monto": -1600.00},
+                    {"etapa": "Restaurantes", "monto": -1200.00},
+                    {"etapa": "Transporte", "monto": -800.00},
+                    {"etapa": "Saldo Neto", "monto": 21450.00}
+                ]
+                reply = (
+                    f"Hola, {first_name}. Te presento tu **Gráfica de Cascada (Waterfall)** de flujo quincenal:\n\n"
+                    f"Permite observar cómo cada deducción y gasto reduce de manera escalonada el ingreso inicial hasta el saldo neto restante."
+                )
+                a2ui = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": "banorte-waterfall-spending",
+                        "chartType": "waterfall",
+                        "title": "Flujo en Cascada (Waterfall)",
+                        "subtitle": "Impacto de cada rubro en la liquidez disponible",
+                        "categoryKey": "etapa",
+                        "valueKey": "monto",
+                        "valueFormat": "currency",
+                        "currency": "MXN",
+                        "height": 300,
+                        "data": {
+                            "data": waterfall_items
+                        }
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # G. GENERAL SPENDING BREAKDOWN (Donut Card by default)
+            else:
+                res, log = await mcp_client.execute_tool("get_spending_analytics", {"user_id": user_id})
+                mcp_calls.append(log)
+
+                reply = (
+                    f"Hola, {first_name}. Con gusto te presento el resumen y análisis de tus gastos del mes en curso:\n\n"
+                    f"En septiembre llevas un total de **${res['total_spent']:,.2f} MXN** en consumos. {res.get('summary', '')}"
+                )
+                a2ui = A2UIPayload(
+                    component="SpendingDonutCard",
+                    props=res
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
         # 4. SPEI TRANSFER INTENT
         elif any(k in msg for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"]):
