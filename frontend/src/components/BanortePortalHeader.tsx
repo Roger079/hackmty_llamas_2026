@@ -1,5 +1,5 @@
 import React from 'react';
-import { LockKeyhole, Cpu, ChevronDown } from 'lucide-react';
+import { LockKeyhole, Cpu, ChevronDown, LogOut } from 'lucide-react';
 import { BanorteLogo } from './BanorteLogo';
 
 export interface BanortePortalHeaderProps {
@@ -10,6 +10,7 @@ export interface BanortePortalHeaderProps {
   onOpenInspector?: () => void;
   selectedUserId?: string;
   onSelectUser?: (userId: string) => void;
+  onLogout?: () => void;
 }
 
 export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
@@ -20,6 +21,7 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
   onOpenInspector,
   selectedUserId = 'C001',
   onSelectUser,
+  onLogout,
 }) => {
   const initials = clientName
     .split(' ')
@@ -110,6 +112,17 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
             >
               {initials || 'AR'}
             </div>
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="inline-flex h-8 items-center gap-1 rounded-full border border-white/25 bg-white/10 px-2.5 text-[12px] font-bold text-white transition hover:bg-white/20 cursor-pointer"
+                title="Cerrar sesión demo"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Salir</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

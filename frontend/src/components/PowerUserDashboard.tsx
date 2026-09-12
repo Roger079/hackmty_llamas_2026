@@ -58,11 +58,13 @@ import {
 interface PowerUserDashboardProps {
   initialUserId?: string;
   onNavigateHome?: () => void;
+  onLogout?: () => void;
 }
 
 export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
   initialUserId = 'C001',
   onNavigateHome,
+  onLogout,
 }) => {
   const [selectedUserId, setSelectedUserId] = useState<string>(initialUserId);
   const [clientName, setClientName] = useState<string>('Ana Martínez');
@@ -626,6 +628,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
           onOpenInspector={() => setIsInspectorOpen(true)}
           selectedUserId={selectedUserId}
           onSelectUser={(newId) => setSelectedUserId(newId)}
+          onLogout={onLogout}
         />
 
         {/* 3. Command Center Subheader & Status Bar */}

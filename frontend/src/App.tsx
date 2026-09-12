@@ -9,6 +9,7 @@ import { ChatStream } from './components/ChatStream';
 import { McpInspector } from './components/McpInspector';
 import { MobileSimulator } from './components/MobileSimulator';
 import { PowerUserDashboard } from './components/PowerUserDashboard';
+import { LoginScreen } from './components/LoginScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { A2UIPayload, ActionContext, ChatMessage, McpCallLog, UserCognitiveProfile } from './types/a2ui';
 
@@ -20,7 +21,14 @@ const timeNow = () =>
   new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
 export const App: React.FC = () => {
-  const [selectedUserId, setSelectedUserId] = useState<string>(DEFAULT_USER_ID);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.sessionStorage.getItem('banorte_demo_logged_in') === 'true';
+  });
+  const [selectedUserId, setSelectedUserId] = useState<string>(() => {
+    if (typeof window === 'undefined') return DEFAULT_USER_ID;
+    return window.sessionStorage.getItem('banorte_demo_user_id') || DEFAULT_USER_ID;
+  });
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome-1',
@@ -30,7 +38,13 @@ export const App: React.FC = () => {
       timestamp: timeNow(),
     },
   ]);
-  const [clientName, setClientName] = useState(DEFAULT_CLIENT);
+  const [clientName, setClientName] = useState<string>(() => {
+    if (typeof window === 'undefined') return DEFAULT_CLIENT;
+    const uid = window.sessionStorage.getItem('banorte_demo_user_id');
+    if (uid === 'C002') return 'Carlos Ramírez';
+    if (uid === 'C003') return 'Silvia Carrasco Alvarado';
+    return DEFAULT_CLIENT;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [mcpLogs, setMcpLogs] = useState<McpCallLog[]>([]);
   const [lastA2UI, setLastA2UI] = useState<A2UIPayload | null>(null);
@@ -470,6 +484,39 @@ export const App: React.FC = () => {
     setLastA2UI(null);
   };
 
+  const handleLogin = (rawUsername: string) => {
+    const clean = (rawUsername || '').trim().toLowerCase();
+    let newUserId = 'C001';
+    let newName = 'Ana Martínez';
+
+    if (clean.includes('carlos')) {
+      newUserId = 'C002';
+      newName = 'Carlos Ramírez';
+    } else if (clean.includes('silvia')) {
+      newUserId = 'C003';
+      newName = 'Silvia Carrasco Alvarado';
+    } else {
+      newUserId = 'C001';
+      newName = 'Ana Martínez';
+    }
+
+    setSelectedUserId(newUserId);
+    setClientName(newName);
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('banorte_demo_logged_in', 'true');
+      window.sessionStorage.setItem('banorte_demo_user_id', newUserId);
+    }
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem('banorte_demo_logged_in');
+      window.sessionStorage.removeItem('banorte_demo_user_id');
+    }
+    setIsAuthenticated(false);
+  };
+
   const renderInspectorDrawer = () => (
     <div
       className="fixed inset-0 z-50 flex justify-end"
@@ -584,6 +631,10 @@ export const App: React.FC = () => {
     </div>
   );
 
+  if (!isAuthenticated) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
   if (currentPath.startsWith('/dashboard')) {
     return (
       <PowerUserDashboard
@@ -592,6 +643,7 @@ export const App: React.FC = () => {
           window.history.pushState({}, '', '/');
           setCurrentPath('/');
         }}
+        onLogout={handleLogout}
       />
     );
   }
@@ -612,6 +664,7 @@ export const App: React.FC = () => {
           mcpLogs={mcpLogs}
           onOpenInspector={() => setIsInspectorOpen(true)}
           userId={selectedUserId}
+          onLogout={handleLogout}
         />
         {isInspectorOpen && renderInspectorDrawer()}
       </div>
@@ -633,7 +686,13 @@ export const App: React.FC = () => {
           mcpCallCount={mcpLogs.length}
           onOpenInspector={() => setIsInspectorOpen(true)}
           selectedUserId={selectedUserId}
-          onSelectUser={(newId) => setSelectedUserId(newId)}
+          onSelectUser={(newId) => {
+            setSelectedUserId(newId);
+            if (typeof window !== 'undefined') {
+              window.sessionStorage.setItem('banorte_demo_user_id', newId);
+            }
+          }}
+          onLogout={handleLogout}
         />
 
         {/* 3. Operational Subnav Bar */}

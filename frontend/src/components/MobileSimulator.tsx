@@ -14,6 +14,7 @@ import {
   Landmark,
   ReceiptText,
   BarChart3,
+  LogOut,
 } from 'lucide-react';
 import { ChatStream } from './ChatStream';
 import { ActionContext, ChatMessage, McpCallLog } from '../types/a2ui';
@@ -40,6 +41,7 @@ interface MobileSimulatorProps {
   mcpLogs?: McpCallLog[];
   onOpenInspector?: () => void;
   userId?: string;
+  onLogout?: () => void;
 }
 
 type MobileTab = 'home' | 'maya' | 'cards' | 'activity';
@@ -57,6 +59,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
   mcpLogs = [],
   onOpenInspector,
   userId = 'C001',
+  onLogout,
 }) => {
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [showCvv, setShowCvv] = useState(false);
@@ -124,6 +127,17 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
             <div className="h-7 w-7 rounded-full bg-white text-[#EB0029] font-black text-xs grid place-items-center shadow-xs">
               {firstName[0] || 'R'}
             </div>
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="inline-flex items-center gap-1 rounded-full bg-black/20 hover:bg-black/30 px-2 py-1 text-[10px] font-semibold transition border border-white/20 cursor-pointer text-white"
+                title="Cerrar sesión demo"
+              >
+                <LogOut className="h-3 w-3" />
+                <span>Salir</span>
+              </button>
+            )}
           </div>
         </div>
 
