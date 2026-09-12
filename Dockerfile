@@ -35,7 +35,7 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Copy entrypoint script
 COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 # Cloud Run injects the PORT environment variable (default 8080)
 ENV PORT=8080
