@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Send, Sparkles, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
-import { ActionContext, ChatMessage } from '../types/a2ui';
+import { Send, Sparkles, RefreshCw, Maximize2, Minimize2, LayoutDashboard, Check } from 'lucide-react';
+import { ActionContext, ChatMessage, DashboardWidgetItem } from '../types/a2ui';
+import { broadcastWidgetToDashboard } from '../utils/dashboardSync';
 import { DynamicA2UIRegistry } from './DynamicA2UIRegistry';
 import { ErrorBoundary } from './ErrorBoundary';
 import mayaAvatar from '../assets/12ui/maya-avatar.png';
@@ -15,12 +16,15 @@ interface ChatStreamProps {
   onResetDemo?: () => void;
   onToggleExpand?: () => void;
   isExpanded?: boolean;
+  userId?: string;
+  className?: string;
+  hideHeader?: boolean;
 }
 
 const quickPrompts = [
-  '¿Cómo reestructurar mi tarjeta Platino?',
+  'Quiero hacer una transferencia SPEI',
   '¿Cuánto saldo disponible tengo en mis cuentas?',
-  'Transfiere $850 a Sofía Mendoza por SPEI',
+  '¿Cómo reestructurar mi tarjeta Platino?',
   'Quiero simular una inversión a plazo fijo',
 ];
 
@@ -152,10 +156,41 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
   onResetDemo,
   onToggleExpand,
   isExpanded = false,
+  userId = 'C001',
+  className,
+  hideHeader = false,
 }) => {
   const [inputText, setInputText] = useState('');
+  const [pinnedIds, setPinnedIds] = useState<Record<string, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  const handlePinWidget = (a2uiPayload: any, msgId: string) => {
+    const compName =
+      a2uiPayload.props?.title ||
+      (a2uiPayload.component === 'SpendingDonutCard'
+        ? 'Desglose de Gastos por Categoría'
+        : a2uiPayload.component === 'InvestmentSimulatorCard'
+        ? 'Simulador de Inversión Pagaré'
+        : a2uiPayload.component === 'DebtRestructureCard'
+        ? 'Plan de Reestructuración de Deuda'
+        : a2uiPayload.component === 'FinancialHealthGauge'
+        ? 'Salud Financiera & Buró'
+        : a2uiPayload.component);
+
+    const item: DashboardWidgetItem = {
+      id: `w-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      title: compName,
+      component: a2uiPayload.component,
+      payload: a2uiPayload,
+      source: 'mobile',
+      pinnedAt: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    broadcastWidgetToDashboard(userId, item);
+    setPinnedIds((prev) => ({ ...prev, [msgId]: true }));
+  };
+
 
   useEffect(() => {
     const area = scrollAreaRef.current;
@@ -176,55 +211,57 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
 
   return (
     <section
-      className="banorte-card flex h-[calc(100svh-204px)] min-h-[700px] w-full min-w-0 flex-col overflow-hidden bg-white"
+      className={className || "banorte-card flex h-[calc(100svh-204px)] min-h-[700px] w-full min-w-0 flex-col overflow-hidden bg-white"}
       aria-label="Conversación con Maya Copiloto"
     >
       {/* Zen Header: Clean, light, airy, institutional and calm */}
-      <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-[#E1EAF2] bg-white px-4 sm:px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <img src={mayaAvatar} alt="" className="h-10 w-10 shrink-0 object-contain" />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="truncate text-sm font-bold tracking-tight text-[#061D3A]">
-                Maya Copiloto
-              </h2>
-              <span className="hidden rounded-lg bg-[#F1F5F8] px-2 py-0.5 text-[11px] font-medium text-[#526B87] sm:inline-block">
-                IA Bancaria
-              </span>
+      {!hideHeader && (
+        <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-[#E1EAF2] bg-white px-4 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <img src={mayaAvatar} alt="" className="h-10 w-10 shrink-0 object-contain" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="truncate text-sm font-bold tracking-tight text-[#061D3A]">
+                  Maya Copiloto
+                </h2>
+                <span className="hidden rounded-lg bg-[#F1F5F8] px-2 py-0.5 text-[11px] font-medium text-[#526B87] sm:inline-block">
+                  IA Bancaria
+                </span>
+              </div>
+              <p className="truncate text-xs text-[#6D85A1]">
+                Sesión protegida para {clientName.split(' ')[0]}
+              </p>
             </div>
-            <p className="truncate text-xs text-[#6D85A1]">
-              Sesión protegida para {clientName.split(' ')[0]}
-            </p>
           </div>
-        </div>
 
-        {/* Minimalist Controls: Generous, comfortable spacing (gap-2) and subtle ghost buttons */}
-        <div className="flex items-center gap-2">
-          {onToggleExpand && (
-            <button
-              type="button"
-              onClick={onToggleExpand}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
-              title={isExpanded ? 'Vista dividida con dashboard' : 'Expandir a pantalla completa'}
-              aria-label={isExpanded ? 'Acoplar vista' : 'Expandir vista'}
-            >
-              {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </button>
-          )}
+          {/* Minimalist Controls: Generous, comfortable spacing (gap-2) and subtle ghost buttons */}
+          <div className="flex items-center gap-2">
+            {onToggleExpand && (
+              <button
+                type="button"
+                onClick={onToggleExpand}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+                title={isExpanded ? 'Vista dividida con dashboard' : 'Expandir a pantalla completa'}
+                aria-label={isExpanded ? 'Acoplar vista' : 'Expandir vista'}
+              >
+                {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
+            )}
 
-          {onResetDemo && (
-            <button
-              type="button"
-              onClick={onResetDemo}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
-              title="Reiniciar conversación"
-              aria-label="Reiniciar conversación"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-      </header>
+            {onResetDemo && (
+              <button
+                type="button"
+                onClick={onResetDemo}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+                title="Reiniciar conversación"
+                aria-label="Reiniciar conversación"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* Messages Feed: Generous, comfortable whitespace */}
       <div
@@ -243,23 +280,57 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
                 <img src={mayaMessage} alt="" className="mt-0.5 h-9 w-9 shrink-0 object-contain" />
               )}
               <div className={`space-y-2.5 ${isUser ? 'max-w-[85%] sm:max-w-[78%]' : 'min-w-0 max-w-2xl flex-1'}`}>
-                <div
-                  className={`break-words text-xs sm:text-sm leading-relaxed ${
-                    isUser
-                      ? 'rounded-2xl rounded-br-xs bg-[#EB0029] px-4 py-2.5 text-white font-medium shadow-xs'
-                      : 'rounded-2xl border border-[#E1EAF2] bg-white p-4 text-[#526B87] shadow-[0_5px_14px_rgba(39,67,95,0.08)]'
-                  }`}
-                >
-                  <MessageText text={message.content} />
-                </div>
+                {(message.content || (!message.a2ui && isLoading)) && (
+                  <div
+                    className={`break-words text-xs sm:text-sm leading-relaxed ${
+                      isUser
+                        ? 'rounded-2xl rounded-br-xs bg-[#EB0029] px-4 py-2.5 text-white font-medium shadow-xs'
+                        : 'rounded-2xl border border-[#E1EAF2] bg-white p-4 text-[#526B87] shadow-[0_5px_14px_rgba(39,67,95,0.08)]'
+                    }`}
+                  >
+                    {message.content ? (
+                      <MessageText text={message.content} />
+                    ) : (
+                      <span className="text-slate-400 italic text-xs">Escribiendo respuesta...</span>
+                    )}
+                  </div>
+                )}
 
                 {message.a2ui && (
-                  <div className="animate-in fade-in zoom-in-95 duration-150">
+                  <div className="space-y-2 animate-in fade-in zoom-in-95 duration-150">
                     <ErrorBoundary fallbackTitle={`Componente ${message.a2ui.component || 'A2UI'}`}>
                       <DynamicA2UIRegistry payload={message.a2ui} onAction={onAction} disabled={isLoading} />
                     </ErrorBoundary>
+
+                    <div className="flex items-center justify-between pt-1 px-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handlePinWidget(message.a2ui, message.id)}
+                        disabled={Boolean(pinnedIds[message.id])}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition shadow-2xs cursor-pointer ${
+                          pinnedIds[message.id]
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-red-50 hover:bg-red-100/90 text-[#EB0029] border border-red-200 hover:border-red-300'
+                        }`}
+                        title="Enviar este widget al Command Center de tu Dashboard Web"
+                      >
+                        {pinnedIds[message.id] ? (
+                          <>
+                            <Check className="h-3 w-3 text-emerald-600" />
+                            <span>✓ En tu Dashboard Web</span>
+                          </>
+                        ) : (
+                          <>
+                            <LayoutDashboard className="h-3 w-3 text-[#EB0029]" />
+                            <span>📌 Enviar a Dashboard Web</span>
+                          </>
+                        )}
+                      </button>
+                      <span className="text-[10px] text-slate-400 font-medium">Power User Mode</span>
+                    </div>
                   </div>
                 )}
+
 
                 <time
                   className={`block text-[10px] text-slate-400 ${isUser ? 'text-right pr-1' : 'pl-1'}`}

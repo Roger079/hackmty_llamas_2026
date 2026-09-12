@@ -267,7 +267,7 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
             "properties": {
                 "component": {
                     "type": "STRING",
-                    "description": "Nombre exacto del componente Banorte a renderizar: 'Chart', 'KpiCard', 'ProgressIndicator', 'DataTable', 'ComparisonTable', 'Timeline', 'GeoMap', 'SpendingDonutCard', 'FinancialHealthGauge', 'DebtRestructureCard', 'ConfirmationReceipt', 'SpeiConfirmCard', 'SpeiReceiptCard', 'BanorteBalanceCard', 'BarChart', 'LineChart', 'AreaChart', 'StackedBarChart'"
+                    "description": "Nombre exacto del componente Banorte a renderizar: 'SpeiTransferFormCard' (formulario interactivo para capturar/editar transferencias SPEI antes de autorizar), 'SpeiConfirmCard' (autorización final con Token Móvil), 'SpeiReceiptCard' (comprobante digital con folio CEP), 'Chart', 'KpiCard', 'ProgressIndicator', 'DataTable', 'ComparisonTable', 'Timeline', 'GeoMap', 'SpendingDonutCard', 'FinancialHealthGauge', 'DebtRestructureCard', 'ConfirmationReceipt', 'BanorteBalanceCard', 'BarChart', 'LineChart', 'AreaChart', 'StackedBarChart'"
                 },
                 "props": {
                     "type": "OBJECT",

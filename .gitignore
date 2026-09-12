@@ -12,3 +12,4 @@ frontend/dist/
 .DS_Store
 backend/banco_simulado2.db
 backend/banco_simulado2.db
+docs/plan_personalizacion_graficas_a2ui.md

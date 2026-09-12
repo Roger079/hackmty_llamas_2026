@@ -56,3 +56,16 @@ export interface UserCognitiveProfile {
   friction_logs?: FrictionLog[];
 }
 
+export interface DashboardWidgetItem {
+  id: string;
+  title: string;
+  component: string;
+  payload: A2UIPayload;
+  source: 'system' | 'mobile' | 'studio';
+  chartType?: string;
+  colorTheme?: string;
+  pinnedAt: string;
+  isCustomizable?: boolean;
+}
+
+

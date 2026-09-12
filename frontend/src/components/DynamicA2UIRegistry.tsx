@@ -10,6 +10,7 @@ import { SpendingDonutCard } from './SpendingDonutCard';
 import { AmortizationScheduleCard } from './AmortizationScheduleCard';
 import { BanorteChartCard } from './BanorteChartCard';
 import { Chart } from './Chart';
+import { SpeiTransferFormCard } from './SpeiTransferFormCard';
 
 interface DynamicA2UIRegistryProps {
   payload: A2UIPayload;
@@ -26,6 +27,11 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   ConfirmationReceipt,
   SpeiConfirmCard,
   SpeiReceiptCard,
+  SpeiTransferFormCard,
+  SpeiFormCard: SpeiTransferFormCard,
+  SpeiTransferForm: SpeiTransferFormCard,
+  FormularioSpeiCard: SpeiTransferFormCard,
+  TransferenciaSpeiCard: SpeiTransferFormCard,
   BanorteBalanceCard,
   InvestmentSimulatorCard,
   SpendingDonutCard,

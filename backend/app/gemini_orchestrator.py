@@ -106,6 +106,14 @@ class GeminiOrchestrator:
   Debes responder amablemente explicando:
   "Por tu seguridad y normatividad de Banco de México y Banorte, las autorizaciones no pueden realizarse mediante mensajes de texto en el chat. Por favor presiona el botón interactivo **'Autorizar con Token Móvil'** (o **'Aplicar plan'**) en la tarjeta de tu pantalla para validar tu identidad con doble factor de autenticación (2FA) seguro."
 
+[FLUJO DE CAPTURA INTERACTIVA SPEI (SPEI TRANSFER FORM)]:
+- Cuando el cliente mencione transferir dinero, hacer un SPEI, pagar a alguien o diga "transferencia", "SPEI", etc.:
+  * NUNCA respondas con una lista de texto pidiendo los datos manualmente (1. Nombre, 2. CLABE, 3. Banco...).
+  * En su lugar, DEBES INVOCAR INMEDIATAMENTE render_a2ui con component='SpeiTransferFormCard' para desplegar el formulario interactivo en pantalla.
+  * Si el cliente ya mencionó destinatario o monto en su mensaje (ej. 'transfiere 500 a Sofía'), precárgalos en las props del componente (initialBeneficiary, initialAmount).
+  * Si no dio detalles, invoca render_a2ui(component='SpeiTransferFormCard', props={'availableBalance': 27900.0, 'initialAmount': 500.0}) y dile que puede elegir un contacto rápido con un solo toque o capturar los datos en el formulario.
+  * ÚNICAMENTE cuando el usuario presione 'Revisar y Continuar' en el formulario (acción 'prepare_spei'), invoca prepare_spei_transfer y muestra SpeiConfirmCard.
+
 [REGLAS ESTRICTAS DE FORMATEO Y REDACCIÓN]:
 1. FORMATO DE MONTOS Y CUENTAS:
    - Todo monto financiero debe escribirse con signo de pesos y moneda: `$XX,XXX.XX MXN` (ejemplo: `$27,900.00 MXN`).
@@ -305,6 +313,21 @@ class GeminiOrchestrator:
             if "bank" not in props and "recipient_bank" in props:
                 props["bank"] = props["recipient_bank"]
 
+        elif comp == "SpeiTransferFormCard":
+            if "availableBalance" not in props and "available_balance" in props:
+                props["availableBalance"] = props["available_balance"]
+            if "availableBalance" not in props:
+                state = mcp_client.get_real_customer_state(uid)
+                props["availableBalance"] = state.get("total_available_balance", 27900.0)
+            if "initialBeneficiary" not in props and "beneficiary_name" in props:
+                props["initialBeneficiary"] = props["beneficiary_name"]
+            if "initialBank" not in props and "recipient_bank" in props:
+                props["initialBank"] = props["recipient_bank"]
+            if "initialAmount" not in props and "amount" in props:
+                props["initialAmount"] = props["amount"]
+            if "initialClabe" not in props and "clabe" in props:
+                props["initialClabe"] = props["clabe"]
+
         elif comp == "SpeiReceiptCard":
             if "trackingKey" not in props and "tracking_key" in props:
                 props["trackingKey"] = props["tracking_key"]
@@ -348,7 +371,12 @@ class GeminiOrchestrator:
     def _ensure_a2ui_component(self, request: ChatRequest, a2ui_payload: Optional[A2UIPayload], reply_text: str) -> Optional[A2UIPayload]:
         """Guarantees a rich A2UI component is attached whenever financial data or spending is discussed"""
         if a2ui_payload:
-            return a2ui_payload
+            # If the user explicitly asks for a SPEI transfer and we got a generic BalanceCard, replace with SpeiTransferFormCard
+            is_spei_intent = any(k in request.message.lower() for k in ["transfer", "transfie", "enviar dinero", "mandar dinero", "spei", "hacer transferencia"])
+            if is_spei_intent and a2ui_payload.component == "BanorteBalanceCard":
+                pass
+            else:
+                return a2ui_payload
 
         # Do not force A2UI components on out-of-domain refusals or generic clarifications
         refusal_phrases = [
@@ -360,6 +388,78 @@ class GeminiOrchestrator:
 
         user_id = request.user_id or "C001"
         combined = (request.message + " " + reply_text).lower()
+        user_msg = request.message.lower()
+
+        # Action Context: User clicked Review & Continue from SpeiTransferFormCard
+        if request.action_context and request.action_context.action in ["prepare_spei", "review_spei", "setup_spei"]:
+            params = request.action_context.params
+            beneficiary = params.get("beneficiary_name") or params.get("beneficiary", "SOFÍA MENDOZA RÍOS")
+            bank = params.get("recipient_bank") or params.get("bank", "BBVA México")
+            clabe = params.get("clabe", "012 180 01594839201 9")
+            try:
+                amount = float(params.get("amount", 850.0))
+            except (ValueError, TypeError):
+                amount = 850.0
+            concept = params.get("concept", "Pago por servicios")
+
+            import time
+            prep_res = mcp_client._execute_mock("prepare_spei_transfer", {
+                "beneficiary_name": beneficiary,
+                "recipient_bank": bank,
+                "clabe": clabe,
+                "amount": amount,
+                "concept": concept
+            })
+            transfer_id = prep_res.get("transfer_id", f"spei-prep-{int(time.time())}")
+            return A2UIPayload(
+                component="SpeiConfirmCard",
+                props={
+                    "transferId": transfer_id,
+                    "amount": amount,
+                    "beneficiary": beneficiary,
+                    "bank": bank,
+                    "clabe": clabe,
+                    "concept": concept
+                }
+            )
+
+        # 0. SPEI Transfer Intent (Interactive Form)
+        if any(k in user_msg for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei", "hacer transferencia"]):
+            state = mcp_client.get_real_customer_state(user_id)
+            avail_bal = state.get("total_available_balance", 27900.0)
+
+            import re
+            clean_msg = user_msg.replace('$', ' ')
+            m = re.search(r'([-–]?\d[\d,]*(?:\.\d+)?)', clean_msg)
+            detected_amt = float(m.group(1).replace(',', '')) if m and float(m.group(1).replace(',', '')) > 0 else 850.0
+
+            detected_name = "SOFÍA MENDOZA RÍOS"
+            detected_bank = "BBVA México"
+            detected_clabe = "012 180 01594839201 9"
+            if "carlos" in user_msg:
+                detected_name = "CARLOS GÓMEZ VEGA"
+                detected_bank = "Santander México"
+                detected_clabe = "014 180 65502938471 2"
+            elif "arismendi" in user_msg or "doctor" in user_msg:
+                detected_name = "DR. ARISMENDI MÉNDEZ"
+                detected_bank = "Banorte"
+                detected_clabe = "072 180 00249581940 2"
+            elif "tecnológico" in user_msg or "tec" in user_msg or "colegiatura" in user_msg:
+                detected_name = "COLEGIATURA CAMPUS MTY"
+                detected_bank = "Santander México"
+                detected_clabe = "014 180 00194827501 3"
+
+            return A2UIPayload(
+                component="SpeiTransferFormCard",
+                props={
+                    "initialBeneficiary": detected_name,
+                    "initialBank": detected_bank,
+                    "initialClabe": detected_clabe,
+                    "initialAmount": detected_amt,
+                    "initialConcept": "Pago por servicios",
+                    "availableBalance": avail_bal
+                }
+            )
 
         # 1. Specific Visual Charts & Spending Analytics
         if any(k in combined for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de ingresos"]):
@@ -495,6 +595,22 @@ class GeminiOrchestrator:
                     "annualRate": inv["annual_rate"],
                     "estimatedGain": inv["estimated_gain"],
                     "totalMaturity": inv["total_maturity"]
+                }
+            )
+
+        # 7. SPEI Transfer Form
+        elif any(k in combined for k in ["transfer", "transfie", "enviar dinero", "mandar dinero", "spei", "hacer transferencia"]):
+            state = mcp_client.get_real_customer_state(user_id)
+            avail_bal = state.get("total_available_balance", 27900.0)
+            return A2UIPayload(
+                component="SpeiTransferFormCard",
+                props={
+                    "initialBeneficiary": "SOFÍA MENDOZA RÍOS",
+                    "initialBank": "BBVA México",
+                    "initialClabe": "012 180 01594839201 9",
+                    "initialAmount": 850.0,
+                    "initialConcept": "Pago por servicios",
+                    "availableBalance": avail_bal
                 }
             )
 
@@ -655,10 +771,21 @@ class GeminiOrchestrator:
                 final_reply = response.text or ""
                 break
 
-        if not a2ui_payload:
-            a2ui_payload = self._ensure_a2ui_component(request, a2ui_payload, final_reply)
+        if not a2ui_payload or (a2ui_payload.component == "BanorteBalanceCard" and any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])):
+            a2ui_payload = self._ensure_a2ui_component(request, None, final_reply)
             if a2ui_payload:
                 yield {"event": "a2ui", "data": a2ui_payload.model_dump()}
+
+        if a2ui_payload and a2ui_payload.component == "SpeiTransferFormCard":
+            if any(k in final_reply.lower() for k in ["compárteme", "comparteme", "proporciona", "cuenta destino", "banco receptor", "concepto de pago", "siguientes datos", "motivo"]):
+                state = mcp_client.get_real_customer_state(request.user_id or "C001")
+                first_name = state.get("client_name", "Cliente").split(" ")[0]
+                avail = state.get("total_available_balance", 27900.0)
+                final_reply = (
+                    f"¡Hola, {first_name}! Con gusto te ayudo a realizar tu transferencia SPEI sin costo ni comisiones Banorte.\n\n"
+                    f"He abierto tu **Formulario Interactivo SPEI** a continuación. Puedes seleccionar un contacto frecuente con 1 solo toque, "
+                    f"ajustar el importe o registrar una cuenta nueva. Tu saldo disponible actual es de **${avail:,.2f} MXN**."
+                )
 
         if not final_reply and a2ui_payload:
             final_reply = "He generado la interfaz bancaria interactiva a continuación:"
@@ -845,8 +972,19 @@ class GeminiOrchestrator:
             final_reply = response.text or ""
             break
 
-        if not a2ui_payload:
-            a2ui_payload = self._ensure_a2ui_component(request, a2ui_payload, final_reply)
+        if not a2ui_payload or (a2ui_payload.component == "BanorteBalanceCard" and any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])):
+            a2ui_payload = self._ensure_a2ui_component(request, None, final_reply)
+
+        if a2ui_payload and a2ui_payload.component == "SpeiTransferFormCard":
+            if any(k in final_reply.lower() for k in ["compárteme", "comparteme", "proporciona", "cuenta destino", "banco receptor", "concepto de pago", "siguientes datos", "motivo"]):
+                state = mcp_client.get_real_customer_state(request.user_id or "C001")
+                first_name = state.get("client_name", "Cliente").split(" ")[0]
+                avail = state.get("total_available_balance", 27900.0)
+                final_reply = (
+                    f"¡Hola, {first_name}! Con gusto te ayudo a realizar tu transferencia SPEI sin costo ni comisiones Banorte.\n\n"
+                    f"He abierto tu **Formulario Interactivo SPEI** a continuación. Puedes seleccionar un contacto frecuente con 1 solo toque, "
+                    f"ajustar el importe o registrar una cuenta nueva. Tu saldo disponible actual es de **${avail:,.2f} MXN**."
+                )
 
         if not final_reply and a2ui_payload:
             final_reply = "He generado la interfaz solicitada a continuación:"
@@ -1072,6 +1210,47 @@ Diálogo:
                         "annualRate": res["annual_rate"],
                         "estimatedGain": res["estimated_gain"],
                         "totalMaturity": res["total_maturity"]
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            elif action in ["prepare_spei", "review_spei", "setup_spei"]:
+                beneficiary = params.get("beneficiary_name") or params.get("beneficiary", "SOFÍA MENDOZA RÍOS")
+                bank = params.get("recipient_bank") or params.get("bank", "BBVA México")
+                clabe = params.get("clabe", "012 180 01594839201 9")
+                try:
+                    amount = float(params.get("amount", 850.0))
+                except (ValueError, TypeError):
+                    amount = 850.0
+                concept = params.get("concept", "Pago por servicios")
+
+                # Step 1: validate_clabe
+                res_val, log_val = await mcp_client.execute_tool("validate_clabe", {"clabe": clabe})
+                mcp_calls.append(log_val)
+
+                # Step 2: prepare_spei_transfer
+                res_prep, log_prep = await mcp_client.execute_tool("prepare_spei_transfer", {
+                    "beneficiary_name": beneficiary,
+                    "recipient_bank": bank,
+                    "clabe": clabe,
+                    "amount": amount,
+                    "concept": concept
+                })
+                mcp_calls.append(log_prep)
+
+                reply = (
+                    f"He generado tu orden de transferencia SPEI por **${amount:,.2f} MXN** a favor de **{beneficiary}** en {bank}.\n\n"
+                    f"Por favor verifica los detalles en la tarjeta interactiva y presiona **Autorizar con Token Móvil** para validar la transacción con tu segundo factor de seguridad (2FA)."
+                )
+                a2ui = A2UIPayload(
+                    component="SpeiConfirmCard",
+                    props={
+                        "transferId": res_prep["transfer_id"],
+                        "amount": amount,
+                        "beneficiary": beneficiary,
+                        "bank": bank,
+                        "clabe": clabe,
+                        "concept": concept
                     }
                 )
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
@@ -1368,61 +1547,90 @@ Diálogo:
 
         # 4. SPEI TRANSFER INTENT
         elif any(k in msg for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"]):
-            # Extract amount robustly
-            import re
-            clean_msg = msg.replace('$', ' ')
-            m = re.search(r'([-–]?\d[\d,]*(?:\.\d+)?)', clean_msg)
-            if m:
-                raw_amt = m.group(1).replace(',', '')
-                try:
-                    amount = float(raw_amt)
-                except ValueError:
-                    amount = 850.00
-            else:
-                amount = 850.00
+            # Check if this request came from the interactive form button (prepare_spei action)
+            if request.action_context and request.action_context.action in ["prepare_spei", "query_spei"]:
+                params = request.action_context.params
+                beneficiary = params.get("beneficiary_name") or params.get("beneficiary", "SOFÍA MENDOZA RÍOS")
+                bank = params.get("recipient_bank") or params.get("bank", "BBVA México")
+                clabe = params.get("clabe", "012 180 01594839201 9")
+                amount = float(params.get("amount", 850.0))
+                concept = params.get("concept", "Pago por servicios")
 
-            if amount <= 0:
-                reply = (
-                    f"Estimado(a) {first_name}, el importe a transferir debe ser mayor a $0.00 MXN. "
-                    f"Por favor indica una cantidad válida para preparar tu transferencia SPEI."
-                )
-                return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
+                # Step 1: validate_clabe
+                res_val, log_val = await mcp_client.execute_tool("validate_clabe", {"clabe": clabe})
+                mcp_calls.append(log_val)
 
-            beneficiary = "CARLOS GÓMEZ VEGA" if "carlos" in msg else "SOFÍA MENDOZA RÍOS"
-            bank = "Santander México" if "carlos" in msg else "BBVA México"
-            clabe = "014 180 65502938471 2" if "carlos" in msg else "012 180 01594839201 9"
-
-            # Step 1: validate_clabe
-            res_val, log_val = await mcp_client.execute_tool("validate_clabe", {"clabe": clabe})
-            mcp_calls.append(log_val)
-
-            # Step 2: prepare_spei_transfer
-            res_prep, log_prep = await mcp_client.execute_tool("prepare_spei_transfer", {
-                "beneficiary_name": beneficiary,
-                "recipient_bank": bank,
-                "clabe": clabe,
-                "amount": amount,
-                "concept": "Pago por servicios"
-            })
-            mcp_calls.append(log_prep)
-
-            reply = (
-                f"He preparado la orden de transferencia SPEI por **${amount:,.2f} MXN** para **{beneficiary}** en {bank}. "
-                f"Por favor verifica los datos en la tarjeta interactiva y presiona **Autorizar con Token Móvil** para finalizar la operación con tu segundo factor de seguridad (2FA). "
-                f"*(Nota de seguridad Banorte: por tu protección, las operaciones nunca se autorizan por mensaje de texto)*."
-            )
-            a2ui = A2UIPayload(
-                component="SpeiConfirmCard",
-                props={
-                    "transferId": res_prep["transfer_id"],
-                    "amount": amount,
-                    "beneficiary": beneficiary,
-                    "bank": bank,
+                # Step 2: prepare_spei_transfer
+                res_prep, log_prep = await mcp_client.execute_tool("prepare_spei_transfer", {
+                    "beneficiary_name": beneficiary,
+                    "recipient_bank": bank,
                     "clabe": clabe,
-                    "concept": "Pago por servicios"
-                }
-            )
-            return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+                    "amount": amount,
+                    "concept": concept
+                })
+                mcp_calls.append(log_prep)
+
+                reply = (
+                    f"He generado tu orden de transferencia SPEI por **${amount:,.2f} MXN** para **{beneficiary}** en {bank}.\n\n"
+                    f"Por favor verifica los detalles en la tarjeta interactiva y presiona **Autorizar con Token Móvil** para validar la transacción con tu segundo factor de seguridad (2FA)."
+                )
+                a2ui = A2UIPayload(
+                    component="SpeiConfirmCard",
+                    props={
+                        "transferId": res_prep["transfer_id"],
+                        "amount": amount,
+                        "beneficiary": beneficiary,
+                        "bank": bank,
+                        "clabe": clabe,
+                        "concept": concept
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # Interactive form entry (SpeiTransferFormCard)
+            else:
+                state = mcp_client.get_real_customer_state(user_id)
+                avail_bal = state.get("total_available_balance", 27900.0)
+
+                # Extract amount if mentioned in text
+                import re
+                clean_msg = msg.replace('$', ' ')
+                m = re.search(r'([-–]?\d[\d,]*(?:\.\d+)?)', clean_msg)
+                detected_amt = float(m.group(1).replace(',', '')) if m and float(m.group(1).replace(',', '')) > 0 else 850.0
+
+                detected_name = "SOFÍA MENDOZA RÍOS"
+                detected_bank = "BBVA México"
+                detected_clabe = "012 180 01594839201 9"
+                if "carlos" in msg:
+                    detected_name = "CARLOS GÓMEZ VEGA"
+                    detected_bank = "Santander México"
+                    detected_clabe = "014 180 65502938471 2"
+                elif "arismendi" in msg or "doctor" in msg:
+                    detected_name = "DR. ARISMENDI MÉNDEZ"
+                    detected_bank = "Banorte"
+                    detected_clabe = "072 180 00249581940 2"
+                elif "tecnológico" in msg or "tec" in msg or "colegiatura" in msg:
+                    detected_name = "COLEGIATURA CAMPUS MTY"
+                    detected_bank = "Santander México"
+                    detected_clabe = "014 180 00194827501 3"
+
+                reply = (
+                    f"¡Hola, {first_name}! He abierto el **Formulario Interactivo de Transferencia SPEI**.\n\n"
+                    f"Puedes seleccionar un destinatario frecuente con 1 solo toque, modificar el importe con los atajos o capturar una cuenta nueva. "
+                    f"Tu saldo disponible es de **${avail_bal:,.2f} MXN** sin costo de comisión."
+                )
+                a2ui = A2UIPayload(
+                    component="SpeiTransferFormCard",
+                    props={
+                        "initialBeneficiary": detected_name,
+                        "initialBank": detected_bank,
+                        "initialClabe": detected_clabe,
+                        "initialAmount": detected_amt,
+                        "initialConcept": "Pago por servicios",
+                        "availableBalance": avail_bal
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
         # 5. INVESTMENT / PAGARÉ BANORTE
         elif any(k in msg for k in ["invertir", "inversión", "inversion", "pagaré", "pagare", "rendimiento", "plazo fijo"]):

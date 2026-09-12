@@ -8,6 +8,7 @@ import { BanorteFooter } from './components/BanorteFooter';
 import { ChatStream } from './components/ChatStream';
 import { McpInspector } from './components/McpInspector';
 import { MobileSimulator } from './components/MobileSimulator';
+import { PowerUserDashboard } from './components/PowerUserDashboard';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { A2UIPayload, ActionContext, ChatMessage, McpCallLog, UserCognitiveProfile } from './types/a2ui';
 
@@ -38,10 +39,23 @@ export const App: React.FC = () => {
   const [inspectorView, setInspectorView] = useState<InspectorView>('calls');
   const [activeTab, setActiveTab] = useState<PortalTab>('global');
   const [isMayaExpanded, setIsMayaExpanded] = useState(false);
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    if (typeof window === 'undefined') return '/';
+    return window.location.pathname;
+  });
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth < 768 || window.location.pathname.startsWith('/mobile');
   });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [bankAccounts, setBankAccounts] = useState<{
     nominaBalance?: number;
     oroBalance?: number;
@@ -570,6 +584,18 @@ export const App: React.FC = () => {
     </div>
   );
 
+  if (currentPath.startsWith('/dashboard')) {
+    return (
+      <PowerUserDashboard
+        initialUserId={selectedUserId}
+        onNavigateHome={() => {
+          window.history.pushState({}, '', '/');
+          setCurrentPath('/');
+        }}
+      />
+    );
+  }
+
   if (isMobileViewport) {
     return (
       <div className="relative min-h-screen">
@@ -585,11 +611,13 @@ export const App: React.FC = () => {
           hasRestructure={hasRestructure}
           mcpLogs={mcpLogs}
           onOpenInspector={() => setIsInspectorOpen(true)}
+          userId={selectedUserId}
         />
         {isInspectorOpen && renderInspectorDrawer()}
       </div>
     );
   }
+
 
   return (
     <div className="app-shell min-h-screen bg-[#F3F7FA] text-[#061D3A] flex flex-col justify-between">
@@ -658,7 +686,9 @@ export const App: React.FC = () => {
                 onResetDemo={handleResetDemo}
                 onToggleExpand={() => setIsMayaExpanded(!isMayaExpanded)}
                 isExpanded={isMayaExpanded}
+                userId={selectedUserId}
               />
+
             </div>
           </div>
         </main>
