@@ -39,6 +39,7 @@ interface MobileSimulatorProps {
   hasRestructure?: boolean;
   mcpLogs?: McpCallLog[];
   onOpenInspector?: () => void;
+  userId?: string;
 }
 
 type MobileTab = 'home' | 'maya' | 'cards' | 'activity';
@@ -55,6 +56,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
   hasRestructure = false,
   mcpLogs = [],
   onOpenInspector,
+  userId = 'C001',
 }) => {
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [showCvv, setShowCvv] = useState(false);
@@ -378,6 +380,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
               onAction={onAction}
               clientName={clientName}
               onResetDemo={onResetDemo}
+              userId={userId}
             />
           </div>
         )}
