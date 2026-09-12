@@ -9,7 +9,6 @@ import {
   Eye,
   EyeOff,
   FileText,
-  Cpu,
   Landmark,
   ReceiptText,
   BarChart3,
@@ -122,20 +121,6 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
         <div className="flex items-center justify-between">
           <BanorteLogo className="h-4 w-auto shrink-0" theme="red" />
           <div className="flex items-center gap-2">
-            {onOpenInspector && (
-              <button
-                type="button"
-                onClick={onOpenInspector}
-                className="inline-flex items-center gap-1 rounded-full bg-black/20 hover:bg-black/30 px-2 py-0.5 text-[10px] font-semibold transition border border-white/20 cursor-pointer"
-                title="Abrir telemetría FastMCP"
-              >
-                <Cpu className="h-3 w-3 text-emerald-300" />
-                <span>MCP</span>
-                <span className="rounded-full bg-white/25 px-1 py-0.1 text-[9px] font-mono font-bold">
-                  {mcpLogs.length}
-                </span>
-              </button>
-            )}
             <div className="h-7 w-7 rounded-full bg-white text-[#EB0029] font-black text-xs grid place-items-center shadow-xs">
               {firstName[0] || 'R'}
             </div>

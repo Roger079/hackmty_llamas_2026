@@ -4,7 +4,6 @@ import { ActionContext, ChatMessage, DashboardWidgetItem } from '../types/a2ui';
 import { broadcastWidgetToDashboard } from '../utils/dashboardSync';
 import { DynamicA2UIRegistry } from './DynamicA2UIRegistry';
 import { ErrorBoundary } from './ErrorBoundary';
-import mayaMessage from '../assets/12ui/maya-message.png';
 import { BanorteLogo } from './BanorteLogo';
 
 interface ChatStreamProps {
@@ -279,7 +278,9 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
               className={`flex transition-all duration-150 ${isUser ? 'justify-end' : 'items-start gap-2.5'}`}
             >
               {!isUser && (
-                <img src={mayaMessage} alt="" className="mt-0.5 h-9 w-9 shrink-0 object-contain" />
+                <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#EB0029] ring-2 ring-red-100">
+                  <BanorteLogo variant="icon" theme="red" className="h-5 w-5" alt="" />
+                </div>
               )}
               <div className={`space-y-2.5 ${isUser ? 'max-w-[85%] sm:max-w-[78%]' : 'min-w-0 max-w-2xl flex-1'}`}>
                 {(message.content || (!message.a2ui && isLoading)) && (
