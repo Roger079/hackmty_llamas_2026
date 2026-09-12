@@ -47,3 +47,30 @@ class ChatResponse(BaseModel):
 class StreamEvent(BaseModel):
     event: str  # "token", "mcp_call", "a2ui", "done", "error"
     data: Union[str, Dict[str, Any]]
+
+class UserCognitiveProfile(BaseModel):
+    user_id: str
+    client_name: str = "Alejandro Ramírez"
+    memory_summary: str = Field(default="", description="Resumen consolidado de fricciones e historial previo")
+    sensitivities: str = Field(default="", description="Sensibilidades específicas detectadas (ej. pagos mayores a $2,000)")
+    recommended_tone: str = Field(default="Empático, directo y enfocado en liquidez", description="Tono y estilo de comunicación recomendado")
+    total_friction_events: int = 0
+    last_updated: str = ""
+
+class FrictionLogItem(BaseModel):
+    id: str
+    user_id: str
+    friction_category: str  # 'HIGH_PAYMENT_STRESS', 'INTEREST_CONFUSION', 'CANCELLED_TRANSFER', 'FEES_OBJECTION'
+    trigger_message: str
+    severity: str = "MEDIUM"  # 'LOW', 'MEDIUM', 'HIGH'
+    timestamp: str
+
+class EndSessionRequest(BaseModel):
+    user_id: str = "USR-BANORTE-8842"
+    history: List[ChatMessage] = Field(default_factory=list)
+
+class EndSessionResponse(BaseModel):
+    status: str = "success"
+    friction_events_detected: int = 0
+    updated_profile: UserCognitiveProfile
+    summary: str

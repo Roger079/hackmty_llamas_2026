@@ -6,6 +6,7 @@ import { DynamicA2UIRegistry } from './DynamicA2UIRegistry';
 interface ChatStreamProps {
   messages: ChatMessage[];
   isLoading: boolean;
+  liveStatus?: string;
   onSendMessage: (text: string) => void;
   onAction: (actionCtx: ActionContext) => void;
 }
@@ -13,6 +14,7 @@ interface ChatStreamProps {
 export const ChatStream: React.FC<ChatStreamProps> = ({
   messages,
   isLoading,
+  liveStatus,
   onSendMessage,
   onAction,
 }) => {
@@ -97,9 +99,9 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
         ))}
 
         {isLoading && (
-          <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400 animate-pulse">
+          <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 animate-pulse bg-slate-800/60 rounded-xl border border-slate-700/50 w-fit">
             <div className="w-2 h-2 rounded-full bg-[#EB0029] animate-ping" />
-            <span>Maya consultando herramientas MCP y generando respuesta...</span>
+            <span className="font-medium">{liveStatus || "Maya consultando herramientas bancarias y generando interfaz..."}</span>
           </div>
         )}
 

@@ -576,14 +576,20 @@
             `;
           }).join("");
 
+          const cardName = props.cardName || props.card_name || 'Tarjeta Banorte Oro';
+          const cardLast4 = props.cardLast4 || props.card_last4 || '8842';
+          const totalDebt = props.totalDebt !== undefined ? props.totalDebt : (props.total_debt !== undefined ? props.total_debt : 38450);
+          const currentRate = props.currentRate || props.interest_rate_annual || props.rate || '64.8% CAT';
+          const dueDate = props.dueDate || props.payment_due_date || props.due_date || '18 Sep 2026';
+
           return `
             <div id="debtCardContainer" class="bg-white text-slate-900 rounded-3xl shadow-xl border border-slate-200 overflow-hidden my-3 animate-in fade-in">
               <div class="bg-gradient-to-r from-[#EB0029] via-[#C70023] to-[#8C0018] text-white p-6">
                 <div class="flex justify-between items-start">
                   <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-red-100 block">Convenio y Reestructuración Banorte</span>
-                    <h3 class="text-lg font-black tracking-tight mt-0.5">${props.cardName || 'Tarjeta Banorte Oro'}</h3>
-                    <p class="text-xs font-mono text-red-100">•••• •••• •••• ${props.cardLast4 || '8842'}</p>
+                    <h3 class="text-lg font-black tracking-tight mt-0.5">${cardName}</h3>
+                    <p class="text-xs font-mono text-red-100">•••• •••• •••• ${cardLast4}</p>
                   </div>
                   <div class="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm border border-white/30">
                     Elegible
@@ -594,13 +600,13 @@
                   <div>
                     <span class="text-[10px] text-red-100 uppercase tracking-wider block">Deuda total actual</span>
                     <span class="text-2xl sm:text-3xl font-black tracking-tight tabular-nums">
-                      $ ${(props.totalDebt || 38450).toLocaleString('es-MX', { minimumFractionDigits: 2 })} <span class="text-xs font-normal">MXN</span>
+                      $ ${Number(totalDebt).toLocaleString('es-MX', { minimumFractionDigits: 2 })} <span class="text-xs font-normal">MXN</span>
                     </span>
                   </div>
                   <div class="text-right">
                     <span class="text-[10px] text-red-100 uppercase tracking-wider block">Tasa actual ordinaria</span>
-                    <span class="text-base sm:text-lg font-bold text-amber-300 tabular-nums">${props.currentRate || '64.8% CAT'}</span>
-                    <span class="block text-[10px] text-red-200">Vence: ${props.dueDate || '18 Sep 2026'}</span>
+                    <span class="text-base sm:text-lg font-bold text-amber-300 tabular-nums">${currentRate}</span>
+                    <span class="block text-[10px] text-red-200">Vence: ${dueDate}</span>
                   </div>
                 </div>
               </div>
@@ -777,6 +783,14 @@
 
         // 5. BANORTE BALANCE CARD
         case "BanorteBalanceCard": {
+          const nominaAcc = Array.isArray(props.accounts) ? props.accounts.find(a => a.type === 'nomina') : null;
+          const oroAcc = Array.isArray(props.accounts) ? props.accounts.find(a => a.type === 'oro') : null;
+
+          const nominaBalance = props.nominaBalance !== undefined ? props.nominaBalance : (props.nomina_balance !== undefined ? props.nomina_balance : (nominaAcc?.available_balance ?? 48650));
+          const oroBalance = props.oroBalance !== undefined ? props.oroBalance : (props.oro_balance !== undefined ? props.oro_balance : (oroAcc?.available_credit ?? 41550));
+          const totalDebt = props.totalDebt !== undefined ? props.totalDebt : (props.total_debt !== undefined ? props.total_debt : (oroAcc?.current_debt ?? 38450));
+          const clientName = props.clientName || props.client || props.client_name || 'Alejandro Ramírez';
+
           return `
             <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xl text-slate-900 space-y-4 my-3">
               <div class="flex justify-between items-center border-b border-slate-100 pb-3">
@@ -784,7 +798,7 @@
                   <div class="w-8 h-8 rounded-xl bg-[#EB0029] flex items-center justify-center text-white font-black text-sm">B</div>
                   <div>
                     <h4 class="text-xs font-bold text-slate-900">Resumen de Cuentas Banorte</h4>
-                    <p class="text-[10px] text-slate-500">${props.clientName || 'Alejandro Ramírez'}</p>
+                    <p class="text-[10px] text-slate-500">${clientName}</p>
                   </div>
                 </div>
                 <span class="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200">En Línea</span>
@@ -793,13 +807,13 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <span class="text-[10px] text-slate-500 uppercase font-semibold">Nómina (*1234)</span>
-                  <div class="text-xl font-bold text-slate-900 tabular-nums mt-1">$ ${(props.nominaBalance || 48650).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                  <div class="text-xl font-bold text-slate-900 tabular-nums mt-1">$ ${Number(nominaBalance).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
                   <span class="text-[10px] text-emerald-600 font-medium">Disponible para transferir</span>
                 </div>
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <span class="text-[10px] text-amber-600 uppercase font-semibold">Crédito Oro (*8842)</span>
-                  <div class="text-xl font-bold text-amber-700 tabular-nums mt-1">$ ${(props.oroBalance || 41550).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
-                  <span class="text-[10px] text-slate-500">Deuda actual: $${(props.totalDebt || 38450).toLocaleString('es-MX')} MXN</span>
+                  <div class="text-xl font-bold text-amber-700 tabular-nums mt-1">$ ${Number(oroBalance).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                  <span class="text-[10px] text-slate-500">Deuda actual: $${Number(totalDebt).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</span>
                 </div>
               </div>
 

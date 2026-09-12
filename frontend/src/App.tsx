@@ -18,6 +18,7 @@ export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [mcpLogs, setMcpLogs] = useState<McpCallLog[]>([]);
   const [lastA2UI, setLastA2UI] = useState<A2UIPayload | null>(null);
+  const [liveStatus, setLiveStatus] = useState<string>('');
   const [isMcpConnected, setIsMcpConnected] = useState(false);
 
   // Check MCP connection on mount
@@ -28,7 +29,100 @@ export const App: React.FC = () => {
       .catch(() => setIsMcpConnected(false));
   }, []);
 
-  // Send message to FastAPI Orchestrator
+  // Generic SSE Stream consumer
+  const streamFromBackend = async (payload: object, assistantMsgId: string) => {
+    setIsLoading(true);
+    setLiveStatus('Conectando con Maya (Gemini 3.7 Flash)...');
+
+    try {
+      const res = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok || !res.body) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        let currentEvent = '';
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            currentEvent = line.replace('event:', '').trim();
+          } else if (line.startsWith('data:')) {
+            const rawData = line.replace('data:', '').trim();
+            try {
+              const parsed = JSON.parse(rawData);
+              if (currentEvent === 'status') {
+                setLiveStatus(typeof parsed === 'string' ? parsed : String(parsed));
+              } else if (currentEvent === 'token') {
+                const token = typeof parsed === 'string' ? parsed : '';
+                setMessages(prev =>
+                  prev.map(m => (m.id === assistantMsgId ? { ...m, content: m.content + token } : m))
+                );
+              } else if (currentEvent === 'a2ui') {
+                setMessages(prev =>
+                  prev.map(m => (m.id === assistantMsgId ? { ...m, a2ui: parsed } : m))
+                );
+                setLastA2UI(parsed);
+              } else if (currentEvent === 'mcp_call') {
+                setMcpLogs(prev => [parsed, ...prev]);
+              } else if (currentEvent === 'done') {
+                if (parsed.a2ui) {
+                  setMessages(prev =>
+                    prev.map(m => (m.id === assistantMsgId ? { ...m, a2ui: parsed.a2ui } : m))
+                  );
+                  setLastA2UI(parsed.a2ui);
+                }
+              }
+            } catch {
+              if (currentEvent === 'status') setLiveStatus(rawData);
+              else if (currentEvent === 'token') {
+                setMessages(prev =>
+                  prev.map(m => (m.id === assistantMsgId ? { ...m, content: m.content + rawData } : m))
+                );
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("SSE stream failed, falling back to sync /api/chat:", err);
+      // Fallback to standard synchronous /api/chat
+      const fallbackRes = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (fallbackRes.ok) {
+        const data = await fallbackRes.json();
+        setMessages(prev =>
+          prev.map(m => (m.id === assistantMsgId ? { ...m, content: data.reply, a2ui: data.a2ui || undefined } : m))
+        );
+        if (data.mcp_calls && Array.isArray(data.mcp_calls)) {
+          setMcpLogs(prev => [...data.mcp_calls, ...prev]);
+        }
+        if (data.a2ui) setLastA2UI(data.a2ui);
+      }
+    } finally {
+      setIsLoading(false);
+      setLiveStatus('');
+    }
+  };
+
+  // Send user message
   const handleSendMessage = async (text: string) => {
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -36,97 +130,42 @@ export const App: React.FC = () => {
       content: text,
       timestamp: new Date().toLocaleTimeString()
     };
-    setMessages(prev => [...prev, userMsg]);
-    setIsLoading(true);
 
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          user_id: 'USR-BANORTE-8842',
-          history: messages.map(m => ({ role: m.role, content: m.content }))
-        })
-      });
+    const assistantMsgId = `asst-${Date.now() + 1}`;
+    const initialAssistantMsg: ChatMessage = {
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toLocaleTimeString()
+    };
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+    setMessages(prev => [...prev, userMsg, initialAssistantMsg]);
 
-      // Append assistant message with A2UI component
-      const assistantMsg: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
-        role: 'assistant',
-        content: data.reply,
-        a2ui: data.a2ui || undefined,
-        timestamp: new Date().toLocaleTimeString()
-      };
-      setMessages(prev => [...prev, assistantMsg]);
-
-      // Record MCP calls
-      if (data.mcp_calls && Array.isArray(data.mcp_calls)) {
-        setMcpLogs(prev => [...data.mcp_calls, ...prev]);
-      }
-
-      if (data.a2ui) {
-        setLastA2UI(data.a2ui);
-      }
-    } catch (err) {
-      console.error("Error communicating with orchestrator:", err);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `err-${Date.now()}`,
-          role: 'assistant',
-          content: '⚠️ Ocurrió un error al contactar al orquestador de Banorte. Verifica que el servidor FastAPI esté en ejecución.',
-          timestamp: new Date().toLocaleTimeString()
-        }
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+    await streamFromBackend({
+      message: text,
+      user_id: 'USR-BANORTE-8842',
+      history: messages.map(m => ({ role: m.role, content: m.content }))
+    }, assistantMsgId);
   };
 
   // Dispatch Action from an A2UI Component (The Closed Loop Feedback Dispatcher)
   const handleAction = async (actionCtx: ActionContext) => {
-    setIsLoading(true);
+    const assistantMsgId = `asst-${Date.now()}`;
+    const initialAssistantMsg: ChatMessage = {
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toLocaleTimeString()
+    };
 
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `[ACCIÓN CONFIRMADA]: Ejecutar ${actionCtx.action}`,
-          action_context: actionCtx,
-          user_id: 'USR-BANORTE-8842',
-          history: messages.map(m => ({ role: m.role, content: m.content }))
-        })
-      });
+    setMessages(prev => [...prev, initialAssistantMsg]);
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      const assistantMsg: ChatMessage = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant',
-        content: data.reply,
-        a2ui: data.a2ui || undefined,
-        timestamp: new Date().toLocaleTimeString()
-      };
-      setMessages(prev => [...prev, assistantMsg]);
-
-      if (data.mcp_calls && Array.isArray(data.mcp_calls)) {
-        setMcpLogs(prev => [...data.mcp_calls, ...prev]);
-      }
-
-      if (data.a2ui) {
-        setLastA2UI(data.a2ui);
-      }
-    } catch (err) {
-      console.error("Error in action feedback loop:", err);
-    } finally {
-      setIsLoading(false);
-    }
+    await streamFromBackend({
+      message: `[ACCIÓN CONFIRMADA]: Ejecutar ${actionCtx.action}`,
+      action_context: actionCtx,
+      user_id: 'USR-BANORTE-8842',
+      history: messages.map(m => ({ role: m.role, content: m.content }))
+    }, assistantMsgId);
   };
 
   return (
@@ -189,6 +228,7 @@ export const App: React.FC = () => {
             <ChatStream
               messages={messages}
               isLoading={isLoading}
+              liveStatus={liveStatus}
               onSendMessage={handleSendMessage}
               onAction={handleAction}
             />

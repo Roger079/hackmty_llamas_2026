@@ -128,36 +128,116 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
                 },
                 "term_days": {
                     "type": "INTEGER",
-                    "enum": [28, 60, 91, 182, 360],
-                    "description": "Plazo de la inversión en días"
+                    "description": "Plazo de la inversión en días (ej. 28, 60, 91, 182, 360)"
                 }
             },
             "required": ["amount", "term_days"]
+        }
+    },
+    {
+        "name": "get_spending_analytics",
+        "description": "Obtiene el análisis de gastos del cliente desglosado por categorías (Supermercado, Restaurantes, Servicios, etc.), comercios principales, comparativas de periodos y datos para gráficos de dona/barras.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "user_id": {
+                    "type": "STRING",
+                    "description": "Identificador del cliente (ej. 'USR-BANORTE-8842')"
+                },
+                "period": {
+                    "type": "STRING",
+                    "description": "Periodo a consultar ('current_month', 'last_month', 'last_6m')"
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "get_financial_health_score",
+        "description": "Calcula un diagnóstico 360° de salud financiera: score de 0 a 100, semáforo, ratio de uso de crédito (deuda vs límite), riesgo de trampa de intereses en pago mínimo y radar de dimensiones financieras.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "user_id": {
+                    "type": "STRING",
+                    "description": "Identificador del cliente"
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "simulate_amortization_schedule",
+        "description": "Calcula la tabla y curva de amortización mes a mes para crédito o tarjeta (capital vs interés, saldo insoluto, ahorro con pagos anticipados).",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "debt_amount": {
+                    "type": "NUMBER",
+                    "description": "Monto de la deuda o crédito a simular"
+                },
+                "annual_rate": {
+                    "type": "NUMBER",
+                    "description": "Tasa anual ordinaria en porcentaje (ej. 22.5)"
+                },
+                "term_months": {
+                    "type": "INTEGER",
+                    "description": "Plazo en meses (ej. 12, 24, 36)"
+                },
+                "extra_monthly_payment": {
+                    "type": "NUMBER",
+                    "description": "Abono adicional a capital cada mes"
+                }
+            },
+            "required": ["debt_amount", "term_months"]
+        }
+    },
+    {
+        "name": "log_user_friction",
+        "description": "Registra en la base de datos bancaria un momento de fricción, duda, molestia o estrés financiero expresado por el cliente (ej. queja de mensualidades altas, objeción de comisiones o CAT, dificultad para llegar a fin de quincena) para adaptar la memoria cognitiva de futuras sesiones.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "friction_category": {
+                    "type": "STRING",
+                    "enum": [
+                        "HIGH_PAYMENT_STRESS",
+                        "INTEREST_RATE_OBJECTION",
+                        "LIQUIDITY_ANXIETY",
+                        "TRANSFER_CONFUSION",
+                        "FEE_DISSATISFACTION",
+                        "GENERAL_HESITATION"
+                    ],
+                    "description": "Categoría del punto de fricción detectado"
+                },
+                "trigger_snippet": {
+                    "type": "STRING",
+                    "description": "Cita o contexto breve de lo que expresó el cliente"
+                },
+                "severity": {
+                    "type": "STRING",
+                    "enum": ["LOW", "MEDIUM", "HIGH"],
+                    "description": "Nivel de severidad o estrés del cliente"
+                }
+            },
+            "required": ["friction_category", "trigger_snippet"]
         }
     },
 
     # --- HERRAMIENTA DE PERSONA 2: MOTOR A2UI (AGENT-TO-USER INTERFACE) ---
     {
         "name": "render_a2ui",
-        "description": "Emite una especificación JSON declarativa para que el frontend de Banorte renderice un componente enriquecido e interactivo dentro del chat (A2UI). Úsala para presentar tarjetas de reestructuración de deuda, comprobantes de pago, tarjetas de saldo o simuladores financieros.",
+        "description": "Emite una especificación JSON declarativa para renderizar un componente interactivo o gráfico en el frontend de Banorte (A2UI).",
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "component": {
                     "type": "STRING",
-                    "enum": [
-                        "DebtRestructureCard",
-                        "ConfirmationReceipt",
-                        "SpeiConfirmCard",
-                        "SpeiReceiptCard",
-                        "BanorteBalanceCard",
-                        "InvestmentSimulatorCard"
-                    ],
-                    "description": "Nombre exacto del componente Banorte a renderizar"
+                    "description": "Nombre exacto del componente Banorte a renderizar (ej. 'SpendingDonutCard', 'FinancialHealthGauge', 'AmortizationScheduleCard', 'BanorteChartCard', 'DebtRestructureCard', 'ConfirmationReceipt', 'SpeiConfirmCard', 'SpeiReceiptCard', 'BanorteBalanceCard', 'InvestmentSimulatorCard')"
                 },
                 "props": {
                     "type": "OBJECT",
-                    "description": "Propiedades que el componente React requiere para su renderizado",
+                    "description": "Propiedades requeridas por el componente React para su renderizado",
                     "properties": {}
                 }
             },
