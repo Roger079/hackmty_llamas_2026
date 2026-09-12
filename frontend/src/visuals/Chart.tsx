@@ -119,17 +119,27 @@ function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:Rec
 }
 function Radial({p,w,h,data}:{p:ChartProps;w:number;h:number;data:RecordRow[]}){const cx=w/2,cy=h/2,r=Math.min(w,h)/2-30, vals:number[]=data.map(d=>num(d[p.valueKey||'value']));const total=vals.reduce((a,b)=>a+b,0)||1;let angle=-Math.PI/2;return <>{data.map((d,i)=>{const next=angle+Math.max(0,vals[i])/total*Math.PI*2;const out=<path key={i} d={arc(cx,cy,r,angle,next,p.chartType==='donut'?r*.6:0)} fill={palette[i%palette.length]} stroke="#FFFFFF" strokeWidth="2" onClick={()=>p.action&&p.onAction?.(p.action.event,d)} style={{cursor:p.action?'pointer':'default'}}/>;angle=next;return out})}<text x={cx} y={cy-2} textAnchor="middle" fontSize="11" fill="#6D85A1" fontWeight="600">{p.chartType==='donut'?'Total':''}</text><text x={cx} y={cy+18} textAnchor="middle" fontSize="18" fontWeight="700" fill="#061D3A">{p.chartType==='donut'?format(total,p.valueFormat,p.currency):''}</text></>}
 function Gauge({p,w,h}:{p:ChartProps;w:number;h:number}){const min=num(resolve(p.gaugeMin,p.data)),max=num(resolve(p.gaugeMax,p.data),100),value=num(resolve(p.gaugeValue,p.data));const cx=w/2,cy=h*.76,r=Math.min(w*.38,h*.62),ratio=Math.max(0,Math.min(1,(value-min)/(max-min||1)));const bands=p.thresholds||[{from:min,to:max,status:'neutral'} as any];return <>{bands.map((b,i)=>{const from=num(resolve(b.from,p.data)),to=num(resolve(b.to,p.data));return <path key={i} d={arc(cx,cy,r,Math.PI+Math.PI*(from-min)/(max-min||1),Math.PI+Math.PI*(to-min)/(max-min||1),r-15)} fill={statusColor[(b.status||'neutral') as keyof typeof statusColor]}/>})}<line x1={cx} y1={cy} x2={cx+r*.78*Math.cos(Math.PI+Math.PI*ratio)} y2={cy+r*.78*Math.sin(Math.PI+Math.PI*ratio)} stroke="#061D3A" strokeWidth="3"/><circle cx={cx} cy={cy} r="6" fill="#061D3A"/><text x={cx} y={cy+30} textAnchor="middle" fontSize="22" fontWeight="700" fill="#061D3A">{format(value,p.valueFormat,p.currency)}</text></>}
+function toSafeArray<T>(...candidates: unknown[]): T[] {
+  for (const item of candidates) {
+    if (Array.isArray(item)) return item as T[];
+  }
+  return [];
+}
+
 function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
-  const rawNodesInput: Array<{ id: string; label?: string; color?: string }> =
-    (pointer(p.data, p.sankeyNodesPath) as any) ||
-    (p.data && typeof p.data === 'object' ? (p.data as any).nodes : undefined) ||
-    (p as any).nodes ||
-    [];
-  const rawLinksInput: Array<{ source: string; target: string; value: number; color?: string }> =
-    (pointer(p.data, p.sankeyLinksPath) as any) ||
-    (p.data && typeof p.data === 'object' ? (p.data as any).links : undefined) ||
-    (p as any).links ||
-    [];
+  const nodeFromPointer = p.sankeyNodesPath ? pointer(p.data, p.sankeyNodesPath) : undefined;
+  const linkFromPointer = p.sankeyLinksPath ? pointer(p.data, p.sankeyLinksPath) : undefined;
+
+  const rawNodesInput: Array<{ id: string; label?: string; color?: string }> = toSafeArray(
+    nodeFromPointer,
+    p.data && typeof p.data === 'object' ? (p.data as any).nodes : undefined,
+    (p as any).nodes
+  );
+  const rawLinksInput: Array<{ source: string; target: string; value: number; color?: string }> = toSafeArray(
+    linkFromPointer,
+    p.data && typeof p.data === 'object' ? (p.data as any).links : undefined,
+    (p as any).links
+  );
 
   let nodes = [...rawNodesInput];
   let links = [...rawLinksInput];
@@ -154,6 +164,19 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
         value: num(item[valKey])
       }));
     }
+  }
+
+  if (!nodes.length && links.length > 0) {
+    const idSet = new Set<string>();
+    links.forEach((l) => {
+      if (l.source) idSet.add(String(l.source));
+      if (l.target) idSet.add(String(l.target));
+    });
+    nodes = Array.from(idSet).map((id, idx) => ({
+      id,
+      label: id,
+      color: palette[idx % palette.length],
+    }));
   }
 
   if (!nodes.length || !links.length) {
