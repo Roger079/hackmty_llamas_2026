@@ -32,6 +32,7 @@ TOOL_STATUS_MESSAGES = {
     "get_financial_health_score": "Calculando diagnóstico integral de salud financiera 360°...",
     "simulate_amortization_schedule": "Calculando corrida financiera y tabla de amortización...",
     "log_user_friction": "Registrando punto de fricción en memoria cognitiva...",
+    "manage_home_widgets": "Actualizando widgets de tu pantalla de inicio en tiempo real...",
     "render_a2ui": "Generando interfaz interactiva (A2UI)..."
 }
 
@@ -46,7 +47,8 @@ POST_TOOL_STATUS_MESSAGES = {
     "get_spending_analytics": "Generando métricas y gráficos de distribución de gasto...",
     "get_financial_health_score": "Score y semáforo de riesgo calculados exitosamente...",
     "simulate_amortization_schedule": "Proyección de capital e intereses calculada...",
-    "log_user_friction": "Memoria cognitiva actualizada para futuras sesiones..."
+    "log_user_friction": "Memoria cognitiva actualizada para futuras sesiones...",
+    "manage_home_widgets": "Pantalla principal personalizada exitosamente..."
 }
 
 class GeminiOrchestrator:
@@ -113,6 +115,19 @@ class GeminiOrchestrator:
   * Si el cliente ya mencionó destinatario o monto en su mensaje (ej. 'transfiere 500 a Sofía'), precárgalos en las props del componente (initialBeneficiary, initialAmount).
   * Si no dio detalles, invoca render_a2ui(component='SpeiTransferFormCard', props={'availableBalance': 27900.0, 'initialAmount': 500.0}) y dile que puede elegir un contacto rápido con un solo toque o capturar los datos en el formulario.
   * ÚNICAMENTE cuando el usuario presione 'Revisar y Continuar' en el formulario (acción 'prepare_spei'), invoca prepare_spei_transfer y muestra SpeiConfirmCard.
+
+[GESTIÓN EXCLUSIVA DE WIDGETS EN PANTALLA PRINCIPAL ("Para ti")]:
+- Eres la única responsable de personalizar la pantalla de inicio ("Para ti") del cliente. Los clientes no tienen controles manuales para editar widgets; te lo solicitan a ti por chat.
+- Si el cliente te pide agregar un widget a su inicio (ej. "agrega el widget de salud financiera a mi inicio", "fija mis gastos en la pantalla principal", "pon la inversión en inicio"):
+  * Invoca la herramienta `manage_home_widgets` con action="add" y widget_type correspondiente ('financial_health', 'spending_donut', 'investment_simulator', 'debt_restructure', 'rent_payment', 'weekly_spending', 'investment_quick', 'spei_transfer_form').
+  * Responde confirmándole de forma ejecutiva y amable que el widget ya está disponible en su sección 'Para ti' de la pantalla de inicio.
+- Si el cliente te pide reordenar sus widgets de inicio (ej. "reordena mis widgets poniendo primero la renta", "mueve la inversión al principio de mi inicio", "pon primero los gastos"):
+  * Invoca `manage_home_widgets` con action="reorder" y new_order con el orden solicitado (ej. ['renta', 'inversion', 'gastos']).
+  * Confírmale que el orden en su pantalla de inicio ha sido actualizado.
+- Si el cliente te pide quitar un widget de inicio (ej. "quita la renta del inicio", "elimina los gastos"):
+  * Invoca `manage_home_widgets` con action="remove" y widget_type correspondiente.
+- Si el cliente te pide restablecer sus widgets:
+  * Invoca `manage_home_widgets` con action="reset".
 
 [REGLAS ESTRICTAS DE FORMATEO Y REDACCIÓN]:
 1. FORMATO DE MONTOS Y CUENTAS:
@@ -1268,6 +1283,169 @@ Diálogo:
                 f"Por favor verifica los detalles en la tarjeta interactiva que ves en pantalla y presiona el botón **Autorizar con Token Móvil** (o **Aplicar plan**) para autenticar tu operación de forma biométrica y segura mediante doble factor (2FA)."
             )
             return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
+
+        # 0.5 HOME SCREEN WIDGET MANAGEMENT INTENT (Chatbot-driven Home Customization)
+        is_home_widget_intent = (
+            any(h in msg for h in ["inicio", "pantalla principal", "home", "para ti", "mi pantalla", "pantalla de inicio"]) and
+            any(act in msg for act in ["agrega", "agregar", "pon", "poner", "fija", "fijar", "incluye", "incluir", "reordena", "reordenar", "mueve", "mover", "cambia el orden", "orden", "quita", "quitar", "elimina", "eliminar", "borra", "borrar", "restablece", "restablecer"])
+        ) or any(w in msg for w in ["reordena mis widgets", "reordenar widgets", "reordenar mis widgets", "cambiar orden de widgets", "orden de los widgets"])
+
+        if is_home_widget_intent:
+            action = "list"
+            widget_type = "financial_health"
+            new_order = []
+
+            if any(r in msg for r in ["restablece", "restablecer", "por defecto", "original"]):
+                action = "reset"
+                res, log = await mcp_client.execute_tool("manage_home_widgets", {"user_id": user_id, "action": "reset"})
+                mcp_calls.append(log)
+                reply = (
+                    f"¡Listo, {first_name}! He restablecido los widgets de tu pantalla de inicio a la configuración original de Banorte: "
+                    f"**Gastos de la semana**, **Pago recurrente (Renta)** y **Fondo de inversión**. "
+                    f"Puedes revisarlos en cualquier momento regresando a la pestaña **Inicio**."
+                )
+                return ChatResponse(reply=reply, a2ui=None, mcp_calls=mcp_calls)
+
+            elif any(r in msg for r in ["reordena", "reordenar", "mueve", "mover", "cambia el orden", "orden"]):
+                action = "reorder"
+                tokens_map = [
+                    (["renta", "pago recurrente", "alquiler"], "rent_payment"),
+                    (["inversión", "inversion", "fondo", "rendimiento", "pagaré", "pagare"], "investment_quick"),
+                    (["gastos", "gasto", "consumo", "semana", "desglose"], "weekly_spending"),
+                    (["salud", "score", "semáforo", "semaforo"], "financial_health"),
+                    (["spei", "transferencia"], "spei_transfer_form"),
+                    (["deuda", "tarjeta", "reestructur"], "debt_restructure")
+                ]
+                positions = []
+                for keywords, w_key in tokens_map:
+                    first_pos = 99999
+                    for kw in keywords:
+                        pos = msg.find(kw)
+                        if pos != -1 and pos < first_pos:
+                            first_pos = pos
+                    if first_pos != 99999:
+                        positions.append((first_pos, w_key))
+
+                positions.sort(key=lambda x: x[0])
+                new_order = [p[1] for p in positions]
+                if not new_order:
+                    new_order = ["rent_payment", "investment_quick", "weekly_spending"]
+
+                res, log = await mcp_client.execute_tool("manage_home_widgets", {
+                    "user_id": user_id,
+                    "action": "reorder",
+                    "new_order": new_order
+                })
+                mcp_calls.append(log)
+
+                reply = (
+                    f"¡Entendido, {first_name}! He reordenado los módulos de tu pantalla de inicio según lo solicitado.\n\n"
+                    f"Ahora en tu sección **Para ti** verás los widgets organizados con la prioridad que definiste. "
+                    f"Puedes regresar a la pestaña **Inicio** para comprobar cómo quedó tu pantalla principal."
+                )
+                return ChatResponse(reply=reply, a2ui=None, mcp_calls=mcp_calls)
+
+            elif any(r in msg for r in ["quita", "quitar", "elimina", "eliminar", "borra", "borrar"]):
+                action = "remove"
+                if any(k in msg for k in ["renta", "pago"]):
+                    widget_type = "rent_payment"
+                    w_name = "Pago recurrente (Renta)"
+                elif any(k in msg for k in ["inversion", "inversión", "fondo"]):
+                    widget_type = "investment_quick"
+                    w_name = "Fondo de inversión"
+                elif any(k in msg for k in ["gasto", "gastos", "semana"]):
+                    widget_type = "weekly_spending"
+                    w_name = "Gastos de la semana"
+                elif any(k in msg for k in ["salud", "score", "semáforo", "semaforo"]):
+                    widget_type = "financial_health"
+                    w_name = "Semáforo de Salud Financiera"
+                elif any(k in msg for k in ["donut", "dona", "categorías"]):
+                    widget_type = "spending_donut"
+                    w_name = "Desglose de Gastos"
+                elif any(k in msg for k in ["deuda", "reestructur"]):
+                    widget_type = "debt_restructure"
+                    w_name = "Plan de Reestructuración"
+                else:
+                    widget_type = "rent_payment"
+                    w_name = "el widget seleccionado"
+
+                res, log = await mcp_client.execute_tool("manage_home_widgets", {
+                    "user_id": user_id,
+                    "action": "remove",
+                    "widget_type": widget_type
+                })
+                mcp_calls.append(log)
+                reply = (
+                    f"Listo, {first_name}. He removido **{w_name}** de tu pantalla de inicio en la sección **Para ti**.\n\n"
+                    f"Si en algún momento deseas volver a agregarlo, solo pídemelo por aquí y lo colocaré al instante."
+                )
+                return ChatResponse(reply=reply, a2ui=None, mcp_calls=mcp_calls)
+
+            else:
+                action = "add"
+                a2ui_ret = None
+                if any(k in msg for k in ["salud", "score", "semáforo", "semaforo", "bienestar"]):
+                    widget_type = "financial_health"
+                    w_name = "Semáforo de Salud Financiera"
+                    health = mcp_client._execute_mock("get_financial_health_score", {"user_id": user_id})
+                    a2ui_ret = A2UIPayload(component="FinancialHealthGauge", props=health)
+                elif any(k in msg for k in ["donut", "dona", "categoría", "categorías", "distribución"]):
+                    widget_type = "spending_donut"
+                    w_name = "Desglose de Gastos por Categoría"
+                    spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": "last_month"})
+                    a2ui_ret = A2UIPayload(component="SpendingDonutCard", props=spending)
+                elif any(k in msg for k in ["pagaré", "pagare", "simulador", "calculadora de inversión"]):
+                    widget_type = "investment_simulator"
+                    w_name = "Simulador de Pagaré Banorte"
+                    inv = mcp_client._execute_mock("simulate_investment", {"amount": 50000.0, "term_days": 91})
+                    a2ui_ret = A2UIPayload(component="InvestmentSimulatorCard", props={
+                        "initialAmount": inv["amount"],
+                        "initialTermDays": inv["term_days"],
+                        "annualRate": inv["annual_rate"],
+                        "estimatedGain": inv["estimated_gain"],
+                        "totalMaturity": inv["total_maturity"]
+                    })
+                elif any(k in msg for k in ["deuda", "reestructur", "convenio"]):
+                    widget_type = "debt_restructure"
+                    w_name = "Plan de Reestructuración de Deuda"
+                    debt = mcp_client._execute_mock("get_user_debt", {"user_id": user_id})
+                    a2ui_ret = A2UIPayload(component="DebtRestructureCard", props=debt)
+                elif any(k in msg for k in ["spei", "transferencia", "enviar dinero"]):
+                    widget_type = "spei_transfer_form"
+                    w_name = "Transferencia Rápida SPEI"
+                    state = mcp_client.get_real_customer_state(user_id)
+                    a2ui_ret = A2UIPayload(component="SpeiTransferFormCard", props={
+                        "initialBeneficiary": "SOFÍA MENDOZA RÍOS",
+                        "initialBank": "BBVA México",
+                        "initialClabe": "012 180 01594839201 9",
+                        "initialAmount": 850.0,
+                        "initialConcept": "Pago por servicios",
+                        "availableBalance": state.get("total_available_balance", 27900.0)
+                    })
+                elif any(k in msg for k in ["renta", "pago recurrente"]):
+                    widget_type = "rent_payment"
+                    w_name = "Pago recurrente (Renta)"
+                elif any(k in msg for k in ["inversion", "inversión", "fondo"]):
+                    widget_type = "investment_quick"
+                    w_name = "Fondo de inversión"
+                else:
+                    widget_type = "financial_health"
+                    w_name = "Semáforo de Salud Financiera"
+                    health = mcp_client._execute_mock("get_financial_health_score", {"user_id": user_id})
+                    a2ui_ret = A2UIPayload(component="FinancialHealthGauge", props=health)
+
+                res, log = await mcp_client.execute_tool("manage_home_widgets", {
+                    "user_id": user_id,
+                    "action": "add",
+                    "widget_type": widget_type
+                })
+                mcp_calls.append(log)
+
+                reply = (
+                    f"¡Excelente, {first_name}! He fijado el widget de **{w_name}** en tu pantalla de inicio, en la sección **Para ti**.\n\n"
+                    f"A continuación tienes una vista previa. También puedes consultarlo en cualquier momento tocando la pestaña **Inicio** en la barra inferior."
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui_ret, mcp_calls=mcp_calls)
 
         # 1. DEBT RESTRUCTURING INTENT (Core hackathon scenario)
         if any(k in msg for k in ["deuda", "reestructur", "reestructurar", "convenio", "pagar tarjeta", "no puedo pagar", "intereses", "pagar menos"]):

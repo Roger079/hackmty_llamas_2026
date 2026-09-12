@@ -13,6 +13,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { A2UINotebook } from './components/A2UINotebook';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { A2UIPayload, ActionContext, ChatMessage, McpCallLog, UserCognitiveProfile } from './types/a2ui';
+import { executeHomeWidgetsAction } from './utils/homeWidgetsManager';
 
 const DEFAULT_USER_ID = 'C001';
 const DEFAULT_CLIENT = 'Ana Martínez';
@@ -255,6 +256,18 @@ export const App: React.FC = () => {
     ]);
     if (Array.isArray(data.mcp_calls)) {
       setMcpLogs((current) => [...data.mcp_calls!, ...current]);
+      for (const call of data.mcp_calls) {
+        if (call.tool_name === 'manage_home_widgets' && call.arguments) {
+          executeHomeWidgetsAction(
+            selectedUserId,
+            call.arguments.action,
+            {
+              widgetType: call.arguments.widget_type,
+              newOrder: call.arguments.new_order,
+            }
+          );
+        }
+      }
     }
     if (data.a2ui) {
       setLastA2UI(data.a2ui);
@@ -368,10 +381,34 @@ export const App: React.FC = () => {
             updateAssistantMessage(fullReply, capturedA2UI);
           } else if (event === 'mcp_call' && dataJson) {
             setMcpLogs((current) => [dataJson, ...current]);
+            if (dataJson.tool_name === 'manage_home_widgets' && dataJson.arguments) {
+              executeHomeWidgetsAction(
+                selectedUserId,
+                dataJson.arguments.action,
+                {
+                  widgetType: dataJson.arguments.widget_type,
+                  newOrder: dataJson.arguments.new_order,
+                }
+              );
+            }
           } else if (event === 'a2ui' && dataJson) {
             capturedA2UI = dataJson;
             updateAssistantMessage(fullReply, dataJson);
           } else if (event === 'done' && dataJson) {
+            if (Array.isArray(dataJson.mcp_calls)) {
+              for (const call of dataJson.mcp_calls) {
+                if (call.tool_name === 'manage_home_widgets' && call.arguments) {
+                  executeHomeWidgetsAction(
+                    selectedUserId,
+                    call.arguments.action,
+                    {
+                      widgetType: call.arguments.widget_type,
+                      newOrder: call.arguments.new_order,
+                    }
+                  );
+                }
+              }
+            }
             if (dataJson.reply && (!fullReply || fullReply.trim().length === 0)) {
               fullReply = dataJson.reply;
             }

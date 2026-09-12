@@ -277,5 +277,34 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
             },
             "required": ["component", "props"]
         }
+    },
+    # --- HERRAMIENTA DE GESTIÓN DE WIDGETS EN PANTALLA PRINCIPAL (MAYA BOT) ---
+    {
+        "name": "manage_home_widgets",
+        "description": "Gestiona y personaliza los widgets fijados en la pantalla de inicio ('Para ti') de la banca móvil del cliente. Invocable cuando el cliente solicite por chat agregar, quitar, reordenar o consultar los widgets de su pantalla de inicio o pantalla principal.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "user_id": {
+                    "type": "STRING",
+                    "description": "Identificador del cliente autenticado (ej. 'C001', 'C002', 'C003')"
+                },
+                "action": {
+                    "type": "STRING",
+                    "enum": ["add", "remove", "reorder", "reset", "list"],
+                    "description": "Acción sobre los widgets de inicio: 'add' (agregar), 'remove' (quitar), 'reorder' (reordenar), 'reset' (restablecer predeterminados), 'list' (consultar)"
+                },
+                "widget_type": {
+                    "type": "STRING",
+                    "description": "Tipo de widget a agregar o remover: 'financial_health', 'spending_donut', 'investment_simulator', 'debt_restructure', 'spei_transfer_form', 'rent_payment', 'weekly_spending', 'investment_quick'"
+                },
+                "new_order": {
+                    "type": "ARRAY",
+                    "items": {"type": "STRING"},
+                    "description": "Lista ordenada con los nombres o IDs de los widgets para la acción 'reorder' (ej. ['renta', 'inversion', 'gastos'])"
+                }
+            },
+            "required": ["action"]
+        }
     }
 ]

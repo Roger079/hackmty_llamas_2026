@@ -497,6 +497,19 @@ class McpClient:
         elif tool_name == "get_user_cognitive_memory":
             return srv.get_user_cognitive_memory(user_id)
 
+        elif tool_name == "manage_home_widgets":
+            action = args.get("action", "list")
+            widget_type = args.get("widget_type", "")
+            new_order = args.get("new_order", [])
+            return {
+                "status": "success",
+                "action": action,
+                "widget_type": widget_type,
+                "new_order": new_order,
+                "user_id": user_id,
+                "message": f"Acción de widgets de inicio '{action}' ejecutada por Maya."
+            }
+
         elif tool_name == "update_user_preferences":
             return srv.update_user_preferences(
                 user_id=user_id,
