@@ -22,7 +22,7 @@ for (const path in componentModules) {
   const name = path.replace(/^\.\//, '').replace(/\.tsx$/, '');
 
   // Ignore wrapper shells and layout headers from being rendered as A2UI cards
-  if (['DynamicA2UIRegistry', 'BanorteHeader', 'BanorteLogo', 'ChatStream', 'McpInspector'].includes(name)) {
+  if (['DynamicA2UIRegistry', 'BanorteHeader', 'BanorteLogo', 'ChatStream', 'McpInspector', 'BanorteComponents'].includes(name)) {
     continue;
   }
 

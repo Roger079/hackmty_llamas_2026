@@ -161,7 +161,7 @@ export const App: React.FC = () => {
     setMessages(prev => [...prev, initialAssistantMsg]);
 
     await streamFromBackend({
-      message: `[ACCIÓN CONFIRMADA]: Ejecutar ${actionCtx.action}`,
+      message: `He seleccionado y confirmado el plan de ${actionCtx.action}`,
       action_context: actionCtx,
       user_id: 'USR-BANORTE-8842',
       history: messages.map(m => ({ role: m.role, content: m.content }))

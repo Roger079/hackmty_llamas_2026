@@ -1,0 +1,423 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mibanco.com/a2ui/catalogs/banca-visuals/v1",
+  "catalogId": "https://mibanco.com/a2ui/catalogs/banca-visuals/v1",
+  "title": "Banca App - Visualization Catalog (extends A2UI v0.9 Basic Catalog)",
+  "description": "Custom A2UI v0.9 component catalog that adds data-visualization components (Chart, KpiCard, ProgressIndicator, DataTable, ComparisonTable, Timeline, GeoMap) required to answer every user question listed in graficos_banca_app.md. This catalog is additive: a compliant client should register these components alongside (a union of) the Basic Catalog components (Text, Row, Column, Card, Button, etc.) referenced at https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json. All structural/data-binding primitives (DynamicString, DynamicNumber, DynamicBoolean, DynamicStringList, ChildList, ComponentId) are reused from common_types.json as required by the A2UI v0.9 spec.",
+
+  "$defs": {
+
+    "DynamicString": { "$ref": "https://a2ui.org/specification/v0_9/common_types.json#/$defs/DynamicString" },
+    "DynamicNumber": { "$ref": "https://a2ui.org/specification/v0_9/common_types.json#/$defs/DynamicNumber" },
+    "DynamicBoolean": { "$ref": "https://a2ui.org/specification/v0_9/common_types.json#/$defs/DynamicBoolean" },
+    "DynamicStringList": { "$ref": "https://a2ui.org/specification/v0_9/common_types.json#/$defs/DynamicStringList" },
+    "ComponentId": { "$ref": "https://a2ui.org/specification/v0_9/common_types.json#/$defs/ComponentId" },
+    "ChildList": { "$ref": "https://a2ui.org/specification/v0_9/common_types.json#/$defs/ChildList" },
+
+    "JsonPointer": {
+      "type": "string",
+      "description": "Absolute (starts with '/') or relative JSON Pointer (RFC 6901, A2UI-extended) into the surface's data model, e.g. '/movimientos/gastosPorCategoria'.",
+      "pattern": "^(/|[^/].*)"
+    },
+
+    "SemaforoStatus": {
+      "type": "string",
+      "enum": ["good", "warning", "bad", "neutral"],
+      "description": "Maps to green / yellow / red / gray in the renderer's theme. Used for financial-health indicators (Secciones 1, 2, 5, 6)."
+    },
+
+    "ChartType": {
+      "type": "string",
+      "description": "Selects the rendering strategy inside the single Chart component. Covers every visualization type in the 'Resumen: Tipos de Gráfico Transversales' section of graficos_banca_app.md.",
+      "enum": [
+        "line",
+        "multiLine",
+        "bar",
+        "barHorizontal",
+        "groupedBar",
+        "stackedBar",
+        "area",
+        "stackedArea",
+        "pie",
+        "donut",
+        "treemap",
+        "sunburst",
+        "sankey",
+        "waterfall",
+        "gauge",
+        "radar",
+        "scatter",
+        "bubble",
+        "calendarHeatmap",
+        "candlestick",
+        "boxplot",
+        "histogram",
+        "bullet"
+      ]
+    },
+
+    "ValueFormat": {
+      "type": "string",
+      "enum": ["number", "currency", "percent", "text", "date"],
+      "description": "How numeric/date values in this chart or field should be formatted, delegating to the basic-catalog functions formatNumber / formatCurrency / formatDate."
+    },
+
+    "SeriesConfig": {
+      "type": "object",
+      "description": "Describes one data series drawn from an array at dataPath. Used for line/bar/area/radar/scatter/candlestick/boxplot family charts (Secciones 1-6, e.g. 'Compara el rendimiento de mis fondos entre sí', 'Historial de transferencias enviadas vs recibidas por mes').",
+      "properties": {
+        "name": { "$ref": "#/$defs/DynamicString" },
+        "dataPath": { "$ref": "#/$defs/JsonPointer" },
+        "xKey": { "type": "string", "description": "Field name for the x-axis / category, e.g. 'mes', 'fecha', 'categoria'." },
+        "yKey": { "type": "string", "description": "Field name for the primary numeric value, e.g. 'monto', 'saldo', 'rendimiento'." },
+        "colorKey": { "type": "string", "description": "Optional field used to color individual points/bars conditionally, e.g. sign of gain/loss ('¿Cuánto he ganado o perdido por cada instrumento?')." },
+        "sizeKey": { "type": "string", "description": "Optional field for bubble radius, e.g. 'montoInvertido' in riesgo-retorno scatter/bubble charts." },
+        "openKey": { "type": "string" },
+        "highKey": { "type": "string" },
+        "lowKey": { "type": "string" },
+        "closeKey": { "type": "string" },
+        "q1Key": { "type": "string" },
+        "medianKey": { "type": "string" },
+        "q3Key": { "type": "string" },
+        "minKey": { "type": "string" },
+        "maxKey": { "type": "string" },
+        "color": { "type": "string", "description": "Optional literal hex color override for this series." }
+      },
+      "required": ["dataPath"]
+    },
+
+    "ThresholdBand": {
+      "type": "object",
+      "description": "A colored zone on a gauge/bullet/radar chart, e.g. risk-profile bands (conservador/moderado/agresivo) or budget-usage semáforo (verde/amarillo/rojo).",
+      "properties": {
+        "from": { "$ref": "#/$defs/DynamicNumber" },
+        "to": { "$ref": "#/$defs/DynamicNumber" },
+        "label": { "$ref": "#/$defs/DynamicString" },
+        "status": { "$ref": "#/$defs/SemaforoStatus" }
+      },
+      "required": ["from", "to"]
+    },
+
+    "ProjectionScenario": {
+      "type": "object",
+      "description": "One scenario line for projection/simulation charts, e.g. pesimista/base/optimista investment growth, or retirement withdrawal simulations (Sección 3, 5, 6).",
+      "properties": {
+        "name": { "$ref": "#/$defs/DynamicString" },
+        "dataPath": { "$ref": "#/$defs/JsonPointer" },
+        "xKey": { "type": "string" },
+        "yKey": { "type": "string" },
+        "confidenceLowKey": { "type": "string", "description": "Optional field for the lower bound of a confidence band." },
+        "confidenceHighKey": { "type": "string", "description": "Optional field for the upper bound of a confidence band." }
+      },
+      "required": ["dataPath", "xKey", "yKey"]
+    },
+
+    "Chart": {
+      "type": "object",
+      "description": "Single, unified charting component covering every chart type needed across Banca Personal, Pagos, Inversiones, Seguros, Crédito, and Educación Financiera. Exactly one of dataPath/series/scenarios should be populated depending on chartType.",
+      "properties": {
+        "id": { "$ref": "#/$defs/ComponentId" },
+        "component": { "const": "Chart" },
+        "chartType": { "$ref": "#/$defs/ChartType" },
+        "title": { "$ref": "#/$defs/DynamicString" },
+        "subtitle": { "$ref": "#/$defs/DynamicString" },
+
+        "dataPath": {
+          "$ref": "#/$defs/JsonPointer",
+          "description": "Path to a single array of data objects. Used for the common single-series case (pie/donut/treemap/sunburst/histogram/calendarHeatmap/waterfall/single bar or line)."
+        },
+        "categoryKey": { "type": "string", "description": "Field holding the category/label, e.g. 'categoria', 'proveedor', 'sector'." },
+        "valueKey": { "type": "string", "description": "Field holding the numeric value, e.g. 'monto', 'porcentaje'." },
+        "parentKey": { "type": "string", "description": "Optional field for hierarchical charts (treemap/sunburst), e.g. subcategory's parent category." },
+        "dateKey": { "type": "string", "description": "Field holding an ISO date, used by calendarHeatmap and timeline-like line charts." },
+
+        "series": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SeriesConfig" },
+          "description": "Multiple series for grouped/stacked/multi-line/radar/scatter/bubble/candlestick/boxplot charts."
+        },
+        "scenarios": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProjectionScenario" },
+          "description": "Used only for simulation/projection charts (aportaciones mensuales, retiro/jubilación, 'qué pasa si ahorro X% más')."
+        },
+
+        "sankeyNodesPath": { "$ref": "#/$defs/JsonPointer", "description": "For chartType=sankey: path to an array of {id, label}." },
+        "sankeyLinksPath": { "$ref": "#/$defs/JsonPointer", "description": "For chartType=sankey: path to an array of {source, target, value}, e.g. ingresos → gastos flow." },
+
+        "waterfallStartLabel": { "$ref": "#/$defs/DynamicString" },
+        "waterfallEndLabel": { "$ref": "#/$defs/DynamicString" },
+
+        "gaugeMin": { "$ref": "#/$defs/DynamicNumber" },
+        "gaugeMax": { "$ref": "#/$defs/DynamicNumber" },
+        "gaugeValue": { "$ref": "#/$defs/DynamicNumber" },
+        "thresholds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ThresholdBand" },
+          "description": "Color bands for gauge/radar/bullet charts (risk profile, % of limit used, financial-health score)."
+        },
+
+        "bulletValue": { "$ref": "#/$defs/DynamicNumber", "description": "Actual value for bullet charts (real vs presupuestado / real vs mercado)." },
+        "bulletTarget": { "$ref": "#/$defs/DynamicNumber", "description": "Target/benchmark value for bullet charts." },
+
+        "benchmarkSeries": {
+          "$ref": "#/$defs/SeriesConfig",
+          "description": "Optional overlay series for comparing against a benchmark (e.g. portfolio performance vs index, prima actual vs promedio de mercado)."
+        },
+
+        "stacked": { "$ref": "#/$defs/DynamicBoolean" },
+        "showLegend": { "$ref": "#/$defs/DynamicBoolean" },
+        "xAxisLabel": { "$ref": "#/$defs/DynamicString" },
+        "yAxisLabel": { "$ref": "#/$defs/DynamicString" },
+        "valueFormat": { "$ref": "#/$defs/ValueFormat" },
+        "currency": { "type": "string", "description": "ISO 4217 code used when valueFormat=currency (e.g. 'MXN')." },
+        "colorPositive": { "type": "string", "description": "Hex color for positive/gain values (e.g. ganancias en verde)." },
+        "colorNegative": { "type": "string", "description": "Hex color for negative/loss values (e.g. pérdidas en rojo)." },
+
+        "action": {
+          "type": "object",
+          "description": "Optional drill-down action dispatched when a data point/segment is tapped (e.g. tapping a category slice to see its subcategories, or a movement bar to open its detail).",
+          "properties": {
+            "event": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "context": { "type": "object" }
+              },
+              "required": ["name"]
+            }
+          }
+        }
+      },
+      "required": ["id", "component", "chartType"]
+    },
+
+    "KpiCard": {
+      "type": "object",
+      "description": "Scorecard for a single metric, used for financial-health summaries, salud financiera del mes, or estado de conciliación bancaria.",
+      "properties": {
+        "id": { "$ref": "#/$defs/ComponentId" },
+        "component": { "const": "KpiCard" },
+        "label": { "$ref": "#/$defs/DynamicString" },
+        "value": { "$ref": "#/$defs/DynamicNumber" },
+        "valueFormat": { "$ref": "#/$defs/ValueFormat" },
+        "currency": { "type": "string" },
+        "deltaValue": { "$ref": "#/$defs/DynamicNumber", "description": "Change vs. previous period, e.g. mes anterior." },
+        "deltaDirection": { "type": "string", "enum": ["up", "down", "flat"] },
+        "status": { "$ref": "#/$defs/SemaforoStatus" },
+        "icon": { "type": "string", "description": "Icon name from the basic catalog's Icon component." }
+      },
+      "required": ["id", "component", "label", "value"]
+    },
+
+    "ProgressIndicator": {
+      "type": "object",
+      "description": "Progress bar / ring / gauge for goal or limit tracking (barra de progreso, anillo de progreso, velocímetro, bullet-style capacity indicators).",
+      "properties": {
+        "id": { "$ref": "#/$defs/ComponentId" },
+        "component": { "const": "ProgressIndicator" },
+        "variant": { "type": "string", "enum": ["bar", "ring", "gauge"] },
+        "label": { "$ref": "#/$defs/DynamicString" },
+        "value": { "$ref": "#/$defs/DynamicNumber" },
+        "min": { "$ref": "#/$defs/DynamicNumber" },
+        "max": { "$ref": "#/$defs/DynamicNumber" },
+        "target": { "$ref": "#/$defs/DynamicNumber", "description": "Optional goal marker, e.g. meta de ahorro." },
+        "valueFormat": { "$ref": "#/$defs/ValueFormat" },
+        "currency": { "type": "string" },
+        "status": { "$ref": "#/$defs/SemaforoStatus" }
+      },
+      "required": ["id", "component", "variant", "value", "max"]
+    },
+
+    "TableColumn": {
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "label": { "$ref": "#/$defs/DynamicString" },
+        "type": { "type": "string", "enum": ["text", "number", "currency", "percent", "date", "status"] },
+        "sortable": { "type": "boolean" }
+      },
+      "required": ["key", "label", "type"]
+    },
+
+    "DataTable": {
+      "type": "object",
+      "description": "Detailed, filterable/sortable transaction or record listing (detalle de movimientos, pagos pendientes de conciliar, reclamos activos).",
+      "properties": {
+        "id": { "$ref": "#/$defs/ComponentId" },
+        "component": { "const": "DataTable" },
+        "title": { "$ref": "#/$defs/DynamicString" },
+        "rowsPath": { "$ref": "#/$defs/JsonPointer" },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/TableColumn" } },
+        "filterable": { "$ref": "#/$defs/DynamicBoolean" },
+        "sortable": { "$ref": "#/$defs/DynamicBoolean" },
+        "statusColumnKey": { "type": "string", "description": "Column key whose value maps to SemaforoStatus for a colored badge (e.g. estado de conciliación)." },
+        "pageSize": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["id", "component", "rowsPath", "columns"]
+    },
+
+    "ComparisonColumn": {
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "label": { "$ref": "#/$defs/DynamicString" },
+        "highlight": { "type": "boolean", "description": "Marks a recommended/current option, e.g. 'tu plan actual'." }
+      },
+      "required": ["key", "label"]
+    },
+
+    "ComparisonTable": {
+      "type": "object",
+      "description": "Side-by-side comparison of named options against shared attribute rows (planes de seguro, crédito vs refinanciamiento, fondos de inversión).",
+      "properties": {
+        "id": { "$ref": "#/$defs/ComponentId" },
+        "component": { "const": "ComparisonTable" },
+        "title": { "$ref": "#/$defs/DynamicString" },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/ComparisonColumn" }, "minItems": 2 },
+        "rowsPath": {
+          "$ref": "#/$defs/JsonPointer",
+          "description": "Path to an array of {attribute: string, values: {[columnKey]: string|number}}."
+        }
+      },
+      "required": ["id", "component", "columns", "rowsPath"]
+    },
+
+    "TimelineStep": {
+      "type": "object",
+      "properties": {
+        "label": { "$ref": "#/$defs/DynamicString" },
+        "date": { "$ref": "#/$defs/DynamicString" },
+        "status": { "type": "string", "enum": ["completed", "current", "pending", "error"] },
+        "description": { "$ref": "#/$defs/DynamicString" }
+      },
+      "required": ["label", "status"]
+    },
+
+    "Timeline": {
+      "type": "object",
+      "description": "Stepper / process-status visual (estado de un siniestro, estado de una solicitud de crédito, calendario de pagos programados).",
+      "properties": {
+        "id": { "$ref": "#/$defs/ComponentId" },
+        "component": { "const": "Timeline" },
+        "title": { "$ref": "#/$defs/DynamicString" },
+        "orientation": { "type": "string", "enum": ["horizontal", "vertical"] },
+        "stepsPath": { "$ref": "#/$defs/JsonPointer" }
+      },
+      "required": ["id", "component", "stepsPath"]
+    },
+
+    "GeoMap": {
+      "type": "object",
+      "description": "Map with markers, used only where geography applies (cajeros cercanos, gasto por ubicación).",
+      "properties": {
+        "id": { "$ref": "#/$defs/ComponentId" },
+        "component": { "const": "GeoMap" },
+        "markersPath": {
+          "$ref": "#/$defs/JsonPointer",
+          "description": "Path to an array of {lat: number, lng: number, label: string, value?: number}."
+        },
+        "centerLat": { "$ref": "#/$defs/DynamicNumber" },
+        "centerLng": { "$ref": "#/$defs/DynamicNumber" },
+        "zoom": { "type": "number" }
+      },
+      "required": ["id", "component", "markersPath"]
+    },
+
+    "anyBancaVisualComponent": {
+      "description": "Union of all components added by this catalog. A client MUST merge this with the Basic Catalog's anyComponent union (catalog.json#/$defs/anyComponent) to resolve every component id referenced in an updateComponents message.",
+      "oneOf": [
+        { "$ref": "#/$defs/Chart" },
+        { "$ref": "#/$defs/KpiCard" },
+        { "$ref": "#/$defs/ProgressIndicator" },
+        { "$ref": "#/$defs/DataTable" },
+        { "$ref": "#/$defs/ComparisonTable" },
+        { "$ref": "#/$defs/Timeline" },
+        { "$ref": "#/$defs/GeoMap" }
+      ]
+    }
+  },
+
+  "question_to_component_map": {
+    "_description": "Non-normative lookup (not part of the JSON Schema validation) mirroring every row of graficos_banca_app.md to the component/chartType that renders it.",
+    "banca_personal": [
+      { "pregunta": "Ingreso mensual últimos 5 años", "component": "Chart", "chartType": "line" },
+      { "pregunta": "Gasto por categoría este mes", "component": "Chart", "chartType": "donut" },
+      { "pregunta": "Gastos este mes vs mes pasado", "component": "Chart", "chartType": "groupedBar" },
+      { "pregunta": "Evolución del saldo", "component": "Chart", "chartType": "area" },
+      { "pregunta": "Gasto por día de la semana", "component": "Chart", "chartType": "calendarHeatmap" },
+      { "pregunta": "Gasto por subcategoría", "component": "Chart", "chartType": "treemap" },
+      { "pregunta": "Top 10 movimientos", "component": "Chart", "chartType": "barHorizontal" },
+      { "pregunta": "Detalle de movimientos", "component": "DataTable" },
+      { "pregunta": "Disponible vs límite", "component": "ProgressIndicator", "variant": "gauge" },
+      { "pregunta": "Real vs presupuestado por categoría", "component": "Chart", "chartType": "bullet" },
+      { "pregunta": "Resumen salud financiera del mes", "component": "KpiCard" },
+      { "pregunta": "Ingresos/gastos y a dónde van", "component": "Chart", "chartType": "sankey" },
+      { "pregunta": "Saldo de todas mis cuentas", "component": "Chart", "chartType": "bar" },
+      { "pregunta": "Tendencia de ahorro acumulado", "component": "Chart", "chartType": "area" },
+      { "pregunta": "Gastos fijos vs variables", "component": "Chart", "chartType": "stackedBar" }
+    ],
+    "pagos": [
+      { "pregunta": "Pagado por proveedor/persona", "component": "Chart", "chartType": "barHorizontal" },
+      { "pregunta": "Transferencias enviadas vs recibidas", "component": "Chart", "chartType": "multiLine" },
+      { "pregunta": "Pagos pendientes de conciliar", "component": "DataTable", "statusColumnKey": "estado" },
+      { "pregunta": "Evolución pagos recurrentes", "component": "Chart", "chartType": "multiLine" },
+      { "pregunta": "% domiciliados vs manuales", "component": "Chart", "chartType": "donut" },
+      { "pregunta": "Flujo de una transferencia", "component": "Chart", "chartType": "sankey" },
+      { "pregunta": "Cobrado vs pagado neto", "component": "Chart", "chartType": "waterfall" },
+      { "pregunta": "Calendario de pagos programados", "component": "Timeline" },
+      { "pregunta": "Comisiones por tipo de transacción", "component": "Chart", "chartType": "stackedBar" },
+      { "pregunta": "Estado de conciliación bancaria", "component": "KpiCard", "status": "semaforo" },
+      { "pregunta": "Tiempo promedio de acreditación", "component": "Chart", "chartType": "boxplot" }
+    ],
+    "inversiones": [
+      { "pregunta": "Perfil de riesgo", "component": "Chart", "chartType": "gauge" },
+      { "pregunta": "Distribución del portafolio", "component": "Chart", "chartType": "donut" },
+      { "pregunta": "Rendimiento del portafolio vs benchmark", "component": "Chart", "chartType": "line", "usesBenchmarkSeries": true },
+      { "pregunta": "Rendimiento entre fondos", "component": "Chart", "chartType": "multiLine" },
+      { "pregunta": "Simulación de crecimiento (aportación mensual)", "component": "Chart", "chartType": "area", "usesScenarios": true },
+      { "pregunta": "Volatilidad del portafolio", "component": "Chart", "chartType": "candlestick" },
+      { "pregunta": "Portafolio por sector/región", "component": "Chart", "chartType": "treemap" },
+      { "pregunta": "Riesgo vs retorno", "component": "Chart", "chartType": "bubble" },
+      { "pregunta": "Ganancia/pérdida por instrumento", "component": "Chart", "chartType": "barHorizontal" },
+      { "pregunta": "Composición histórica del portafolio", "component": "Chart", "chartType": "stackedArea" },
+      { "pregunta": "Escenarios de retiro/jubilación", "component": "Chart", "chartType": "line", "usesScenarios": true },
+      { "pregunta": "Distribución de rendimientos posibles", "component": "Chart", "chartType": "histogram" }
+    ],
+    "seguros": [
+      { "pregunta": "Comparar coberturas y precios", "component": "ComparisonTable" },
+      { "pregunta": "% de cobertura usada", "component": "ProgressIndicator", "variant": "gauge" },
+      { "pregunta": "Siniestros reportados por año", "component": "Chart", "chartType": "bar" },
+      { "pregunta": "Primas pagadas vs reembolsos", "component": "Chart", "chartType": "waterfall" },
+      { "pregunta": "Póliza por tipo de cobertura", "component": "Chart", "chartType": "donut" },
+      { "pregunta": "Tiempo de resolución de siniestros", "component": "Chart", "chartType": "boxplot" },
+      { "pregunta": "Prima según edad/monto", "component": "Chart", "chartType": "line" },
+      { "pregunta": "Estado de reclamos activos", "component": "Timeline" },
+      { "pregunta": "Prima actual vs promedio de mercado", "component": "Chart", "chartType": "bullet" }
+    ],
+    "credito": [
+      { "pregunta": "Precalificación de crédito", "component": "Chart", "chartType": "gauge" },
+      { "pregunta": "Tabla de amortización", "component": "DataTable", "extra": "Chart chartType=stackedBar for capital vs interés" },
+      { "pregunta": "Composición de pagos en el tiempo", "component": "Chart", "chartType": "stackedArea" },
+      { "pregunta": "Crédito vs refinanciamiento", "component": "ComparisonTable" },
+      { "pregunta": "Interés total según plazo", "component": "Chart", "chartType": "groupedBar" },
+      { "pregunta": "Saldo insoluto en el tiempo", "component": "Chart", "chartType": "line" },
+      { "pregunta": "Capacidad de pago vs ingresos", "component": "ProgressIndicator", "variant": "bar" },
+      { "pregunta": "Pago anticipado: con vs sin", "component": "Chart", "chartType": "multiLine" },
+      { "pregunta": "Tasa vs mercado", "component": "Chart", "chartType": "bullet" },
+      { "pregunta": "Historial de score crediticio", "component": "Chart", "chartType": "line" }
+    ],
+    "educacion_financiera": [
+      { "pregunta": "Salud financiera general", "component": "KpiCard", "status": "semaforo" },
+      { "pregunta": "Progreso hacia meta de ahorro", "component": "ProgressIndicator", "variant": "ring" },
+      { "pregunta": "Progreso de metas en el tiempo", "component": "Chart", "chartType": "line" },
+      { "pregunta": "Hábitos de gasto (patrones)", "component": "Chart", "chartType": "calendarHeatmap" },
+      { "pregunta": "Comparación contra promedio del perfil", "component": "Chart", "chartType": "radar" },
+      { "pregunta": "Diagnóstico financiero (fortalezas/áreas)", "component": "Chart", "chartType": "radar" },
+      { "pregunta": "Evolución de nivel financiero (gamificación)", "component": "ProgressIndicator", "variant": "bar" },
+      { "pregunta": "Regla 50/30/20 ideal vs real", "component": "Chart", "chartType": "donut" },
+      { "pregunta": "Racha de ahorro (streak)", "component": "Chart", "chartType": "calendarHeatmap" },
+      { "pregunta": "Simulación de futuro financiero mejorado", "component": "Chart", "chartType": "line", "usesScenarios": true }
+    ]
+  }
+}

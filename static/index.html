@@ -231,11 +231,19 @@
       <div class="pb-3 flex items-center gap-2 overflow-x-auto scrollbar-none">
         <button onclick="sendQuickPrompt('Tengo una deuda con mi tarjeta de crédito y quiero reestructurarla')" class="px-4 py-2 rounded-full bg-red-50 hover:bg-red-100 text-[#EB0029] border border-red-200 text-xs font-bold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
           <i data-lucide="shield-check" class="w-4 h-4"></i>
-          <span>💳 Reestructurar tarjeta de crédito</span>
+          <span>💳 Reestructurar tarjeta</span>
         </button>
-        <button onclick="sendQuickPrompt('Transfiere $850 a Sofía Mendoza para la cena')" class="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
+        <button onclick="sendQuickPrompt('¿En qué se me fue el dinero este mes? Desglósame mis gastos por categoría')" class="px-4 py-2 rounded-full bg-red-50 hover:bg-red-100 text-[#EB0029] border border-red-200 text-xs font-bold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
+          <i data-lucide="pie-chart" class="w-4 h-4"></i>
+          <span>📊 Gastos por categoría</span>
+        </button>
+        <button onclick="sendQuickPrompt('¿Cómo está mi salud financiera general? Dame mi diagnóstico 360')" class="px-4 py-2 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
+          <i data-lucide="activity" class="w-4 h-4 text-amber-600"></i>
+          <span>🩺 Salud Financiera 360°</span>
+        </button>
+        <button onclick="sendQuickPrompt('Transfiere $1,000 a Sofía Mendoza para la cena')" class="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
           <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i>
-          <span>⚡ Transferir $850 SPEI</span>
+          <span>⚡ Transferir $1,000 SPEI</span>
         </button>
         <button onclick="sendQuickPrompt('¿Cuánto saldo disponible tengo en mis cuentas?')" class="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
           <i data-lucide="wallet" class="w-4 h-4 text-emerald-600"></i>
@@ -521,7 +529,9 @@
     // FEEDBACK LOOP DISPATCHER (Action Callbacks)
     // =========================================================================
     function dispatchA2UIAction(actionName, params, sourceComponent) {
-      appendUserMessage(`[Acción]: Confirmar ${actionName}`);
+      // No agregar burbuja fea de '[Acción]: Confirmar ...' al chat del usuario.
+      // Se envía directamente el action_context al orquestador backend con indicador de carga.
+      showAgentTyping("Maya formalizando y aplicando en tu cuenta...");
       sendToOrchestrator(`Confirmar acción ${actionName}`, {
         action: actionName,
         params: params,
@@ -628,7 +638,7 @@
 
                 <button 
                   id="btnApplyPlan"
-                  onclick="triggerApplyRestructure()"
+                  onclick="triggerApplyRestructure(this)"
                   class="w-full py-4 bg-[#EB0029] hover:bg-[#C70023] active:bg-[#9E001B] text-white rounded-2xl font-bold text-sm tracking-wide shadow-xl shadow-red-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <span id="btnApplyPlanText">Aplicar plan seleccionado</span>
@@ -856,6 +866,356 @@
           `;
         }
 
+        // 6. SPENDING DONUT / CATEGORY CHART
+        case "SpendingDonutCard":
+        case "BanorteChartCard": {
+          const total = props.totalSpent || props.total_spent || 14850.00;
+          const cats = props.categories && props.categories.length > 0 ? props.categories : [
+            { name: "Supermercado", amount: 5420, percentage: 36.5, color: "#EB0029" },
+            { name: "Restaurantes", amount: 3280, percentage: 22.1, color: "#FF5A70" },
+            { name: "Servicios", amount: 2650, percentage: 17.8, color: "#4A5568" },
+            { name: "Transporte", amount: 1950, percentage: 13.1, color: "#718096" },
+            { name: "Entretenimiento", amount: 1550, percentage: 10.5, color: "#CBD5E0" }
+          ];
+
+          const categoryItems = cats.map(c => `
+            <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-100 last:border-0">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${c.color || '#EB0029'}"></span>
+                <span class="text-slate-800 font-medium">${c.name}</span>
+              </div>
+              <div class="flex items-center gap-3 font-mono">
+                <span class="text-slate-400 text-[11px]">${c.percentage}%</span>
+                <span class="text-slate-900 font-bold">$ ${c.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          `).join("");
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Gastos por Categoría</h4>
+                  <p class="text-[10px] text-slate-400">${props.period || 'Septiembre 2026'}</p>
+                </div>
+                <span class="text-xs font-bold text-[#EB0029] bg-red-50 border border-red-200 px-3 py-1 rounded-full font-mono">
+                  $ ${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
+                </span>
+              </div>
+
+              <div class="space-y-1">
+                ${categoryItems}
+              </div>
+
+              ${props.summary ? `<p class="text-[11px] text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100 italic">${props.summary}</p>` : ''}
+            </div>
+          `;
+        }
+
+        // 7. FINANCIAL HEALTH GAUGE
+        case "FinancialHealthGauge": {
+          const score = props.overallScore || props.overall_score || 64;
+          const status = props.status || (score < 70 ? 'MODERADO' : 'ÓPTIMO');
+          const color = props.statusColor || (score < 70 ? '#F59E0B' : '#10B981');
+          const util = (props.metrics && props.metrics.credit_utilization_pct) || 48.1;
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Diagnóstico de Salud Financiera 360°</h4>
+                  <p class="text-[10px] text-slate-400">Score crediticio y de liquidez</p>
+                </div>
+                <span class="text-xs font-bold px-3 py-1 rounded-full font-mono uppercase tracking-wide border" style="background-color: ${color}15; color: ${color}; border-color: ${color}40;">
+                  ${status} (${score}/100)
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 text-xs">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span class="text-[10px] text-slate-500 font-semibold uppercase">Uso de Línea</span>
+                  <div class="text-base font-black text-slate-900 mt-0.5 font-mono">${util}%</div>
+                  <span class="text-[10px] text-amber-600 font-medium">Recomendado: &lt; 30%</span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span class="text-[10px] text-slate-500 font-semibold uppercase">Puntualidad</span>
+                  <div class="text-base font-black text-emerald-600 mt-0.5 font-mono">92 pts</div>
+                  <span class="text-[10px] text-slate-500 font-medium">Historial impecable</span>
+                </div>
+              </div>
+
+              <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs text-amber-900">
+                <div class="font-bold flex items-center gap-1 text-amber-800">⚠️ Riesgo de Pago Mínimo</div>
+                <p class="text-[11px] text-amber-700 mt-1">Pagar solo el mínimo ($3,850) tardará 64 meses y costará más de $36,200 en intereses. Reestructurar ahorra $21,400.</p>
+              </div>
+            </div>
+          `;
+        }
+
+        // 8. LINE CHART (Histórico y Evolución Temporal)
+        case "LineChart":
+        case "MultiLineChart": {
+          const rows = props.rows || [
+            { mes: 'Abril', gasto: 15200 },
+            { mes: 'Mayo', gasto: 16100 },
+            { mes: 'Junio', gasto: 14200 },
+            { mes: 'Julio', gasto: 17100 },
+            { mes: 'Agosto', gasto: 16200 },
+            { mes: 'Septiembre', gasto: 14850 }
+          ];
+          const xKey = props.xKey || props.categoryKey || 'mes';
+          const yKey = props.yKey || props.valueKey || 'gasto';
+          const values = rows.map(r => Number(r[yKey]) || 0);
+          const maxVal = Math.max(...values, 1);
+          const minVal = Math.min(...values, 0);
+          const range = maxVal - minVal || 1;
+          
+          const svgW = 560;
+          const svgH = 180;
+          const padL = 45;
+          const padR = 20;
+          const padT = 25;
+          const padB = 35;
+          const innerW = svgW - padL - padR;
+          const innerH = svgH - padT - padB;
+
+          const points = rows.map((r, i) => {
+            const x = padL + (innerW / Math.max(rows.length - 1, 1)) * i;
+            const y = padT + innerH - ((Number(r[yKey]) - minVal) / range) * innerH;
+            return { x, y, val: r[yKey], label: r[xKey] };
+          });
+
+          const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+          const areaD = `${pathD} L ${points[points.length - 1].x.toFixed(1)} ${svgH - padB} L ${points[0].x.toFixed(1)} ${svgH - padB} Z`;
+
+          const circles = points.map((p, i) => `
+            <g class="group cursor-pointer">
+              <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="#EB0029" stroke="#FFFFFF" stroke-width="2" class="transition-transform hover:scale-150" />
+              <text x="${p.x}" y="${p.y - 8}" text-anchor="middle" font-size="10" font-weight="bold" fill="#1C1E21">$${Number(p.val).toLocaleString('es-MX')}</text>
+              <text x="${p.x}" y="${svgH - 12}" text-anchor="middle" font-size="10" fill="#7A8290">${p.label}</text>
+            </g>
+          `).join("");
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3 animate-in fade-in">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-2.5 h-2.5 rounded-full bg-[#EB0029]"></div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">${props.title || 'Evolución Histórica de Gastos'}</h4>
+                </div>
+                <span class="text-xs font-bold text-[#EB0029] bg-red-50 border border-red-200 px-3 py-1 rounded-full font-mono">
+                  6 Meses
+                </span>
+              </div>
+
+              <div class="w-full overflow-x-auto">
+                <svg viewBox="0 0 ${svgW} ${svgH}" class="w-full h-auto max-h-56">
+                  <defs>
+                    <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#EB0029" stop-opacity="0.25" />
+                      <stop offset="100%" stop-color="#EB0029" stop-opacity="0.0" />
+                    </linearGradient>
+                  </defs>
+                  <!-- Grid horizontal lines -->
+                  <line x1="${padL}" y1="${padT}" x2="${svgW - padR}" y2="${padT}" stroke="#F1F5F9" stroke-width="1" />
+                  <line x1="${padL}" y1="${padT + innerH/2}" x2="${svgW - padR}" y2="${padT + innerH/2}" stroke="#F1F5F9" stroke-width="1" />
+                  <line x1="${padL}" y1="${svgH - padB}" x2="${svgW - padR}" y2="${svgH - padB}" stroke="#E2E8F0" stroke-width="1.5" />
+
+                  <!-- Area & Line -->
+                  <path d="${areaD}" fill="url(#lineGrad)" />
+                  <path d="${pathD}" fill="none" stroke="#EB0029" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+                  <!-- Points & Labels -->
+                  ${circles}
+                </svg>
+              </div>
+
+              <div class="flex justify-between items-center text-xs text-slate-500 pt-2 border-t border-slate-100">
+                <span>Promedio mensual: <strong>$15,758 MXN</strong></span>
+                <span class="text-emerald-600 font-bold">Tendencia a la baja (-8.3% en Sep)</span>
+              </div>
+            </div>
+          `;
+        }
+
+        // 9. BAR CHART (Comparativas de Gastos y Rubros)
+        case "BarChart":
+        case "BarHorizontalChart":
+        case "GroupedBarChart":
+        case "StackedBarChart": {
+          const rows = props.rows || [
+            { category: "Supermercado", amount: 5420, pct: 36.5 },
+            { category: "Restaurantes", amount: 3280, pct: 22.1 },
+            { category: "Servicios", amount: 2650, pct: 17.8 },
+            { category: "Transporte", amount: 1950, pct: 13.1 },
+            { category: "Entretenimiento", amount: 1550, pct: 10.5 }
+          ];
+          const maxVal = Math.max(...rows.map(r => r.amount || r.monto || r.value || 0), 1);
+
+          const barsHtml = rows.map((r, i) => {
+            const cat = r.category || r.categoria || r.name || r.rubro || 'Rubro';
+            const val = Number(r.amount || r.monto || r.value || 0);
+            const pct = r.pct || r.percentage || ((val / maxVal) * 100).toFixed(1);
+            const widthPct = Math.min(100, Math.max(8, (val / maxVal) * 100));
+            const barColor = i === 0 ? '#EB0029' : (i === 1 ? '#FF4D6A' : '#4A5568');
+
+            return `
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold">
+                  <span class="text-slate-800">${cat}</span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-[11px] text-slate-400 font-normal">${pct}%</span>
+                    <span class="text-slate-900 font-bold tabular-nums font-mono">$${val.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+                <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                  <div class="h-full rounded-full transition-all duration-500" style="width: ${widthPct}%; background-color: ${barColor}"></div>
+                </div>
+              </div>
+            `;
+          }).join("");
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3 animate-in fade-in">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">${props.title || 'Comparativa de Gastos por Categoría'}</h4>
+                  <p class="text-[10px] text-slate-400">Distribución de egresos del periodo</p>
+                </div>
+                <span class="text-xs font-bold text-[#EB0029] bg-red-50 border border-red-200 px-3 py-1 rounded-full font-mono">
+                  Septiembre 2026
+                </span>
+              </div>
+
+              <div class="space-y-3 pt-1">
+                ${barsHtml}
+              </div>
+
+              <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 text-xs text-slate-600 flex justify-between items-center">
+                <span>Concentración en top 2: <strong>58.6% del total</strong></span>
+                <span class="text-[#EB0029] font-bold text-[11px]">Total: $14,850 MXN</span>
+              </div>
+            </div>
+          `;
+        }
+
+        // 10. TIMELINE (Seguimiento de Trámites y Reestructuración)
+        case "Timeline": {
+          const steps = props.steps || [
+            { label: "Diagnóstico y Elegibilidad", status: "completed", date: "11 Sep, 10:00", description: "Aprobado para convenio preferencial" },
+            { label: "Pre-autorización de Tasa Preferencial", status: "completed", date: "11 Sep, 10:02", description: "Tasa reducida de 64.8% a 21.0% anual" },
+            { label: "Selección y Aceptación de Plan", status: "current", date: "En curso", description: "Elige entre 12, 24 o 36 mensualidades fijas" },
+            { label: "Activación de Pagos Fijos", status: "pending", date: "Pendiente", description: "Congelamiento inmediato de intereses" }
+          ];
+
+          const stepsHtml = steps.map((s, i) => {
+            const isCompleted = s.status === 'completed';
+            const isCurrent = s.status === 'current';
+            const badgeBg = isCompleted ? 'bg-emerald-500 text-white' : (isCurrent ? 'bg-[#EB0029] text-white ring-4 ring-red-100' : 'bg-slate-200 text-slate-500');
+            const icon = isCompleted ? '✓' : (i + 1);
+
+            return `
+              <div class="flex items-start gap-3.5 relative">
+                ${i < steps.length - 1 ? `<div class="absolute left-3.5 top-8 w-0.5 h-10 ${isCompleted ? 'bg-emerald-300' : 'bg-slate-200'}"></div>` : ''}
+                <div class="w-7 h-7 rounded-full ${badgeBg} flex items-center justify-center font-bold text-xs shrink-0 z-10">
+                  ${icon}
+                </div>
+                <div class="flex-1 pb-4">
+                  <div class="flex justify-between items-center">
+                    <h5 class="text-xs font-bold ${isCurrent ? 'text-[#EB0029]' : 'text-slate-900'}">${s.label}</h5>
+                    <span class="text-[10px] font-medium text-slate-400">${s.date || ''}</span>
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-0.5">${s.description || ''}</p>
+                </div>
+              </div>
+            `;
+          }).join("");
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3 animate-in fade-in">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-2.5 h-2.5 rounded-full bg-[#EB0029]"></div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">${props.title || 'Estado de Avance de Trámite'}</h4>
+                </div>
+                <span class="text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                  Paso 3 de 4
+                </span>
+              </div>
+
+              <div class="pt-2">
+                ${stepsHtml}
+              </div>
+
+              <button onclick="sendQuickPrompt('Tengo una deuda con mi tarjeta de crédito y quiero reestructurarla')" class="w-full py-3 bg-[#EB0029] hover:bg-[#C70023] text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer">
+                Completar Selección de Plan
+              </button>
+            </div>
+          `;
+        }
+
+        // 11. DATA TABLE (Movimientos Bancarios Detallados)
+        case "DataTable": {
+          const columns = props.columns || [
+            { key: "fecha", label: "Fecha" },
+            { key: "comercio", label: "Comercio / Detalle" },
+            { key: "categoria", label: "Categoría" },
+            { key: "monto", label: "Monto" }
+          ];
+          const rows = props.rows || [
+            { fecha: "11 Sep 2026", comercio: "HEB San Pedro", categoria: "Supermercado", monto: -1850.00 },
+            { fecha: "10 Sep 2026", comercio: "Starbucks Valle", categoria: "Restaurantes", monto: -145.00 },
+            { fecha: "09 Sep 2026", comercio: "Gasolinera OXXO GAS", categoria: "Transporte", monto: -850.00 },
+            { fecha: "08 Sep 2026", comercio: "Netflix Mensual", categoria: "Entretenimiento", monto: -299.00 },
+            { fecha: "05 Sep 2026", comercio: "CFE Suministrador", categoria: "Servicios", monto: -920.00 }
+          ];
+
+          const rowsHtml = rows.map((r, i) => `
+            <tr class="border-b border-slate-100 hover:bg-slate-50 transition text-xs">
+              <td class="py-2.5 px-3 text-slate-500 whitespace-nowrap">${r.fecha || r.date}</td>
+              <td class="py-2.5 px-3 font-semibold text-slate-800">${r.comercio || r.description}</td>
+              <td class="py-2.5 px-3">
+                <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                  ${r.categoria || r.category}
+                </span>
+              </td>
+              <td class="py-2.5 px-3 text-right font-mono font-bold ${Number(r.monto || r.amount) < 0 ? 'text-[#EB0029]' : 'text-emerald-600'}">
+                $${Math.abs(Number(r.monto || r.amount)).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+              </td>
+            </tr>
+          `).join("");
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3 animate-in fade-in">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">${props.title || 'Detalle de Movimientos Recientes'}</h4>
+                  <p class="text-[10px] text-slate-400">Últimas transacciones registradas</p>
+                </div>
+                <span class="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full font-mono">
+                  ${rows.length} registros
+                </span>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                  <thead>
+                    <tr class="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th class="py-2 px-3">Fecha</th>
+                      <th class="py-2 px-3">Concepto</th>
+                      <th class="py-2 px-3">Categoría</th>
+                      <th class="py-2 px-3 text-right">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rowsHtml}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+
         default:
           return `<div class="p-4 bg-slate-100 rounded-2xl text-xs text-slate-600">Componente A2UI: ${component}</div>`;
       }
@@ -874,11 +1234,12 @@
       });
     }
 
-    function triggerApplyRestructure() {
-      const btn = document.getElementById("btnApplyPlan");
+    function triggerApplyRestructure(btnEl) {
+      const btn = btnEl || document.getElementById("btnApplyPlan");
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>Aplicando reestructuración en base de datos bancaria...</span>`;
+        btn.classList.add("opacity-80", "cursor-wait");
+        btn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></span><span>Formalizando convenio con Banorte...</span>`;
       }
       const plan = window.__restructurePlan || { id: "plan_24m", months: 24, payment: 1920 };
       dispatchA2UIAction("commit_restructure", {
@@ -888,11 +1249,12 @@
       }, "DebtRestructureCard");
     }
 
-    function triggerExecuteSpei() {
-      const btn = document.getElementById("btnConfirmSpeiToken");
+    function triggerExecuteSpei(btnEl) {
+      const btn = btnEl || document.getElementById("btnConfirmSpeiToken");
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>Validando Token Móvil con Banxico SPEI...</span>`;
+        btn.classList.add("opacity-80", "cursor-wait");
+        btn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></span><span>Validando Token Móvil con Banxico SPEI...</span>`;
       }
       const transfer = window.__pendingSpei || { amount: 850, beneficiary: "SOFÍA MENDOZA RÍOS", bank: "BBVA México", clabe: "012 180 01594839201 9" };
       dispatchA2UIAction("execute_spei", transfer, "SpeiConfirmCard");

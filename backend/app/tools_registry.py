@@ -227,17 +227,17 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
     # --- HERRAMIENTA DE PERSONA 2: MOTOR A2UI (AGENT-TO-USER INTERFACE) ---
     {
         "name": "render_a2ui",
-        "description": "Emite una especificación JSON declarativa para renderizar un componente interactivo o gráfico en el frontend de Banorte (A2UI).",
+        "description": "Emite una especificación JSON declarativa para renderizar un componente interactivo o gráfico en el frontend de Banorte (A2UI). Cumple con el Catálogo A2UI Banca Visuals v1.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "component": {
                     "type": "STRING",
-                    "description": "Nombre exacto del componente Banorte a renderizar (ej. 'SpendingDonutCard', 'FinancialHealthGauge', 'AmortizationScheduleCard', 'BanorteChartCard', 'DebtRestructureCard', 'ConfirmationReceipt', 'SpeiConfirmCard', 'SpeiReceiptCard', 'BanorteBalanceCard', 'InvestmentSimulatorCard')"
+                    "description": "Nombre exacto del componente Banorte a renderizar: 'Chart', 'KpiCard', 'ProgressIndicator', 'DataTable', 'ComparisonTable', 'Timeline', 'GeoMap', 'SpendingDonutCard', 'FinancialHealthGauge', 'DebtRestructureCard', 'ConfirmationReceipt', 'SpeiConfirmCard', 'SpeiReceiptCard', 'BanorteBalanceCard', 'BarChart', 'LineChart', 'AreaChart', 'StackedBarChart'"
                 },
                 "props": {
                     "type": "OBJECT",
-                    "description": "Propiedades requeridas por el componente React para su renderizado",
+                    "description": "Propiedades requeridas por el componente React para su renderizado según el catálogo banca_visuals_catalog.json",
                     "properties": {}
                 }
             },
