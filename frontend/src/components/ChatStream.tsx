@@ -3,8 +3,8 @@ import { Send, Sparkles, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
 import { ActionContext, ChatMessage } from '../types/a2ui';
 import { DynamicA2UIRegistry } from './DynamicA2UIRegistry';
 import { ErrorBoundary } from './ErrorBoundary';
-import mayaAvatar from '../assets/12ui/maya-avatar.png';
 import mayaMessage from '../assets/12ui/maya-message.png';
+import { BanorteLogo } from './BanorteLogo';
 
 interface ChatStreamProps {
   messages: ChatMessage[];
@@ -180,19 +180,21 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
       aria-label="Conversación con Maya Copiloto"
     >
       {/* Zen Header: Clean, light, airy, institutional and calm */}
-      <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-[#E1EAF2] bg-white px-4 sm:px-5">
+      <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-red-900/20 bg-[#EB0029] px-4 text-white sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <img src={mayaAvatar} alt="" className="h-10 w-10 shrink-0 object-contain" />
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white ring-2 ring-white/50">
+            <BanorteLogo variant="icon" className="h-6 w-6" alt="" />
+          </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="truncate text-sm font-bold tracking-tight text-[#061D3A]">
+              <h2 className="truncate text-sm font-bold tracking-tight text-white">
                 Maya Copiloto
               </h2>
-              <span className="hidden rounded-lg bg-[#F1F5F8] px-2 py-0.5 text-[11px] font-medium text-[#526B87] sm:inline-block">
+              <span className="hidden rounded-lg bg-white/15 px-2 py-0.5 text-[11px] font-medium text-white sm:inline-block">
                 IA Bancaria
               </span>
             </div>
-            <p className="truncate text-xs text-[#6D85A1]">
+            <p className="truncate text-xs text-red-100">
               Sesión protegida para {clientName.split(' ')[0]}
             </p>
           </div>
@@ -204,7 +206,7 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
             <button
               type="button"
               onClick={onToggleExpand}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 hover:bg-white/15 hover:text-white transition cursor-pointer"
               title={isExpanded ? 'Vista dividida con dashboard' : 'Expandir a pantalla completa'}
               aria-label={isExpanded ? 'Acoplar vista' : 'Expandir vista'}
             >
@@ -216,7 +218,7 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
             <button
               type="button"
               onClick={onResetDemo}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 hover:bg-white/15 hover:text-white transition cursor-pointer"
               title="Reiniciar conversación"
               aria-label="Reiniciar conversación"
             >
@@ -302,7 +304,7 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
               type="button"
               onClick={() => onSendMessage(prompt)}
               disabled={isLoading}
-              className="inline-flex shrink-0 items-center rounded-2xl border border-[#E6EDF4] bg-white px-3.5 py-2 text-[11px] font-semibold text-[#68819D] shadow-sm transition hover:border-[#CBD9E6] hover:text-[#061D3A] disabled:opacity-50 cursor-pointer"
+              className="inline-flex shrink-0 items-center rounded-2xl border border-red-100 bg-white px-3.5 py-2 text-[11px] font-semibold text-[#A5002C] shadow-sm transition hover:border-[#EB0029] hover:bg-red-50 disabled:opacity-50 cursor-pointer"
             >
               {prompt}
             </button>

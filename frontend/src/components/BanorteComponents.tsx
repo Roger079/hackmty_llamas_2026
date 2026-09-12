@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BanorteLogo as BrandLogo } from './BanorteLogo';
 
 /**
  * BANORTE UI COMPONENT SYSTEM — REVAMPED HACKATHON KIT
@@ -6,48 +7,7 @@ import React, { useState } from 'react';
  */
 
 // 1. BANORTE LOGO
-export const BanorteLogo: React.FC<{ className?: string; variant?: 'full' | 'icon'; theme?: 'light' | 'dark' }> = ({
-  className = "h-7 w-auto",
-  variant = 'full',
-  theme = 'light'
-}) => {
-  const textColor = theme === 'dark' ? '#FFFFFF' : '#1C1E21';
-
-  if (variant === 'icon') {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className={className} fill="none">
-        <rect width="48" height="48" rx="12" fill="#EB0029" />
-        <g fill="#FFFFFF">
-          <path d="M12 34 L21 14 L26 14 L17 34 Z" />
-          <path d="M20 34 L29 14 L34 14 L25 34 Z" />
-          <polygon points="27,14 36,14 32,22 23,22" opacity="0.95" />
-        </g>
-      </svg>
-    );
-  }
-
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 44" fill="none" className={className}>
-      <g fill="#EB0029">
-        <path d="M6 34 L18 10 L25 10 L13 34 Z" />
-        <path d="M17 34 L29 10 L36 10 L24 34 Z" />
-        <path d="M28 34 L40 10 L47 10 L35 34 Z" />
-        <polygon points="39,10 47,10 41,22 33,22" />
-      </g>
-      <text
-        x="56"
-        y="28"
-        fontFamily="'Montserrat', 'Helvetica Neue', Arial, sans-serif"
-        fontSize="22"
-        fontWeight="800"
-        letterSpacing="1.5"
-        fill={textColor}
-      >
-        BAN<tspan fill="#EB0029">O</tspan>RTE
-      </text>
-    </svg>
-  );
-};
+export const BanorteLogo = BrandLogo;
 
 // 2. OFFICIAL BANORTE PORTAL TOP HEADER
 export const BanortePortalHeader: React.FC<{
@@ -73,17 +33,7 @@ export const BanortePortalHeader: React.FC<{
         {/* Left: Logo & Nav items */}
         <div className="flex items-center gap-6 lg:gap-8">
           <a href="/" className="flex items-center gap-2 cursor-pointer">
-            <svg className="h-6 w-auto" viewBox="0 0 240 44" fill="none">
-              <g fill="#FFFFFF">
-                <path d="M6 34 L18 10 L25 10 L13 34 Z" />
-                <path d="M17 34 L29 10 L36 10 L24 34 Z" />
-                <path d="M28 34 L40 10 L47 10 L35 34 Z" />
-                <polygon points="39,10 47,10 41,22 33,22" />
-              </g>
-              <text x="56" y="28" fontFamily="'Montserrat', sans-serif" fontSize="22" fontWeight="800" letterSpacing="1.5" fill="#FFFFFF">
-                BANORTE
-              </text>
-            </svg>
+            <BrandLogo className="h-6 w-auto" theme="red" />
           </a>
 
           {/* Desktop Navigation Links */}
@@ -135,13 +85,7 @@ export const MayaAvatar: React.FC<{ size?: 'sm' | 'md' | 'lg' }> = ({ size = 'md
 
   return (
     <div className={`${sizeClasses[size]} rounded-full bg-[#EB0029] flex items-center justify-center text-white shadow-lg shadow-red-500/30 shrink-0 border-2 border-white`}>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-6 h-6" fill="none">
-        <g fill="#FFFFFF">
-          <path d="M12 34 L21 14 L26 14 L17 34 Z" />
-          <path d="M20 34 L29 14 L34 14 L25 34 Z" />
-          <polygon points="27,14 36,14 32,22 23,22" opacity="0.95" />
-        </g>
-      </svg>
+      <BrandLogo variant="icon" theme="red" className="h-[58%] w-[58%]" alt="" />
     </div>
   );
 };
@@ -159,6 +103,12 @@ export const MayaChatWidget: React.FC<{
   onExpandToFull
 }) => {
   const [inputText, setInputText] = useState('');
+  const dispatchPrompt = (prompt: string) => {
+    const value = prompt.trim();
+    if (!value) return;
+    onSendPrompt?.(value);
+    onExpandToFull?.();
+  };
 
   const quickPills = [
     "¿Qué puedo hacer aquí?",
@@ -172,46 +122,47 @@ export const MayaChatWidget: React.FC<{
     return (
       <button
         onClick={onToggle}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-white text-slate-800 p-2.5 pr-5 rounded-full shadow-2xl border border-slate-200 hover:scale-105 transition-all cursor-pointer"
+        aria-label="Abrir Maya, asistente virtual"
+        className="fixed bottom-20 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border-2 border-white bg-[#EB0029] p-2 pr-4 text-white shadow-[0_16px_42px_rgba(151,0,32,0.36)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(151,0,32,0.45)] cursor-pointer sm:bottom-6 sm:right-6"
       >
         <MayaAvatar size="md" />
-        <div className="text-left">
-          <span className="text-xs font-bold block text-slate-900">Maya Banorte</span>
-          <span className="text-[10px] text-slate-500">Asistente Virtual</span>
+        <div className="min-w-0 text-left leading-tight">
+          <span className="block text-sm font-black lowercase tracking-tight text-[#EB0029] [-webkit-text-stroke:1px_white]">maya</span>
+          <span className="block max-w-[205px] truncate text-[10px] font-bold text-white drop-shadow-sm">Pregúntame por una gráfica de tus gastos</span>
         </div>
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-0 right-4 sm:right-8 z-50 w-full max-w-sm bg-[#4A5568] text-white rounded-t-3xl shadow-2xl border border-slate-600 flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300">
+    <div className="fixed bottom-0 right-0 z-50 flex w-full max-w-sm flex-col overflow-hidden rounded-t-[28px] border border-red-900/20 bg-white text-slate-900 shadow-[0_18px_55px_rgba(110,0,24,0.32)] animate-in slide-in-from-bottom duration-300 sm:bottom-5 sm:right-6 sm:rounded-[28px]">
       {/* Widget Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#3E4651] border-b border-slate-600">
+      <div className="flex items-center justify-between border-b border-white/20 bg-[#EB0029] px-4 py-3 text-white">
         <div className="flex items-center gap-2">
           <MayaAvatar size="sm" />
           <div>
             <h4 className="text-xs font-bold text-white">Maya — Asistente Virtual</h4>
-            <span className="text-[10px] text-emerald-400 font-mono">En Línea</span>
+            <span className="text-[10px] font-mono text-amber-200">En línea</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
           {onExpandToFull && (
-            <button onClick={onExpandToFull} className="p-1 rounded hover:bg-white/10 text-slate-300 hover:text-white transition" title="Pantalla completa">
+            <button onClick={onExpandToFull} className="rounded p-1 text-white/80 transition hover:bg-white/15 hover:text-white" title="Pantalla completa">
               ↗
             </button>
           )}
-          <button onClick={onToggle} className="p-1 rounded hover:bg-white/10 text-slate-300 hover:text-white transition" title="Minimizar">
+          <button onClick={onToggle} className="rounded p-1 text-white/80 transition hover:bg-white/15 hover:text-white" title="Minimizar">
             –
           </button>
         </div>
       </div>
 
       {/* Widget Body */}
-      <div className="p-4 space-y-4 max-h-[420px] overflow-y-auto">
+      <div className="max-h-[420px] space-y-4 overflow-y-auto bg-gradient-to-b from-red-50 to-white p-4">
         <div className="flex items-start gap-3">
           <MayaAvatar size="md" />
           <div className="flex-1">
-            <h3 className="text-base font-bold text-white leading-snug">
+            <h3 className="text-base font-bold leading-snug text-slate-900">
               ¡Hola! Soy Maya, tu asistente virtual. ¡Chatea conmigo!
             </h3>
           </div>
@@ -222,8 +173,8 @@ export const MayaChatWidget: React.FC<{
           {quickPills.map((pill) => (
             <button
               key={pill}
-              onClick={() => onSendPrompt && onSendPrompt(pill)}
-              className="w-full text-left px-4 py-2 rounded-xl bg-[#64748B]/60 hover:bg-[#64748B] text-white text-xs font-medium transition cursor-pointer"
+              onClick={() => dispatchPrompt(pill)}
+              className="w-full rounded-xl border border-red-100 bg-white px-4 py-2 text-left text-xs font-semibold text-[#A5002C] shadow-sm transition hover:border-[#EB0029] hover:bg-red-50 cursor-pointer"
             >
               {pill}
             </button>
@@ -232,23 +183,23 @@ export const MayaChatWidget: React.FC<{
       </div>
 
       {/* Widget Input Bar */}
-      <div className="p-3 bg-[#3E4651] border-t border-slate-600">
+      <div className="border-t border-red-100 bg-white p-3">
         <div className="relative flex items-center">
           <input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Escriba algo..."
-            className="w-full bg-white text-slate-900 placeholder-slate-400 text-xs px-3.5 py-2.5 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EB0029]"
+            className="w-full rounded-xl border border-red-100 bg-red-50/50 px-3.5 py-2.5 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#EB0029]"
           />
           <button
             onClick={() => {
               if (inputText.trim() && onSendPrompt) {
-                onSendPrompt(inputText.trim());
+                dispatchPrompt(inputText);
                 setInputText('');
               }
             }}
-            className="absolute right-2 text-slate-400 hover:text-[#EB0029] p-1 cursor-pointer transition"
+            className="absolute right-2 p-1 text-[#EB0029] transition hover:text-[#A5002C] cursor-pointer"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -268,6 +219,8 @@ export const BanorteCard: React.FC<{
   balance?: number;
   cardType?: string;
   isGold?: boolean;
+  size?: 'default' | 'large';
+  className?: string;
 }> = ({
   holderName = "Ana Martínez",
   last4 = "4582",
@@ -275,6 +228,8 @@ export const BanorteCard: React.FC<{
   balance = 27900.00,
   cardType = "Débito Nómina",
   isGold = false,
+  size = 'default',
+  className = '',
 }) => {
   const [showBalance, setShowBalance] = useState(true);
 
@@ -283,16 +238,16 @@ export const BanorteCard: React.FC<{
     : "from-[#EB0029] via-[#C70023] to-[#8C0018]";
 
   return (
-    <div className={`relative w-full max-w-sm h-52 rounded-2xl p-6 text-white overflow-hidden shadow-xl bg-gradient-to-br ${bgGradient}`}>
+    <div className={`relative w-full ${size === 'large' ? 'h-60 max-w-none rounded-[1.65rem] p-7' : 'max-w-sm h-52 rounded-2xl p-6'} text-white overflow-hidden shadow-xl bg-gradient-to-br ${bgGradient} ${className}`}>
       <div className="absolute -right-8 -bottom-10 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-      <div className="absolute right-4 top-4 opacity-20 font-black text-6xl tracking-widest pointer-events-none">
-        ///
+      <div className="absolute right-5 top-5 opacity-[0.18] pointer-events-none" aria-hidden="true">
+        <BrandLogo variant="icon" theme="red" className="h-14 w-14" alt="" />
       </div>
 
       <div className="flex justify-between items-start relative z-10">
         <div>
           <span className="text-[11px] font-semibold tracking-wider uppercase text-white/80">{cardType}</span>
-          <h4 className="text-sm font-extrabold tracking-widest text-white">BANORTE</h4>
+          <BrandLogo className="mt-1 h-4 w-auto" theme="red" />
         </div>
         <div className="w-10 h-7 rounded-md bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 border border-amber-600/30 flex items-center justify-center shadow-inner">
           <div className="w-6 h-4 border border-amber-800/40 rounded-[2px]" />

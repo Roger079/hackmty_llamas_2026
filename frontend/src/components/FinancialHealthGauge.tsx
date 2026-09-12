@@ -35,24 +35,25 @@ export const FinancialHealthGauge: React.FC<FinancialHealthGaugeProps> = (props)
 
   return (
     <div className="my-3 space-y-3 animate-in fade-in duration-300">
-      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xl text-slate-900">
-        <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-2">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-xl">
+        <div className="flex items-center justify-between bg-[#EB0029] px-5 py-4 text-white">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Diagnóstico de Salud Financiera 360°</h3>
-            <p className="text-[11px] text-slate-500">Evaluación integral Banorte</p>
+            <h3 className="text-sm font-bold">Diagnóstico de Salud Financiera 360°</h3>
+            <p className="text-[11px] text-red-100">Evaluación integral Banorte</p>
           </div>
           <span
             className="text-[11px] font-bold px-3 py-1 rounded-full font-mono uppercase tracking-wide border"
             style={{
-              backgroundColor: `${color}15`,
-              color: color,
-              borderColor: `${color}40`
+              backgroundColor: '#C89319',
+              color: '#3C2800',
+              borderColor: '#E5B442'
             }}
           >
             {status}
           </span>
         </div>
 
+        <div className="px-5 pt-3">
         <Chart
           id="health-gauge"
           chartType="gauge"
@@ -69,7 +70,7 @@ export const FinancialHealthGauge: React.FC<FinancialHealthGaugeProps> = (props)
         />
 
         {/* Key Indicators Grid */}
-        <div className="grid grid-cols-2 gap-2.5 mt-3 pt-3 border-t border-slate-100 text-xs">
+        <div className="mt-3 grid grid-cols-2 gap-2.5 border-t border-slate-100 pt-3 text-xs">
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
             <span className="text-[10px] text-slate-400 font-semibold uppercase">Uso de Línea</span>
             <div className="text-sm font-bold text-slate-900 mt-0.5 font-mono">{utilization}%</div>
@@ -96,6 +97,7 @@ export const FinancialHealthGauge: React.FC<FinancialHealthGaugeProps> = (props)
             </p>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

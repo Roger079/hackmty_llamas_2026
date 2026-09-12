@@ -1,6 +1,6 @@
 import React from 'react';
 import { LockKeyhole, Cpu, ChevronDown } from 'lucide-react';
-import banorteLogo from '../assets/12ui/banorte-logo.png';
+import { BanorteLogo } from './BanorteLogo';
 
 export interface BanortePortalHeaderProps {
   clientName?: string;
@@ -41,7 +41,7 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
       <div className="mx-auto flex h-full max-w-[1536px] items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Left: Official Banorte Brand logo & Banking subtitle */}
         <div className="flex items-center gap-3 sm:gap-5">
-          <img src={banorteLogo} alt="Banorte" className="h-[27px] w-auto object-contain" />
+          <BanorteLogo className="h-[27px] w-auto" theme="red" />
           <div className="hidden border-l border-white/20 pl-4 md:block">
             <span className="text-[13px] font-bold text-white tracking-tight">
               Banca en Línea
