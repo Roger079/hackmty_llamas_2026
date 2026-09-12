@@ -419,7 +419,6 @@ class GeminiOrchestrator:
         elif any(k in combined for k in ["gasto", "gasté", "gastos", "categoría", "en qué", "compras", "consumo"]):
             spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": request.message})
             return A2UIPayload(component="SpendingDonutCard", props=spending)
-            return A2UIPayload(component="SpendingDonutCard", props=spending)
 
         # 2. Balances / Accounts
         elif any(k in combined for k in ["saldo", "cuentas", "cuánto tengo", "disponible"]):
