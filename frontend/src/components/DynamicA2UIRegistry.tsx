@@ -52,19 +52,37 @@ function normalizeProps(component: string, rawProps: Record<string, any>): Recor
 
   if (component === 'BanorteBalanceCard') {
     const accounts = Array.isArray(p.accounts) ? p.accounts : [];
-    const nomina = accounts.find((a: any) => a.type === 'nomina');
-    const oro = accounts.find((a: any) => a.type === 'oro');
+    const firstAcc = accounts[0];
+    const cardAcc = accounts.find((a: any) => a.type === 'oro' || a.current_debt > 0);
+    const secAcc = accounts.length > 1 ? accounts[1] : null;
 
-    p.nominaBalance = p.nominaBalance ?? p.nomina_balance ?? nomina?.available_balance ?? 48650.00;
-    p.oroBalance = p.oroBalance ?? p.oro_balance ?? oro?.available_credit ?? 41550.00;
-    p.totalDebt = p.totalDebt ?? p.total_debt ?? oro?.current_debt ?? 38450.00;
-    p.clientName = p.clientName ?? p.client ?? p.client_name ?? 'Alejandro Ramírez';
+    p.clientName = p.clientName || p.client || p.client_name;
+    p.primaryAccountName = p.primaryAccountName || p.primary_account_name || firstAcc?.name;
+    p.primaryAccountLast4 = p.primaryAccountLast4 || p.primary_account_last4 || firstAcc?.last4 || firstAcc?.account_last4;
+    p.primaryAccountBalance = p.primaryAccountBalance ?? p.primary_account_balance ?? p.nominaBalance ?? p.nomina_balance ?? firstAcc?.available_balance;
+    p.nominaBalance = p.primaryAccountBalance;
+
+    if (cardAcc && cardAcc.current_debt > 0) {
+      p.secondaryType = 'card';
+      p.cardName = p.cardName || p.card_name || cardAcc.name;
+      p.cardLast4 = p.cardLast4 || p.card_last4 || cardAcc.number?.replace(/\*/g, '');
+      p.totalDebt = p.totalDebt ?? p.total_debt ?? cardAcc.current_debt;
+      p.oroBalance = p.oroBalance ?? p.oro_balance ?? cardAcc.available_credit;
+    } else if (secAcc) {
+      p.secondaryType = 'account';
+      p.secondaryAccountName = p.secondaryAccountName || p.secondary_account_name || secAcc.name;
+      p.secondaryAccountLast4 = p.secondaryAccountLast4 || p.secondary_account_last4 || secAcc.last4 || secAcc.account_last4;
+      p.secondaryAccountBalance = p.secondaryAccountBalance ?? p.secondary_account_balance ?? secAcc.available_balance;
+      p.totalDebt = 0;
+    } else {
+      p.totalDebt = p.totalDebt ?? p.total_debt ?? 0;
+    }
   } else if (component === 'DebtRestructureCard') {
-    p.totalDebt = p.totalDebt ?? p.total_debt ?? 38450.00;
-    p.cardName = p.cardName ?? p.card_name ?? 'Tarjeta Banorte Oro';
-    p.cardLast4 = p.cardLast4 ?? p.card_last4 ?? '8842';
-    p.minimumPayment = p.minimumPayment ?? p.minimum_payment ?? 3850.00;
-    p.dueDate = p.dueDate ?? p.payment_due_date ?? p.due_date ?? '18 Sep 2026';
+    p.totalDebt = p.totalDebt ?? p.total_debt ?? 28000.00;
+    p.cardName = p.cardName ?? p.card_name ?? 'Tarjeta Banorte Mastercard';
+    p.cardLast4 = p.cardLast4 ?? p.card_last4 ?? '8812';
+    p.minimumPayment = p.minimumPayment ?? p.minimum_payment ?? 2500.00;
+    p.dueDate = p.dueDate ?? p.payment_due_date ?? p.due_date ?? '27 Sep 2026';
     p.currentRate = p.currentRate ?? p.interest_rate_annual ?? p.rate ?? '64.8% CAT';
     p.options = (p.options || []).map((opt: any, index: number) => ({
       plan_id: opt.plan_id ?? `plan_${opt.months ?? opt.term_months ?? index}`,
@@ -75,13 +93,13 @@ function normalizeProps(component: string, rawProps: Record<string, any>): Recor
       label: opt.label,
     }));
   } else if (component === 'ConfirmationReceipt') {
-    p.folio = p.folio || p.folio_convenio || 'FOL-BNTE-2026-R88754';
+    p.folio = p.folio || p.folio_convenio || 'FOL-BNTE-2026-R8812';
     p.status = p.status || 'APROBADO';
-    p.monthlyPayment = p.monthlyPayment ?? p.monthly_payment ?? 1920.00;
+    p.monthlyPayment = p.monthlyPayment ?? p.monthly_payment ?? 1376.67;
     p.termMonths = p.termMonths ?? p.term_months ?? 24;
     p.nextPaymentDate = p.nextPaymentDate || p.next_payment_date || '15 Oct 2026';
     p.bankSeal = p.bankSeal || p.bank_seal || 'BANORTE-CRYPTO-SHA256-VALID';
-    p.clientName = p.clientName || p.client_name || 'Alejandro Ramírez';
+    p.clientName = p.clientName || p.client_name || 'Carlos Ramírez';
   } else if (component === 'SpeiConfirmCard') {
     p.transferId = p.transferId || p.transfer_id || 'prep-spei-101';
     p.beneficiary = p.beneficiary || p.beneficiary_name || 'SOFÍA MENDOZA RÍOS';
@@ -91,11 +109,11 @@ function normalizeProps(component: string, rawProps: Record<string, any>): Recor
     p.trackingKey = p.trackingKey || p.tracking_key || 'BNTE202609118492019';
     p.date = p.date || p.execution_timestamp || '11 Sep 2026, 23:45 hrs';
   } else if (component === 'InvestmentSimulatorCard') {
-    p.initialAmount = p.initialAmount ?? p.initial_amount ?? 10000;
-    p.initialTermDays = p.initialTermDays ?? p.initial_term_days ?? 90;
-    p.annualRate = p.annualRate ?? p.annual_rate ?? '11.25%';
-    p.estimatedGain = p.estimatedGain ?? p.estimated_gain ?? 281.25;
-    p.totalMaturity = p.totalMaturity ?? p.total_maturity ?? 10281.25;
+    p.initialAmount = p.initialAmount ?? p.initial_amount ?? 25000;
+    p.initialTermDays = p.initialTermDays ?? p.initial_term_days ?? 91;
+    p.annualRate = p.annualRate ?? p.annual_rate ?? '9.1%';
+    p.estimatedGain = p.estimatedGain ?? p.estimated_gain;
+    p.totalMaturity = p.totalMaturity ?? p.total_maturity;
   }
 
   return p;

@@ -21,11 +21,11 @@ const defaultOptions: RestructureOption[] = [
 ];
 
 export const DebtRestructureCard: React.FC<DebtRestructureCardProps> = ({
-  totalDebt = 48500.0,
-  cardName = 'Tarjeta Banorte Platino',
-  cardLast4 = '4892',
-  minimumPayment = 3850.0,
-  dueDate = '18 Sep 2026',
+  totalDebt = 28000.0,
+  cardName = 'Tarjeta Banorte Mastercard',
+  cardLast4 = '8812',
+  minimumPayment = 2500.0,
+  dueDate = '27 Sep 2026',
   currentRate = '64.8% CAT',
   options = defaultOptions,
   onAction,

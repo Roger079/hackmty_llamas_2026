@@ -269,10 +269,10 @@ export const BanorteCard: React.FC<{
   cardType?: string;
   isGold?: boolean;
 }> = ({
-  holderName = "ALEJANDRO RAMIREZ",
-  last4 = "8842",
-  expiry = "08/29",
-  balance = 48250.75,
+  holderName = "Ana Martínez",
+  last4 = "4582",
+  expiry = "12/28",
+  balance = 27900.00,
   cardType = "Débito Nómina",
   isGold = false,
 }) => {

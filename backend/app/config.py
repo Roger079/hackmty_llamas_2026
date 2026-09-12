@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     gemini_api_key: Optional[str] = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
     mcp_server_url: str = os.getenv("MCP_SERVER_URL", "http://localhost:8001/mcp")
-    default_user_id: str = os.getenv("DEFAULT_USER_ID", "USR-BANORTE-8842")
+    default_user_id: str = os.getenv("DEFAULT_USER_ID", "C001")
     debug: bool = os.getenv("DEBUG", "true").lower() == "true"
     host: str = os.getenv("HOST", "0.0.0.0")
     port: int = int(os.getenv("PORT", "8000"))

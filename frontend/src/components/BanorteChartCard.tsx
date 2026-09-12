@@ -3,7 +3,7 @@ import { Chart } from '../visuals/Chart';
 import type { ChartProps } from '../visuals/types';
 import { ActionContext } from '../types/a2ui';
 
-interface BanorteChartCardProps extends Partial<ChartProps> {
+interface BanorteChartCardProps extends Omit<Partial<ChartProps>, 'onAction'> {
   onAction?: (ctx: ActionContext) => void;
   disabled?: boolean;
 }

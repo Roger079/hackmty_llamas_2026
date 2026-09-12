@@ -8,14 +8,18 @@ export interface BanortePortalHeaderProps {
   hasToken?: boolean;
   mcpCallCount?: number;
   onOpenInspector?: () => void;
+  selectedUserId?: string;
+  onSelectUser?: (userId: string) => void;
 }
 
 export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
-  clientName = 'Roberto Carlos Garza',
-  tier = 'Cliente Preferente',
+  clientName = 'Ana Martínez',
+  tier = 'Cliente Nómina',
   hasToken = true,
   mcpCallCount = 0,
   onOpenInspector,
+  selectedUserId = 'C001',
+  onSelectUser,
 }) => {
   const initials = clientName
     .split(' ')
@@ -25,10 +29,17 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
     .join('')
     .toUpperCase();
 
+  const currentTier =
+    selectedUserId === 'C001'
+      ? 'Cliente Nómina'
+      : selectedUserId === 'C002'
+      ? 'Cliente Clásico'
+      : 'Cliente Patrimonial';
+
   return (
     <header className="sticky top-0 z-40 h-[70px] bg-gradient-to-r from-[#C90032] via-[#EB0029] to-[#D90036] text-white shadow-[0_4px_12px_rgba(137,0,28,0.14)]">
       <div className="mx-auto flex h-full max-w-[1536px] items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Left: Brand logo & subtle subtitle */}
+        {/* Left: Official Banorte Brand logo & Banking subtitle */}
         <div className="flex items-center gap-3 sm:gap-5">
           <img src={banorteLogo} alt="Banorte" className="h-[27px] w-auto object-contain" />
           <div className="hidden border-l border-white/20 pl-4 md:block">
@@ -38,7 +49,7 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
           </div>
         </div>
 
-        {/* Right: Security indicators, MCP telemetry, and Client profile */}
+        {/* Right: Security indicators, MCP telemetry, and Client profile switcher */}
         <div className="flex items-center gap-2 sm:gap-3.5">
           {/* FastMCP Inspector discrete badge */}
           {onOpenInspector && (
@@ -65,18 +76,35 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
             </span>
           )}
 
-          {/* User profile avatar */}
+          {/* Real SQLite Customer Profile & Switcher */}
           <div className="flex items-center gap-2 border-l border-white/20 pl-2 sm:pl-3">
-            <div className="hidden text-right lg:block">
-              <p className="text-[13px] font-bold text-white leading-tight">{clientName}</p>
-              <p className="text-xs font-medium text-white/90 leading-tight">{tier}</p>
+            <div className="text-right">
+              {onSelectUser ? (
+                <div className="flex items-center justify-end">
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => onSelectUser(e.target.value)}
+                    className="bg-black/25 hover:bg-black/35 text-white font-bold text-[13px] rounded-xl px-2.5 py-1 border border-white/30 focus:outline-none cursor-pointer text-right appearance-none transition"
+                    title="Seleccionar cliente bancario registrado en SQLite"
+                  >
+                    <option value="C001" className="bg-[#9D0027] text-white">Ana Martínez (Nómina)</option>
+                    <option value="C002" className="bg-[#9D0027] text-white">Carlos Ramírez (Deuda)</option>
+                    <option value="C003" className="bg-[#9D0027] text-white">Silvia Carrasco (Patrimonial)</option>
+                  </select>
+                </div>
+              ) : (
+                <p className="text-[13px] font-bold text-white leading-tight">{clientName}</p>
+              )}
+              <p className="text-[11px] font-medium text-white/80 leading-tight mt-0.5">
+                {currentTier}
+              </p>
             </div>
             <div
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-[13px] font-bold text-[#D00039]"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-[13px] font-bold text-[#D00039] shadow-sm"
               aria-label={`Perfil de ${clientName}`}
-              title={clientName}
+              title={`Cliente autenticado: ${clientName}`}
             >
-              {initials || 'RC'}
+              {initials || 'AR'}
             </div>
           </div>
         </div>

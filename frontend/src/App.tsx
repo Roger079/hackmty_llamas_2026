@@ -3,27 +3,28 @@ import { Code2, Cpu, X, Sparkles } from 'lucide-react';
 import { BanortePortalSegmentBar } from './components/BanortePortalSegmentBar';
 import { BanortePortalHeader } from './components/BanortePortalHeader';
 import { BanorteSubNav, PortalTab } from './components/BanorteSubNav';
-import { BanorteGlobalPosition } from './components/BanorteGlobalPosition';
+import { BanorteGlobalPosition, TransactionItem } from './components/BanorteGlobalPosition';
 import { BanorteFooter } from './components/BanorteFooter';
 import { ChatStream } from './components/ChatStream';
 import { McpInspector } from './components/McpInspector';
 import { MobileSimulator } from './components/MobileSimulator';
 import { A2UIPayload, ActionContext, ChatMessage, McpCallLog } from './types/a2ui';
 
-const USER_ID = 'USR-BANORTE-8842';
-const DEFAULT_CLIENT = 'Roberto Carlos Garza';
+const DEFAULT_USER_ID = 'C001';
+const DEFAULT_CLIENT = 'Ana Martínez';
 type InspectorView = 'calls' | 'payload';
 
 const timeNow = () =>
   new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
 export const App: React.FC = () => {
+  const [selectedUserId, setSelectedUserId] = useState<string>(DEFAULT_USER_ID);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome-1',
       role: 'assistant',
       content:
-        'Hola, bienvenido a Banorte. Soy Maya, tu copiloto financiero inteligente. Puedo ayudarte a consultar tus saldos disponibles, reestructurar tu tarjeta de crédito con tasas fijas congeladas o transferir fondos por SPEI con autorización de Token Móvil.',
+        'Hola, Ana. Bienvenida a Banorte. Soy Maya, tu copiloto financiero inteligente conectado a tu banca en línea en tiempo real. ¿En qué puedo apoyarte hoy?',
       timestamp: timeNow(),
     },
   ]);
@@ -44,17 +45,22 @@ export const App: React.FC = () => {
     nominaBalance?: number;
     oroBalance?: number;
     totalDebt?: number;
+    accountLast4?: string;
+    cardLast4?: string;
   }>({
-    nominaBalance: 48650.00,
-    oroBalance: 41550.00,
-    totalDebt: 48500.00,
+    nominaBalance: 27900.00,
+    oroBalance: 0.00,
+    totalDebt: 0.00,
+    accountLast4: '4582',
+    cardLast4: '',
   });
+  const [transactions, setTransactions] = useState<TransactionItem[]>([]);
 
   const inspectorRef = useRef<HTMLElement>(null);
   const closeInspectorRef = useRef<HTMLButtonElement>(null);
   const inspectorTriggerRef = useRef<HTMLElement | null>(null);
 
-  const firstName = useMemo(() => clientName.split(' ')[0] || 'Roberto', [clientName]);
+  const firstName = useMemo(() => clientName.split(' ')[0] || 'Ana', [clientName]);
   const hasRestructure = useMemo(() => {
     return bankAccounts.totalDebt === 0 || mcpLogs.some((l) => l.tool_name === 'commit_restructure');
   }, [bankAccounts.totalDebt, mcpLogs]);
@@ -67,30 +73,69 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Sync health & bank state on mount
+  // Sync health & MCP status on mount
   useEffect(() => {
-    Promise.allSettled([
-      fetch('/api/health').then((res) => (res.ok ? res.json() : Promise.reject())),
-      fetch('/api/bank/state').then((res) => (res.ok ? res.json() : Promise.reject())),
-    ]).then(([health, bank]) => {
-      if (health.status === 'fulfilled') {
-        setIsMcpConnected(Boolean(health.value.mcp_connected));
-      }
-      if (bank.status === 'fulfilled') {
-        if (bank.value.client_name) {
-          setClientName(bank.value.client_name);
-        }
-        if (bank.value.accounts) {
-          const nomina = bank.value.accounts.nomina?.balance ?? 48650.00;
-          const oroDebt = bank.value.accounts.oro?.debt ?? 48500.00;
-          setBankAccounts({
-            nominaBalance: nomina,
-            totalDebt: oroDebt,
-          });
-        }
-      }
-    });
+    fetch('/api/health')
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((health) => {
+        setIsMcpConnected(Boolean(health.mcp_connected || health.status === 'healthy'));
+      })
+      .catch(() => setIsMcpConnected(false));
   }, []);
+
+  // Sync persistent chat history & real customer SQL financial state whenever selected customer changes
+  useEffect(() => {
+    // 1. Fetch persistent chat history from SQLite for selected customer
+    fetch(`/api/chat/history?user_id=${selectedUserId}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        if (data && data.history && data.history.length > 0) {
+          setMessages(data.history);
+          const lastWithA2UI = [...data.history].reverse().find((m) => m.a2ui);
+          if (lastWithA2UI) setLastA2UI(lastWithA2UI.a2ui);
+        } else {
+          const defaultGreetingName =
+            selectedUserId === 'C001'
+              ? 'Ana'
+              : selectedUserId === 'C002'
+              ? 'Carlos'
+              : selectedUserId === 'C003'
+              ? 'Silvia'
+              : 'Cliente';
+          setMessages([
+            {
+              id: 'welcome-1',
+              role: 'assistant',
+              content: `Hola, ${defaultGreetingName}. Bienvenido a Banorte. Soy Maya, tu copiloto financiero inteligente con memoria segura en SQLite. ¿En qué puedo apoyarte hoy?`,
+              timestamp: timeNow(),
+            },
+          ]);
+          setLastA2UI(null);
+        }
+      })
+      .catch((err) => console.warn('Could not load persistent chat history:', err));
+
+    // 2. Fetch real customer financial state directly from SQLite views via /api/bank/state
+    fetch(`/api/bank/state?user_id=${selectedUserId}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        if (data.client_name) {
+          setClientName(data.client_name);
+        }
+        const accLast4 = data.primary_account?.account_last4 || (data.accounts?.[0]?.account_last4 ?? '0000');
+        const cardLast4 = data.primary_card?.pan_last4 || (data.credit_cards?.[0]?.pan_last4 ?? '');
+        setBankAccounts({
+          nominaBalance: data.total_available_balance ?? 0.00,
+          totalDebt: data.total_debt ?? 0.00,
+          accountLast4: accLast4,
+          cardLast4: cardLast4,
+        });
+        if (Array.isArray(data.transactions)) {
+          setTransactions(data.transactions);
+        }
+      })
+      .catch((err) => console.warn('Could not load bank state from SQLite:', err));
+  }, [selectedUserId]);
 
   const closeInspector = () => {
     setIsInspectorOpen(false);
@@ -210,7 +255,7 @@ export const App: React.FC = () => {
     }
 
     try {
-      const data = await postChat({ message: text, user_id: USER_ID, history: requestHistory });
+      const data = await postChat({ message: text, user_id: selectedUserId, history: requestHistory });
       appendResponse(data);
     } catch (error) {
       appendConnectionError(error);
@@ -244,7 +289,7 @@ export const App: React.FC = () => {
       const data = await postChat({
         message: actionMessage,
         ...(isExploratory ? {} : { action_context: actionContext }),
-        user_id: USER_ID,
+        user_id: selectedUserId,
         history: requestHistory,
       });
       appendResponse(data);
@@ -257,16 +302,22 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleResetDemo = () => {
+  const handleResetDemo = async () => {
+    try {
+      await fetch(`/api/chat/history?user_id=${selectedUserId}`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Could not clear remote chat history:', err);
+    }
     setMessages([
       {
         id: 'welcome-1',
         role: 'assistant',
         content:
-          'Hola, bienvenido a Banorte. Soy Maya, tu copiloto financiero inteligente. Puedo ayudarte a consultar tus saldos disponibles, reestructurar tu tarjeta de crédito con tasas fijas congeladas o transferir fondos por SPEI con autorización de Token Móvil.',
+          'Hola, bienvenido a Banorte. Soy Maya, tu copiloto financiero inteligente. Tu historial ha sido limpiado de forma segura conforme a la política de privacidad Banorte.',
         timestamp: timeNow(),
       },
     ]);
+    setLastA2UI(null);
   };
 
   const renderInspectorDrawer = () => (
@@ -394,6 +445,7 @@ export const App: React.FC = () => {
           onAction={handleAction}
           onResetDemo={handleResetDemo}
           accounts={bankAccounts}
+          transactions={transactions}
           hasRestructure={hasRestructure}
           mcpLogs={mcpLogs}
           onOpenInspector={() => setIsInspectorOpen(true)}
@@ -416,6 +468,8 @@ export const App: React.FC = () => {
           hasToken
           mcpCallCount={mcpLogs.length}
           onOpenInspector={() => setIsInspectorOpen(true)}
+          selectedUserId={selectedUserId}
+          onSelectUser={(newId) => setSelectedUserId(newId)}
         />
 
         {/* 3. Operational Subnav Bar */}
@@ -439,6 +493,7 @@ export const App: React.FC = () => {
               <BanorteGlobalPosition
                 clientName={clientName}
                 accounts={bankAccounts}
+                transactions={transactions}
                 onTriggerMayaPrompt={handleSendMessage}
               />
             </div>

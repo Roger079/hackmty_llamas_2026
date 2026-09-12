@@ -18,6 +18,7 @@ import {
 import { ChatStream } from './ChatStream';
 import { ActionContext, ChatMessage, McpCallLog } from '../types/a2ui';
 import banorteLogo from '../assets/12ui/banorte-logo.png';
+import { TransactionItem } from './BanorteGlobalPosition';
 
 interface MobileSimulatorProps {
   clientName: string;
@@ -30,7 +31,10 @@ interface MobileSimulatorProps {
     nominaBalance?: number;
     oroBalance?: number;
     totalDebt?: number;
+    accountLast4?: string;
+    cardLast4?: string;
   };
+  transactions?: TransactionItem[];
   hasRestructure?: boolean;
   mcpLogs?: McpCallLog[];
   onOpenInspector?: () => void;
@@ -46,6 +50,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
   onAction,
   onResetDemo,
   accounts,
+  transactions = [],
   hasRestructure = false,
   mcpLogs = [],
   onOpenInspector,
@@ -53,9 +58,11 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [showCvv, setShowCvv] = useState(false);
 
-  const nominaBalance = accounts?.nominaBalance ?? 48650.0;
-  const platinoDebt = accounts?.totalDebt ?? 48500.0;
-  const firstName = clientName.split(' ')[0] || 'Roberto';
+  const nominaBalance = accounts?.nominaBalance ?? 27900.0;
+  const platinoDebt = accounts?.totalDebt ?? 0.0;
+  const accountLast4 = accounts?.accountLast4 || (clientName.includes('Carlos') ? '7721' : clientName.includes('Silvia') ? '8359' : '4582');
+  const cardLast4 = accounts?.cardLast4 || (clientName.includes('Carlos') ? '8812' : '');
+  const firstName = clientName.split(' ')[0] || 'Ana';
 
   return (
     <div className="min-h-screen w-full bg-[#F4F6F9] text-slate-900 flex flex-col justify-between antialiased pb-16">
@@ -104,11 +111,11 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
         {/* TAB 1: HOME (Accounts, Quick Actions, Debt Alert, Movements) */}
         {activeTab === 'home' && (
           <div className="space-y-4">
-            {/* Account Card (Nómina) */}
+            {/* Account Card */}
             <div className="rounded-2xl bg-white p-4 shadow-xs border border-slate-200/80">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Débito Enlace Digital • 1234
+                  {clientName.includes('Silvia') ? 'Ahorro Patrimonial' : clientName.includes('Carlos') ? 'Ahorro Banorte' : 'Débito Nómina'} • {accountLast4}
                 </span>
                 <WalletCards className="h-4 w-4 text-[#EB0029]" />
               </div>
@@ -173,48 +180,62 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
               </button>
             </div>
 
-            {/* Credit Card Platino with Restructure Alert */}
-            <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 text-white shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block">
-                    Tarjeta Banorte Platino
+            {/* Credit Card / Status Banner */}
+            {platinoDebt > 0 ? (
+              <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 text-white shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block">
+                      {clientName.includes('Carlos') ? 'Tarjeta Banorte Clásica' : 'Tarjeta Banorte Oro'}
+                    </span>
+                    <span className="font-mono text-xs text-slate-400">•••• {cardLast4 || '8812'}</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-300 bg-white/10 px-2 py-0.5 rounded">
+                    {hasRestructure ? 'Tasa Fija 22.5%' : '64.8% CAT'}
                   </span>
-                  <span className="font-mono text-xs text-slate-400">•••• 4892</span>
                 </div>
-                <span className="text-[10px] font-bold text-amber-300 bg-white/10 px-2 py-0.5 rounded">
-                  64.8% CAT
+
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Saldo actual exigible</span>
+                  <div className="text-xl font-black tabular-nums">
+                    ${platinoDebt.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
+                    <span className="text-xs font-semibold">MXN</span>
+                  </div>
+                </div>
+
+                {hasRestructure ? (
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-950/80 border border-emerald-600/50 p-2.5 text-[11px] text-emerald-300">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span>Convenio activo: Intereses moratorios congelados.</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('maya');
+                      onSendMessage('¿Cómo reestructurar mi tarjeta de crédito?');
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-[#EB0029] hover:bg-[#C70023] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                    <span>Reestructurar con Maya</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-900 shadow-xs flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">
+                    Cuentas al Corriente
+                  </span>
+                  <p className="text-xs font-bold text-emerald-800 mt-0.5">Sin saldos deudores vencidos</p>
+                </div>
+                <span className="text-xs font-bold bg-emerald-600 text-white px-2.5 py-1 rounded-lg">
+                  100% Sano
                 </span>
               </div>
-
-              <div>
-                <span className="text-[10px] text-slate-400 block">Saldo actual exigible</span>
-                <div className="text-xl font-black tabular-nums">
-                  ${platinoDebt.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
-                  <span className="text-xs font-semibold">MXN</span>
-                </div>
-              </div>
-
-              {hasRestructure ? (
-                <div className="flex items-center gap-2 rounded-xl bg-emerald-950/80 border border-emerald-600/50 p-2.5 text-[11px] text-emerald-300">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span>Convenio activo: Intereses moratorios congelados.</span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('maya');
-                    onSendMessage('¿Cómo reestructurar mi tarjeta Platino?');
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-[#EB0029] hover:bg-[#C70023] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                  <span>Reestructurar con Maya</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
+            )}
 
             {/* Recent Activity List */}
             <div className="rounded-2xl bg-white p-4 shadow-xs border border-slate-200/80 space-y-3">
@@ -224,29 +245,21 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
               </div>
 
               <div className="space-y-2.5 text-xs">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div>
-                    <p className="font-bold text-slate-900">Depósito Nómina Banorte</p>
-                    <p className="text-[10px] text-slate-400">Hoy, 08:30 hrs</p>
-                  </div>
-                  <span className="font-bold text-emerald-600 tabular-nums">+$14,250.00</span>
-                </div>
-
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div>
-                    <p className="font-bold text-slate-900">Transferencia SPEI a Sofía</p>
-                    <p className="text-[10px] text-slate-400">Ayer, 20:15 hrs</p>
-                  </div>
-                  <span className="font-bold text-slate-900 tabular-nums">-$850.00</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-slate-900">Walmart Supercenter</p>
-                    <p className="text-[10px] text-slate-400">10 Sep, 17:42 hrs</p>
-                  </div>
-                  <span className="font-bold text-slate-900 tabular-nums">-$1,840.50</span>
-                </div>
+                {transactions && transactions.length > 0 ? (
+                  transactions.slice(0, 4).map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-b-0">
+                      <div>
+                        <p className="font-bold text-slate-900">{tx.description}</p>
+                        <p className="text-[10px] text-slate-400">{tx.date}</p>
+                      </div>
+                      <span className={`font-bold tabular-nums ${tx.type === 'credit' ? 'text-emerald-600' : 'text-slate-900'}`}>
+                        {tx.type === 'credit' ? '+' : ''}${Math.abs(tx.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-slate-400 text-[11px] text-center py-2">Sin movimientos recientes</p>
+                )}
               </div>
             </div>
           </div>
@@ -272,13 +285,13 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
             <div className="rounded-2xl bg-gradient-to-br from-[#1C1E21] to-[#343B45] p-5 text-white shadow-md space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
-                  Tarjeta Digital Platino
+                  {cardLast4 ? (clientName.includes('Carlos') ? 'Tarjeta Digital Clásica' : 'Tarjeta Digital Oro') : 'Tarjeta Digital Enlace Débito'}
                 </span>
                 <span className="text-xs font-mono font-bold">BANORTE</span>
               </div>
 
               <div className="font-mono text-lg tracking-widest text-slate-100">
-                •••• •••• •••• 4892
+                •••• •••• •••• {cardLast4 || accountLast4}
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-white/15 text-xs">

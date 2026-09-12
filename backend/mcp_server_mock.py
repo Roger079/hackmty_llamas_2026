@@ -76,34 +76,28 @@ def get_user_debt(user_id: str = "C002") -> dict:
 
         if cards:
             c = dict(cards[0])
-            debt = float(c.get("current_balance") or c.get("current_debt") or 28000.0)
-            limit = float(c.get("credit_limit") or 100000.0)
+            debt = float(c.get("current_balance") or c.get("current_debt") or 0.0)
+            limit = float(c.get("credit_limit") or 0.0)
             min_pay = float(c.get("minimum_payment") or (debt * 0.08))
-            card_last4 = c.get("card_last4") or "8812"
-            card_brand = c.get("brand") or "Tarjeta Banorte Oro"
+            card_last4 = c.get("pan_last4") or c.get("card_last4") or "8812"
+            card_brand = f"Tarjeta Banorte {c.get('network', 'Clásica').capitalize()}"
+            due_date = c.get("payment_due_date") or "27 Sep 2026"
+            is_eligible = debt > 0
         else:
-            debt = 38450.00
-            limit = 80000.00
-            min_pay = 3850.00
-            card_last4 = "8842"
-            card_brand = "Tarjeta Banorte Oro"
+            debt = 0.0
+            limit = 0.0
+            min_pay = 0.0
+            card_last4 = ""
+            card_brand = "Sin tarjetas de crédito"
+            due_date = ""
+            is_eligible = False
 
-        m12 = round((debt * 1.12) / 12, 2)
-        m24 = round((debt * 1.18) / 24, 2)
-        m36 = round((debt * 1.22) / 36, 2)
-
-        return {
-            "user_id": user_id,
-            "client_name": client_name,
-            "card_name": card_brand,
-            "card_last4": card_last4,
-            "total_debt": debt,
-            "credit_limit": limit,
-            "minimum_payment": min_pay,
-            "payment_due_date": "18 Sep 2026",
-            "interest_rate_annual": "64.8% CAT",
-            "eligible_for_restructure": True,
-            "options": [
+        options = []
+        if debt > 0:
+            m12 = round((debt * 1.12) / 12, 2)
+            m24 = round((debt * 1.18) / 24, 2)
+            m36 = round((debt * 1.22) / 36, 2)
+            options = [
                 {
                     "plan_id": "plan_12m",
                     "months": 12,
@@ -129,6 +123,19 @@ def get_user_debt(user_id: str = "C002") -> dict:
                     "label": "36 meses cuota mínima"
                 }
             ]
+
+        return {
+            "user_id": user_id,
+            "client_name": client_name,
+            "card_name": card_brand,
+            "card_last4": card_last4,
+            "total_debt": debt,
+            "credit_limit": limit,
+            "minimum_payment": min_pay,
+            "payment_due_date": due_date,
+            "interest_rate_annual": "64.8% CAT" if debt > 0 else "0.0%",
+            "eligible_for_restructure": is_eligible,
+            "options": options
         }
     finally:
         conn.close()

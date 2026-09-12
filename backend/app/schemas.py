@@ -29,7 +29,7 @@ class ChatRequest(BaseModel):
     message: str = Field(default="", description="User input text")
     history: List[ChatMessage] = Field(default_factory=list, description="Previous conversation turns")
     action_context: Optional[ActionContext] = Field(None, description="Feedback loop action from an A2UI component")
-    user_id: Optional[str] = Field("USR-BANORTE-8842", description="Authenticated client ID")
+    user_id: Optional[str] = Field("C001", description="Authenticated client ID")
 
 class McpToolCallLog(BaseModel):
     tool_name: str
@@ -50,7 +50,7 @@ class StreamEvent(BaseModel):
 
 class UserCognitiveProfile(BaseModel):
     user_id: str
-    client_name: str = "Alejandro Ramírez"
+    client_name: str = "Ana Martínez"
     memory_summary: str = Field(default="", description="Resumen consolidado de fricciones e historial previo")
     sensitivities: str = Field(default="", description="Sensibilidades específicas detectadas (ej. pagos mayores a $2,000)")
     recommended_tone: str = Field(default="Empático, directo y enfocado en liquidez", description="Tono y estilo de comunicación recomendado")
@@ -66,7 +66,7 @@ class FrictionLogItem(BaseModel):
     timestamp: str
 
 class EndSessionRequest(BaseModel):
-    user_id: str = "USR-BANORTE-8842"
+    user_id: str = "C001"
     history: List[ChatMessage] = Field(default_factory=list)
 
 class EndSessionResponse(BaseModel):

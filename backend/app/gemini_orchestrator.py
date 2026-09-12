@@ -73,14 +73,20 @@ class GeminiOrchestrator:
         """Injects authenticated client identity, persistent cognitive profile, preferences and SQLite context"""
         prompt = BANORTE_SYSTEM_PROMPT
         profile = mcp_client.get_user_cognitive_profile(user_id)
-        client_name = profile.get("client_name") or ("Ana Martínez" if user_id == "C001" else ("Carlos Ramírez" if user_id == "C002" else "Alejandro Ramírez"))
+        client_name = profile.get("client_name") or (
+            "Ana Martínez" if user_id == "C001" else (
+                "Carlos Ramírez" if user_id == "C002" else (
+                    "Silvia Carrasco Alvarado" if user_id == "C003" else "Cliente Banorte"
+                )
+            )
+        )
 
         prompt += f"""
 
 [SESIÓN AUTENTICADA DE CLIENTE BANORTE]:
 - ID de Cliente: {user_id}
 - Nombre del Cliente: {client_name}
-- REGLA ESTRICTA DE IDENTIDAD: Dirígete SIEMPRE a este cliente por su nombre: '{client_name}'. NUNCA lo llames Alejandro a menos que su ID sea exactamente 'USR-BANORTE-8842'.
+- REGLA ESTRICTA DE IDENTIDAD: Dirígete SIEMPRE a este cliente por su nombre: '{client_name}'. NUNCA inventes nombres ni uses plantillas.
 - En cualquier llamada a herramientas MCP (get_user_debt, get_account_balance, get_spending_analytics, etc.), pasa siempre user_id='{user_id}'.
 
 [MEMORIA COGNITIVA Y PREFERENCIAS GUARDADAS EN BASE DE DATOS SQLITE]:
@@ -105,17 +111,61 @@ class GeminiOrchestrator:
     async def orchestrate(self, request: ChatRequest) -> ChatResponse:
         """
         Main closed-loop execution.
-        Executes Gemini with function calling loop or fallback simulator.
+        Saves user and assistant messages safely in SQLite, and executes Gemini loop or smart simulator.
         """
+        user_id = request.user_id or settings.default_user_id
+
+        # 1. Safely persist incoming user message
+        mcp_client.save_chat_message(
+            customer_id=user_id,
+            role="user",
+            content=request.message,
+            session_id="session-main"
+        )
+
+        resp = None
         # If live Gemini client is available, run live GenAI loop
         if self.client and self.api_key:
             try:
-                return await self._run_gemini_live_loop(request)
+                resp = await self._run_gemini_live_loop(request)
             except Exception as e:
                 print(f"[GeminiOrchestrator] Live call failed, falling back to smart simulator: {e}")
 
-        # Smart deterministic simulator for hackathon demo reliability
-        return await self._run_smart_simulation(request)
+        # Smart deterministic simulator fallback
+        if not resp:
+            resp = await self._run_smart_simulation(request)
+
+        # 2. Safely persist assistant response with A2UI component payload
+        a2ui_dict = resp.a2ui.model_dump() if resp.a2ui else None
+        mcp_client.save_chat_message(
+            customer_id=user_id,
+            role="assistant",
+            content=resp.reply,
+            a2ui_payload=a2ui_dict,
+            session_id="session-main"
+        )
+
+        return resp
+
+    async def stream_orchestrate(self, request: ChatRequest):
+        """Streaming generator emitting status, tokens, MCP logs, and A2UI events"""
+        status = self._get_initial_status(request)
+        yield {"event": "status", "data": status}
+
+        response = await self.orchestrate(request)
+        for call in response.mcp_calls:
+            yield {"event": "mcp_call", "data": call.model_dump()}
+
+        yield {"event": "token", "data": response.reply}
+        if response.a2ui:
+            yield {"event": "a2ui", "data": response.a2ui.model_dump()}
+        yield {
+            "event": "done",
+            "data": {
+                "reply": response.reply,
+                "a2ui": response.a2ui.model_dump() if response.a2ui else None
+            }
+        }
 
     def _get_initial_status(self, request: ChatRequest) -> str:
         if request.action_context:
@@ -154,17 +204,38 @@ class GeminiOrchestrator:
 
         if comp == "BanorteBalanceCard":
             accounts = props.get("accounts", [])
-            if isinstance(accounts, list):
-                nomina = next((a for a in accounts if a.get("type") == "nomina"), {})
-                oro = next((a for a in accounts if a.get("type") == "oro"), {})
-                if "nominaBalance" not in props:
-                    props["nominaBalance"] = nomina.get("available_balance", 48650.0)
-                if "oroBalance" not in props:
-                    props["oroBalance"] = oro.get("available_credit", 41550.0)
-                if "totalDebt" not in props:
-                    props["totalDebt"] = oro.get("current_debt", 38450.0)
+            if isinstance(accounts, list) and accounts:
+                first_acc = accounts[0]
+                avail = first_acc.get("available_balance") or first_acc.get("availableBalance") or 0.0
+                props["primaryAccountName"] = props.get("primaryAccountName") or first_acc.get("name") or first_acc.get("account_type") or "Cuenta Débito"
+                props["primaryAccountLast4"] = props.get("primaryAccountLast4") or first_acc.get("last4") or first_acc.get("account_last4", "0000")
+                props["primaryAccountBalance"] = avail
+                props["nominaBalance"] = avail
+                
+                card_acc = next((a for a in accounts if a.get("type") == "oro" or "tarjeta" in str(a.get("name", "")).lower() or (a.get("currentDebt") or 0) > 0 or (a.get("current_debt") or 0) > 0), None)
+                if card_acc:
+                    debt = card_acc.get("current_debt") or card_acc.get("currentDebt") or card_acc.get("debt") or 0.0
+                    cred = card_acc.get("available_credit") or card_acc.get("availableCredit") or 0.0
+                    if debt > 0:
+                        props["cardName"] = card_acc.get("name", "Tarjeta Banorte")
+                        props["cardLast4"] = str(card_acc.get("number") or card_acc.get("last4", "")).replace("*", "")
+                        props["totalDebt"] = debt
+                        props["oroBalance"] = cred
+
+                if "totalDebt" not in props or props["totalDebt"] == 0.0:
+                    if len(accounts) > 1:
+                        sec_acc = accounts[1]
+                        sec_avail = sec_acc.get("available_balance") or sec_acc.get("availableBalance") or 0.0
+                        props["secondaryAccountName"] = props.get("secondaryAccountName") or sec_acc.get("name") or sec_acc.get("account_type") or "Cuenta Ahorro"
+                        props["secondaryAccountLast4"] = props.get("secondaryAccountLast4") or sec_acc.get("last4") or sec_acc.get("account_last4", "0000")
+                        props["secondaryAccountBalance"] = sec_avail
+                        props["totalDebt"] = 0.0
+                    else:
+                        props["totalDebt"] = 0.0
             if "clientName" not in props and "client" in props:
                 props["clientName"] = props["client"]
+            if "clientName" not in props and "client_name" in props:
+                props["clientName"] = props["client_name"]
             if "nominaBalance" not in props and "nomina_balance" in props:
                 props["nominaBalance"] = props["nomina_balance"]
             if "oroBalance" not in props and "oro_balance" in props:
@@ -251,18 +322,42 @@ class GeminiOrchestrator:
 
         # 2. Balances / Accounts
         elif any(k in combined for k in ["saldo", "cuentas", "cuánto tengo", "disponible"]):
-            bal = mcp_client._execute_mock("get_account_balance", {"user_id": user_id})
-            nomina_acc = next((a for a in bal.get("accounts", []) if a.get("type") == "nomina"), None)
-            oro_acc = next((a for a in bal.get("accounts", []) if a.get("type") == "oro"), None)
-            return A2UIPayload(
-                component="BanorteBalanceCard",
-                props={
-                    "clientName": bal.get("client", "Cliente Banorte"),
-                    "nominaBalance": nomina_acc["available_balance"] if nomina_acc else 27900.00,
-                    "oroBalance": oro_acc["available_credit"] if oro_acc else 0.00,
-                    "totalDebt": oro_acc.get("current_debt", 0.00) if oro_acc else 0.00
-                }
-            )
+            state = mcp_client.get_real_customer_state(user_id)
+            accounts = state.get("accounts", [])
+            cards = state.get("credit_cards", [])
+            acc0 = accounts[0] if len(accounts) > 0 else {}
+            acc1 = accounts[1] if len(accounts) > 1 else None
+            card0 = cards[0] if len(cards) > 0 else None
+
+            props = {
+                "clientName": state.get("client_name", "Cliente Banorte"),
+                "accounts": accounts,
+                "totalAvailableBalance": state.get("total_available_balance", 0.0),
+                "totalDebt": state.get("total_debt", 0.0),
+                "primaryAccountName": f"Cuenta {acc0.get('account_type', 'Bancaria')}",
+                "primaryAccountLast4": acc0.get("account_last4", "0000"),
+                "primaryAccountBalance": acc0.get("available_balance", 0.0),
+                "nominaBalance": acc0.get("available_balance", 0.0),
+            }
+            if card0 and state.get("total_debt", 0.0) > 0:
+                props["secondaryType"] = "card"
+                props["cardName"] = f"Tarjeta {card0.get('network', 'Banorte')}"
+                props["cardLast4"] = card0.get("pan_last4", "0000")
+                props["oroBalance"] = max(0.0, float(card0.get("credit_limit", 0.0)) - float(card0.get("current_balance", 0.0)))
+                props["totalDebt"] = float(card0.get("current_balance", 0.0))
+            elif acc1:
+                props["secondaryType"] = "account"
+                props["secondaryAccountName"] = f"Cuenta {acc1.get('account_type', 'Ahorro')}"
+                props["secondaryAccountLast4"] = acc1.get("account_last4", "0000")
+                props["secondaryAccountBalance"] = acc1.get("available_balance", 0.0)
+                props["oroBalance"] = acc1.get("available_balance", 0.0)
+                props["totalDebt"] = 0.0
+            else:
+                props["secondaryType"] = "investment"
+                props["oroBalance"] = 25000.0
+                props["totalDebt"] = 0.0
+
+            return A2UIPayload(component="BanorteBalanceCard", props=props)
 
         # 3. Debt
         elif any(k in combined for k in ["deuda", "reestructur", "tarjeta de crédito", "convenio", "pagar menos"]):
@@ -331,7 +426,7 @@ class GeminiOrchestrator:
 
         for step in range(5):
             config = types.GenerateContentConfig(
-                system_instruction=self._build_system_prompt(request.user_id or "USR-BANORTE-8842"),
+                system_instruction=self._build_system_prompt(request.user_id or "C001"),
                 tools=tools,
                 temperature=0.2
             )
@@ -507,7 +602,7 @@ class GeminiOrchestrator:
         # Loop up to 5 steps of tool calls
         for step in range(5):
             config = types.GenerateContentConfig(
-                system_instruction=self._build_system_prompt(request.user_id or "USR-BANORTE-8842"),
+                system_instruction=self._build_system_prompt(request.user_id or "C001"),
                 tools=tools,
                 temperature=0.2
             )
@@ -572,7 +667,7 @@ class GeminiOrchestrator:
             status="success"
         )
 
-    async def summarize_and_close_session(self, user_id: str = "USR-BANORTE-8842", history: Optional[List[Any]] = None) -> Dict[str, Any]:
+    async def summarize_and_close_session(self, user_id: str = "C001", history: Optional[List[Any]] = None) -> Dict[str, Any]:
         """
         Extracts friction points and user sensitivities from the conversation turns,
         updates the persistent cognitive profile in the SQL database, and returns the summary.
@@ -660,9 +755,14 @@ Diálogo:
         Handles both debt restructuring and SPEI/Balance flows.
         """
         mcp_calls: List[McpToolCallLog] = []
-        user_id = request.user_id or settings.default_user_id
         profile = mcp_client.get_user_cognitive_profile(user_id)
-        client_name = profile.get("client_name") or ("Ana Martínez" if user_id == "C001" else ("Carlos Ramírez" if user_id == "C002" else "Alejandro Ramírez"))
+        client_name = profile.get("client_name") or (
+            "Ana Martínez" if user_id == "C001" else (
+                "Carlos Ramírez" if user_id == "C002" else (
+                    "Silvia Carrasco Alvarado" if user_id == "C003" else "Cliente Banorte"
+                )
+            )
+        )
         first_name = client_name.split()[0]
 
         # Feedback Loop: User clicked an action inside an A2UI component
@@ -767,20 +867,47 @@ Diálogo:
             res, log = await mcp_client.execute_tool("get_account_balance", {"user_id": user_id, "account_type": "all"})
             mcp_calls.append(log)
 
-            nomina_acc = next((a for a in res["accounts"] if a["type"] == "nomina"), None)
-            oro_acc = next((a for a in res["accounts"] if a["type"] == "oro"), None)
+            state = mcp_client.get_real_customer_state(user_id)
+            accounts = state.get("accounts", [])
+            cards = state.get("credit_cards", [])
+            acc0 = accounts[0] if len(accounts) > 0 else {}
+            acc1 = accounts[1] if len(accounts) > 1 else None
+            card0 = cards[0] if len(cards) > 0 else None
 
             reply = (
-                f"Hola {first_name}. Aquí tienes el resumen actualizado de tus cuentas Banorte en tiempo real:"
+                f"Hola, {first_name}. Aquí tienes el resumen actualizado de tus cuentas Banorte en tiempo real:"
             )
+            props = {
+                "clientName": state.get("client_name", client_name),
+                "accounts": accounts,
+                "totalAvailableBalance": state.get("total_available_balance", 0.0),
+                "totalDebt": state.get("total_debt", 0.0),
+                "primaryAccountName": f"Cuenta {acc0.get('account_type', 'Bancaria')}",
+                "primaryAccountLast4": acc0.get("account_last4", "0000"),
+                "primaryAccountBalance": acc0.get("available_balance", 0.0),
+                "nominaBalance": acc0.get("available_balance", 0.0),
+            }
+            if card0 and state.get("total_debt", 0.0) > 0:
+                props["secondaryType"] = "card"
+                props["cardName"] = f"Tarjeta {card0.get('network', 'Banorte')}"
+                props["cardLast4"] = card0.get("pan_last4", "0000")
+                props["oroBalance"] = max(0.0, float(card0.get("credit_limit", 0.0)) - float(card0.get("current_balance", 0.0)))
+                props["totalDebt"] = float(card0.get("current_balance", 0.0))
+            elif acc1:
+                props["secondaryType"] = "account"
+                props["secondaryAccountName"] = f"Cuenta {acc1.get('account_type', 'Ahorro')}"
+                props["secondaryAccountLast4"] = acc1.get("account_last4", "0000")
+                props["secondaryAccountBalance"] = acc1.get("available_balance", 0.0)
+                props["oroBalance"] = acc1.get("available_balance", 0.0)
+                props["totalDebt"] = 0.0
+            else:
+                props["secondaryType"] = "investment"
+                props["oroBalance"] = 25000.0
+                props["totalDebt"] = 0.0
+
             a2ui = A2UIPayload(
                 component="BanorteBalanceCard",
-                props={
-                    "clientName": res.get("client", client_name),
-                    "nominaBalance": nomina_acc["available_balance"] if nomina_acc else 27900.00,
-                    "oroBalance": oro_acc["available_credit"] if oro_acc else 0.00,
-                    "totalDebt": oro_acc.get("current_debt", 0.00) if oro_acc else 0.00
-                }
+                props=props
             )
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 

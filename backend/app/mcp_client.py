@@ -1,10 +1,12 @@
 import copy
+import json
 import time
 import httpx
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from .config import settings
 from .schemas import McpToolCallLog
+from .security import sanitize_banking_message, sanitize_memory_summary
 from backend import mcp_server_mock as srv
 
 INITIAL_MOCK_DB = {
@@ -223,6 +225,194 @@ class McpClient:
             **profile
         }
 
+    def save_chat_message(
+        self,
+        customer_id: str,
+        role: str,
+        content: str,
+        a2ui_payload: Optional[Dict[str, Any]] = None,
+        session_id: str = "default_session"
+    ) -> Dict[str, Any]:
+        """Saves a sanitized chat message to SQLite for cross-session persistent memory"""
+        sanitized_content = sanitize_banking_message(content)
+        a2ui_comp = a2ui_payload.get("component") if a2ui_payload else None
+        a2ui_json = json.dumps(a2ui_payload, ensure_ascii=False) if a2ui_payload else None
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        conn = self._get_db_conn()
+        msg_id = None
+        if conn:
+            try:
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO chat_conversation_history 
+                    (session_id, customer_id, role, content, a2ui_component, a2ui_payload_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (session_id, customer_id, role, sanitized_content, a2ui_comp, a2ui_json, now_str))
+                conn.commit()
+                msg_id = cur.lastrowid
+            except Exception as e:
+                print(f"[save_chat_message] SQLite error: {e}")
+            finally:
+                conn.close()
+
+        return {
+            "id": f"msg-{msg_id or int(time.time())}",
+            "session_id": session_id,
+            "customer_id": customer_id,
+            "role": role,
+            "content": sanitized_content,
+            "a2ui": a2ui_payload,
+            "created_at": now_str
+        }
+
+    def get_chat_history(self, customer_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Retrieves persistent sanitized chat history for a customer"""
+        conn = self._get_db_conn()
+        history = []
+        if conn:
+            try:
+                rows = conn.execute("""
+                    SELECT id, session_id, customer_id, role, content, a2ui_component, a2ui_payload_json, created_at
+                    FROM chat_conversation_history
+                    WHERE customer_id = ?
+                    ORDER BY id ASC
+                    LIMIT ?
+                """, (customer_id, limit)).fetchall()
+                for r in rows:
+                    row_dict = dict(r)
+                    a2ui = None
+                    if row_dict.get("a2ui_payload_json"):
+                        try:
+                            a2ui = json.loads(row_dict["a2ui_payload_json"])
+                        except Exception:
+                            pass
+                    history.append({
+                        "id": f"msg-{row_dict['id']}",
+                        "role": row_dict["role"],
+                        "content": row_dict["content"],
+                        "a2ui": a2ui,
+                        "timestamp": row_dict["created_at"]
+                    })
+            except Exception as e:
+                print(f"[get_chat_history] SQLite error: {e}")
+            finally:
+                conn.close()
+        return history
+
+    def clear_chat_history(self, customer_id: str) -> Dict[str, Any]:
+        """Safely purges chat history for a customer upon request (GDPR / right to be forgotten)"""
+        conn = self._get_db_conn()
+        deleted = 0
+        if conn:
+            try:
+                cur = conn.cursor()
+                cur.execute("DELETE FROM chat_conversation_history WHERE customer_id = ?", (customer_id,))
+                deleted = cur.rowcount
+                conn.commit()
+            except Exception as e:
+                print(f"[clear_chat_history] SQLite error: {e}")
+            finally:
+                conn.close()
+        return {"status": "cleared", "customer_id": customer_id, "deleted_count": deleted}
+
+    def get_real_customer_list(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Returns the real customers from the SQLite database"""
+        conn = self._get_db_conn()
+        customers = []
+        if conn:
+            try:
+                rows = conn.execute("""
+                    SELECT customer_id, first_name, last_name, status
+                    FROM customer
+                    ORDER BY customer_id ASC
+                    LIMIT ?
+                """, (limit,)).fetchall()
+                for r in rows:
+                    d = dict(r)
+                    cid = d["customer_id"]
+                    tier = "Cliente Nómina" if cid == "C001" else ("Cliente Clásico" if cid == "C002" else ("Cliente Patrimonial" if cid == "C003" else "Cliente Preferente"))
+                    customers.append({
+                        "customer_id": cid,
+                        "name": f"{d['first_name']} {d['last_name']}",
+                        "first_name": d["first_name"],
+                        "last_name": d["last_name"],
+                        "tier": tier,
+                        "status": d.get("status", "ACTIVE")
+                    })
+            except Exception as e:
+                print(f"[get_real_customer_list] SQLite error: {e}")
+            finally:
+                conn.close()
+        return customers
+
+    def get_real_customer_state(self, customer_id: str) -> Dict[str, Any]:
+        """Queries real SQL views for accounts, cards, and transactions for the specified customer"""
+        conn = self._get_db_conn()
+        if not conn:
+            return {}
+
+        try:
+            # 1. Customer name
+            cust = conn.execute("SELECT customer_id, first_name, last_name FROM customer WHERE customer_id = ?", (customer_id,)).fetchone()
+            client_name = f"{cust['first_name']} {cust['last_name']}" if cust else "Cliente Banorte"
+            first_name = cust['first_name'] if cust else "Cliente"
+
+            # 2. Real Accounts
+            accounts_rows = conn.execute("SELECT * FROM chatbot_accounts_view WHERE customer_id = ?", (customer_id,)).fetchall()
+            accounts_list = [dict(a) for a in accounts_rows]
+
+            # Primary account / totals
+            total_available = sum(a.get("available_balance", 0.0) for a in accounts_list)
+            primary_account = accounts_list[0] if accounts_list else {}
+
+            # 3. Real Credit Cards
+            cards_rows = conn.execute("SELECT * FROM chatbot_credit_card_view WHERE customer_id = ?", (customer_id,)).fetchall()
+            cards_list = [dict(c) for c in cards_rows]
+            primary_card = cards_list[0] if cards_list else None
+            total_debt = sum(c.get("current_balance", 0.0) for c in cards_list)
+
+            # 4. Real Transactions
+            tx_rows = conn.execute("""
+                SELECT transaction_id, transaction_date, merchant_name, transaction_type, amount, currency, status, account_last4
+                FROM chatbot_transactions_view
+                WHERE customer_id = ?
+                ORDER BY transaction_date DESC
+                LIMIT 10
+            """, (customer_id,)).fetchall()
+            tx_list = []
+            for t in tx_rows:
+                td = dict(t)
+                amt = float(td.get("amount", 0.0))
+                tx_list.append({
+                    "id": td.get("transaction_id"),
+                    "description": td.get("merchant_name") or td.get("transaction_type", "Movimiento"),
+                    "date": td.get("transaction_date", ""),
+                    "account": f"Cuenta (*{td.get('account_last4', '0000')})",
+                    "amount": amt,
+                    "type": "credit" if amt > 0 else "debit",
+                    "status": td.get("status", "POSTED"),
+                    "category": td.get("transaction_type", "Operación")
+                })
+
+            return {
+                "customer_id": customer_id,
+                "client_name": client_name,
+                "first_name": first_name,
+                "total_available_balance": total_available,
+                "accounts": accounts_list,
+                "primary_account": primary_account,
+                "credit_cards": cards_list,
+                "primary_card": primary_card,
+                "total_debt": total_debt,
+                "transactions": tx_list
+            }
+        except Exception as e:
+            print(f"[get_real_customer_state] SQLite error: {e}")
+            return {}
+        finally:
+            conn.close()
+
     async def execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Tuple[Any, McpToolCallLog]:
         """
         Executes an MCP tool either remotely on Person 1's server or via mock fallback.
@@ -282,10 +472,10 @@ class McpClient:
             if cards and cards.get("total_debt", 0) > 0:
                 accounts.append({
                     "type": "oro",
-                    "name": cards.get("card_name", "Tarjeta Banorte Oro"),
-                    "number": f"****{cards.get('card_last4', '8812')}",
-                    "credit_limit": cards.get("credit_limit", 100000.0),
-                    "available_credit": max(0.0, float(cards.get("credit_limit", 100000.0)) - float(cards.get("total_debt", 0))),
+                    "name": cards.get("card_name", "Tarjeta Banorte"),
+                    "number": f"****{cards.get('card_last4', '')}",
+                    "credit_limit": cards.get("credit_limit", 0.0),
+                    "available_credit": max(0.0, float(cards.get("credit_limit", 0.0)) - float(cards.get("total_debt", 0.0))),
                     "current_debt": cards.get("total_debt", 0.0),
                     "currency": "MXN"
                 })

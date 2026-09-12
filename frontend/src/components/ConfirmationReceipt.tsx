@@ -20,7 +20,7 @@ export const ConfirmationReceipt: React.FC<ConfirmationReceiptProps> = ({
   termMonths = 24,
   nextPaymentDate = "15 Oct 2026",
   bankSeal = "BANORTE-CRYPTO-SHA256-4A91E0",
-  clientName = "Roberto Carlos Garza",
+  clientName = "Carlos Ramírez",
   onDownload,
   onShare,
 }) => {

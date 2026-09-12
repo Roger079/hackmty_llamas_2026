@@ -91,26 +91,24 @@ async def mcp_status():
     }
 
 # 6. STATIC FILES & ROOT SPA SERVING
-# Base directory pointing to static frontend assets
 current_dir = Path(__file__).resolve().parent.parent.parent
+frontend_dist = current_dir / "frontend" / "dist"
 static_dir = current_dir / "static"
-if not static_dir.exists():
-    static_dir.mkdir(parents=True, exist_ok=True)
 
-app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+if frontend_dist.exists():
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="dist-assets")
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+@app.get("/api/customers")
+async def get_customers():
+    """Returns list of real customers in the SQLite database"""
+    return mcp_client.get_real_customer_list(limit=10)
 
 @app.get("/api/bank/state")
-async def get_bank_state():
-    """Returns current financial state from the mock bank DB for real-time live sync"""
-    user_id = settings.default_user_id
-    user_data = mcp_client._mock_db.get(user_id, mcp_client._mock_db["USR-BANORTE-8842"])
-    return {
-        "user_id": user_id,
-        "client_name": user_data["client_name"],
-        "accounts": user_data["accounts"],
-        "restructures": user_data.get("restructures", []),
-        "transactions": user_data.get("transactions", [])
-    }
+async def get_bank_state(user_id: str = "C001"):
+    """Returns real accounts, balances, credit card debts, and audited transactions from SQLite"""
+    return mcp_client.get_real_customer_state(user_id)
 
 @app.post("/api/bank/reset")
 async def reset_bank_state():
@@ -119,7 +117,7 @@ async def reset_bank_state():
     return result
 
 @app.get("/api/user/cognitive-profile")
-async def get_cognitive_profile(user_id: str = "USR-BANORTE-8842"):
+async def get_cognitive_profile(user_id: str = "C001"):
     """Returns the persistent cognitive profile and recorded friction logs for this customer"""
     profile = mcp_client.get_user_cognitive_profile(user_id)
     return profile
@@ -130,8 +128,28 @@ async def end_session(request: EndSessionRequest):
     result = await orchestrator.summarize_and_close_session(request.user_id, request.history)
     return result
 
+@app.get("/api/chat/history")
+async def get_chat_history(user_id: str = "C001", limit: int = 50):
+    """Returns persistent sanitized chat history for the customer"""
+    history = mcp_client.get_chat_history(user_id, limit=limit)
+    return {
+        "customer_id": user_id,
+        "count": len(history),
+        "history": history
+    }
+
+@app.delete("/api/chat/history")
+async def clear_chat_history(user_id: str = "C001"):
+    """Purges chat history for a customer (right to be forgotten / session reset)"""
+    result = mcp_client.clear_chat_history(user_id)
+    return result
+
 @app.get("/")
 async def serve_index():
+    if frontend_dist.exists():
+        dist_index = frontend_dist / "index.html"
+        if dist_index.exists():
+            return FileResponse(str(dist_index))
     index_file = static_dir / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file))
