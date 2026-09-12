@@ -103,6 +103,16 @@ button {
   background-clip: padding-box;
 }
 
+/* Keep touch scrolling available on the product rail without showing browser chrome. */
+.card-rail {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.card-rail::-webkit-scrollbar {
+  display: none;
+}
+
 .maya-dots {
   display: inline-flex;
   gap: 3px;

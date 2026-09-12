@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Home,
-  MessageCircle,
   CreditCard,
   Send,
   Sparkles,
-  TrendingUp,
   ShieldCheck,
   CheckCircle2,
   ChevronRight,
   Eye,
   EyeOff,
-  WalletCards,
   FileText,
   Cpu,
+  Landmark,
+  ReceiptText,
+  BarChart3,
 } from 'lucide-react';
 import { ChatStream } from './ChatStream';
 import { ActionContext, ChatMessage, McpCallLog } from '../types/a2ui';
-import banorteLogo from '../assets/12ui/banorte-logo.png';
+import { BanorteLogo } from './BanorteLogo';
+import { BanorteCard, MayaChatWidget } from './BanorteComponents';
 import { TransactionItem } from './BanorteGlobalPosition';
 
 interface MobileSimulatorProps {
@@ -57,19 +58,48 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [showCvv, setShowCvv] = useState(false);
+  const [isMayaWidgetOpen, setIsMayaWidgetOpen] = useState(false);
+  const [selectedCard, setSelectedCard] = useState(0);
+  const [isRentConfirmationOpen, setIsRentConfirmationOpen] = useState(false);
+  const cardRailRef = useRef<HTMLDivElement>(null);
 
   const nominaBalance = accounts?.nominaBalance ?? 27900.0;
   const platinoDebt = accounts?.totalDebt ?? 0.0;
   const accountLast4 = accounts?.accountLast4 || (clientName.includes('Carlos') ? '7721' : clientName.includes('Silvia') ? '8359' : '4582');
-  const cardLast4 = accounts?.cardLast4 || (clientName.includes('Carlos') ? '8812' : '');
+  const cardLast4 = accounts?.cardLast4 || (clientName.includes('Carlos') ? '8812' : '9274');
   const firstName = clientName.split(' ')[0] || 'Ana';
+  const mobileCards = [
+    { cardType: clientName.includes('Silvia') ? 'Débito Patrimonial' : 'Débito Nómina', last4: accountLast4, balance: nominaBalance, isGold: false },
+    { cardType: 'Tarjeta Digital', last4: cardLast4, balance: Math.max(0, 80000 - platinoDebt), isGold: false },
+    { cardType: 'Tarjeta Oro', last4: clientName.includes('Carlos') ? '1436' : '6648', balance: 45200, isGold: true },
+  ];
+
+  const selectMobileCard = (index: number) => {
+    setSelectedCard(index);
+    const card = cardRailRef.current?.children[index] as HTMLElement | undefined;
+    card?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  };
+
+  const updateSelectedCardFromScroll = () => {
+    const rail = cardRailRef.current;
+    if (!rail) return;
+    const center = rail.scrollLeft + rail.clientWidth / 2;
+    const closestIndex = Array.from(rail.children).reduce((bestIndex, child, index) => {
+      const best = rail.children[bestIndex] as HTMLElement;
+      const current = child as HTMLElement;
+      return Math.abs(current.offsetLeft + current.offsetWidth / 2 - center) < Math.abs(best.offsetLeft + best.offsetWidth / 2 - center)
+        ? index
+        : bestIndex;
+    }, 0);
+    setSelectedCard(closestIndex);
+  };
 
   return (
     <div className="min-h-screen w-full bg-[#F4F6F9] text-slate-900 flex flex-col justify-between antialiased pb-16">
       {/* 1. Mobile Header (Clean, Authentic Banorte Red) */}
       <header className="sticky top-0 z-30 bg-[#EB0029] text-white px-4 pt-3 pb-3.5 shadow-sm">
         <div className="flex items-center justify-between">
-          <img src={banorteLogo} alt="Banorte" className="h-4 w-auto shrink-0 object-contain" />
+          <BanorteLogo className="h-4 w-auto shrink-0" theme="red" />
           <div className="flex items-center gap-2">
             {onOpenInspector && (
               <button
@@ -111,34 +141,32 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
         {/* TAB 1: HOME (Accounts, Quick Actions, Debt Alert, Movements) */}
         {activeTab === 'home' && (
           <div className="space-y-4">
-            {/* Account Card */}
-            <div className="rounded-2xl bg-white p-4 shadow-xs border border-slate-200/80">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  {clientName.includes('Silvia') ? 'Ahorro Patrimonial' : clientName.includes('Carlos') ? 'Ahorro Banorte' : 'Débito Nómina'} • {accountLast4}
-                </span>
-                <WalletCards className="h-4 w-4 text-[#EB0029]" />
+            {/* Card-first banking area: swipeable products keep the active card centered and substantial on a phone. */}
+            <section aria-label="Tus tarjetas" className="-mx-3.5 overflow-hidden pb-1">
+              <div ref={cardRailRef} onScroll={updateSelectedCardFromScroll} className="card-rail flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-3 pt-1">
+                {mobileCards.map((card, index) => (
+                  <button
+                    key={`${card.cardType}-${card.last4}`}
+                    type="button"
+                    onClick={() => selectMobileCard(index)}
+                    className={`w-[calc(100vw-1.25rem)] max-w-[30rem] shrink-0 snap-center text-left transition duration-300 ${selectedCard === index ? 'scale-100 opacity-100' : 'scale-[0.96] opacity-70'}`}
+                    aria-pressed={selectedCard === index}
+                  >
+                    <BanorteCard size="large" holderName={clientName} last4={card.last4} balance={card.balance} cardType={card.cardType} isGold={card.isGold} />
+                  </button>
+                ))}
               </div>
-              <div className="mt-2 text-2xl font-black text-slate-900 tabular-nums">
-                ${nominaBalance.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                <span className="text-xs font-semibold text-slate-500 ml-1">MXN</span>
+              <div className="flex items-center justify-between px-4 text-[10px] font-semibold text-slate-500">
+                <span>Desliza para ver tus tarjetas</span>
+                <span className="text-[#EB0029]">{selectedCard + 1} de {mobileCards.length}</span>
               </div>
-              <div className="mt-1 flex items-center justify-between">
-                <span className="text-[10px] font-semibold text-emerald-600">Saldo disponible</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('maya');
-                    onSendMessage('Transfiere $850 a Sofía Mendoza por SPEI');
-                  }}
-                  className="text-xs font-bold text-[#EB0029] hover:underline"
-                >
-                  Transferir SPEI &gt;
-                </button>
+              <div className="mt-1.5 flex justify-center gap-1.5" aria-label="Selector de tarjeta">
+                {mobileCards.map((card, index) => <span key={card.last4} className={`h-1.5 rounded-full transition-all ${selectedCard === index ? 'w-5 bg-[#EB0029]' : 'w-1.5 bg-slate-300'}`} />)}
               </div>
-            </div>
+            </section>
 
-            {/* Fast Action Roundels */}
+            {/* Action rail, separated from the card products. */}
+            <div className="border-t border-slate-200 pt-4">
             <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-bold text-slate-700">
               <button
                 type="button"
@@ -149,7 +177,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                 className="flex flex-col items-center rounded-xl bg-white p-2.5 shadow-xs border border-slate-100 hover:bg-slate-50 transition"
               >
                 <Send className="h-4 w-4 text-[#EB0029] mb-1" />
-                <span>SPEI</span>
+                <span>Transferir</span>
               </button>
               <button
                 type="button"
@@ -157,15 +185,18 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                 className="flex flex-col items-center rounded-xl bg-white p-2.5 shadow-xs border border-slate-100 hover:bg-slate-50 transition"
               >
                 <CreditCard className="h-4 w-4 text-[#EB0029] mb-1" />
-                <span>Tarjetas</span>
+                <span>Mis tarjetas</span>
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('maya')}
+                onClick={() => {
+                  setActiveTab('maya');
+                  onSendMessage('Muéstrame las opciones de mi fondo de inversión');
+                }}
                 className="flex flex-col items-center rounded-xl bg-white p-2.5 shadow-xs border border-slate-100 hover:bg-slate-50 transition"
               >
-                <Sparkles className="h-4 w-4 text-[#EB0029] mb-1" />
-                <span>Maya Copiloto</span>
+                <Landmark className="h-4 w-4 text-[#EB0029] mb-1" />
+                <span>Inversiones</span>
               </button>
               <button
                 type="button"
@@ -175,10 +206,82 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                 }}
                 className="flex flex-col items-center rounded-xl bg-white p-2.5 shadow-xs border border-slate-100 hover:bg-slate-50 transition"
               >
-                <TrendingUp className="h-4 w-4 text-emerald-600 mb-1" />
-                <span>Inversión</span>
+                <ReceiptText className="h-4 w-4 text-[#EB0029] mb-1" />
+                <span>Pagar servicio</span>
               </button>
             </div>
+            </div>
+
+            {/* Adaptive widgets: persistent Maya insight and a recurrent payment with an explicit second confirmation. */}
+            <section className="space-y-3" aria-label="Widgets adaptables">
+              <div className="flex items-center justify-between px-1">
+                <div>
+                  <h2 className="text-sm font-extrabold text-slate-900">Para ti</h2>
+                  <p className="text-[10px] text-slate-500">Acciones frecuentes y vistas fijadas desde Maya</p>
+                </div>
+                <Sparkles className="h-4 w-4 text-[#EB0029]" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <article className="col-span-2 row-span-2 min-h-[224px] overflow-hidden rounded-2xl border border-red-100 bg-white shadow-xs">
+                  <div className="flex items-center justify-between bg-[#EB0029] px-3 py-2 text-white">
+                    <div>
+                      <p className="text-[10px] font-extrabold">Gastos de la semana</p>
+                      <p className="text-[9px] text-red-100">Tendencia de los últimos 7 días</p>
+                    </div>
+                    <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] font-bold">-10.4%</span>
+                  </div>
+                  <div className="p-3.5">
+                    <div className="flex items-end justify-between">
+                      <div><p className="text-[10px] font-semibold text-slate-500">Total semanal</p><p className="text-xl font-black tabular-nums text-slate-900">$4,280 <span className="text-[10px] font-bold text-slate-500">MXN</span></p></div>
+                      <span className="rounded-full bg-[#FFF3D1] px-2 py-1 text-[10px] font-bold text-[#8A5B00]">vs. semana previa</span>
+                    </div>
+                    <svg viewBox="0 0 292 120" className="mt-3 h-28 w-full overflow-visible" role="img" aria-label="Tendencia semanal de gastos a la baja">
+                      <defs><linearGradient id="spending-fill" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#EB0029" stopOpacity="0.25" /><stop offset="1" stopColor="#EB0029" stopOpacity="0" /></linearGradient></defs>
+                      <path d="M8 96 L8 70 L54 52 L100 76 L146 24 L192 56 L238 82 L284 42 L284 96 Z" fill="url(#spending-fill)" />
+                      <path d="M8 70 L54 52 L100 76 L146 24 L192 56 L238 82 L284 42" fill="none" stroke="#EB0029" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                      {[['L', 8, 70], ['M', 54, 52], ['M', 100, 76], ['J', 146, 24], ['V', 192, 56], ['S', 238, 82], ['D', 284, 42]].map(([label, cx, cy], index) => <g key={`${label}-${index}`}><circle cx={cx as number} cy={cy as number} r="3" fill="white" stroke="#EB0029" strokeWidth="2" /><text x={cx as number} y="114" textAnchor="middle" fill="#64748B" fontSize="9" fontWeight="700">{label}</text></g>)}
+                      <circle cx="284" cy="42" r="5" fill="#C89319" stroke="white" strokeWidth="3" />
+                    </svg>
+                  </div>
+                </article>
+
+                <div className={`overflow-hidden rounded-2xl border border-red-100 bg-white text-left shadow-xs transition hover:border-[#EB0029] ${isRentConfirmationOpen ? 'col-span-2' : ''}`}>
+                  <button
+                    type="button"
+                    onClick={() => setIsRentConfirmationOpen((open) => !open)}
+                    className="w-full text-left cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between bg-[#EB0029] px-3 py-2 text-white">
+                      <span className="text-[10px] font-bold">Pago recurrente</span>
+                      <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] font-bold">Mensual</span>
+                    </div>
+                    <div className="p-3">
+                      <div className="grid h-9 w-9 place-items-center rounded-xl bg-red-50 text-[#EB0029]"><ReceiptText className="h-4 w-4" /></div>
+                      <p className="mt-2 text-xs font-extrabold text-slate-900">Renta</p>
+                      <p className="mt-0.5 text-[10px] leading-snug text-slate-500">$12,800 MXN · día 15</p>
+                      <span className="mt-2 inline-block text-[10px] font-bold text-[#EB0029]">{isRentConfirmationOpen ? 'Revisar pago' : 'Pagar ahora'} <ChevronRight className="inline h-3 w-3" /></span>
+                    </div>
+                  </button>
+                  {isRentConfirmationOpen && (
+                    <div className="border-t border-red-100 bg-red-50 p-3">
+                      <p className="mb-2 text-[10px] font-medium text-[#8C0018]">Confirma monto y destinatario antes de continuar.</p>
+                      <button type="button" onClick={() => { setActiveTab('maya'); onSendMessage('Quiero confirmar el pago de mi renta por $12,800 MXN'); }} className="w-full rounded-lg bg-[#EB0029] py-2 text-xs font-bold text-white">Confirmar pago con Maya</button>
+                    </div>
+                  )}
+                </div>
+
+                <article className="overflow-hidden rounded-2xl border border-red-100 bg-white shadow-xs">
+                  <div className="bg-[#EB0029] px-3 py-2 text-white"><p className="text-[10px] font-extrabold">Fondo de inversión</p></div>
+                  <div className="p-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF0F4] text-[#EB0029]"><BarChart3 className="h-4 w-4" /></div>
+                    <p className="mt-2 text-xs font-extrabold text-slate-900">Mi inversión</p>
+                    <p className="mt-0.5 text-[10px] leading-snug text-slate-500">Rendimiento al día</p>
+                    <p className="mt-2 text-sm font-black text-[#8A5B00]">+6.8%</p>
+                  </div>
+                </article>
+              </div>
+            </section>
 
             {/* Credit Card / Status Banner */}
             {platinoDebt > 0 ? (
@@ -385,6 +488,18 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
         )}
       </main>
 
+      {activeTab !== 'maya' && (
+        <MayaChatWidget
+          isOpen={isMayaWidgetOpen}
+          onToggle={() => setIsMayaWidgetOpen((open) => !open)}
+          onSendPrompt={onSendMessage}
+          onExpandToFull={() => {
+            setIsMayaWidgetOpen(false);
+            setActiveTab('maya');
+          }}
+        />
+      )}
+
       {/* 3. Bottom Native Mobile Navigation Bar */}
       <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200/90 py-2 px-6 flex justify-around text-[10px] font-bold text-slate-500 z-40 shadow-lg">
         <button
@@ -407,20 +522,6 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
         >
           <CreditCard className="h-4 w-4 mb-0.5" />
           <span>Tarjetas</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('maya')}
-          className={`flex flex-col items-center cursor-pointer transition relative ${
-            activeTab === 'maya' ? 'text-[#EB0029]' : 'hover:text-slate-900'
-          }`}
-        >
-          <div className="relative">
-            <MessageCircle className="h-4 w-4 mb-0.5" />
-            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#EB0029]" />
-          </div>
-          <span>Maya</span>
         </button>
 
         <button
