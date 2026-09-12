@@ -123,6 +123,12 @@ class GeminiOrchestrator:
         * Monto: $850.00 MXN
         * Destino: BBVA México (*2019)
         * Clave de Rastreo: `BNTE202689213817`
+4. CONSULTA DE MESES O PERIODOS SIN HISTORIAL (EDGE CASE DE GASTOS):
+   - Si el cliente solicita información de sus gastos, consumos o compras de un mes o periodo específico del que NO tenga registros en la base de datos (por ejemplo, meses anteriores como "febrero 2025", "marzo 2024", o fechas sin movimientos):
+     * Invoca siempre la herramienta `get_spending_analytics(user_id='{user_id}', period=...)`.
+     * La herramienta detectará la ausencia de datos en ese periodo y te retornará automáticamente el desglose de sus ÚLTIMOS movimientos registrados en SQLite con `is_fallback=True` y la nota aclaratoria.
+     * En tu respuesta, sé transparente y empático: indícale que no se encontraron movimientos para el mes solicitado, y preséntale el desglose de sus últimos gastos registrados disponibles (ej. Septiembre 2026).
+     * Muestra la gráfica interactiva `SpendingDonutCard` con los datos calculados.
 """
         return prompt
 
@@ -305,7 +311,19 @@ class GeminiOrchestrator:
             if "date" not in props and "execution_timestamp" in props:
                 props["date"] = props["execution_timestamp"]
 
+<<<<<<< Updated upstream
         elif comp in ["SpendingDonutCard", "BanorteChartCard", "Chart"]:
+=======
+        elif comp in ["SpendingDonutCard", "BanorteChartCard"]:
+            if not props.get("categories") or "totalSpent" not in props:
+                analytics = mcp_client._execute_mock("get_spending_analytics", {"user_id": uid, "period": props.get("period", "")})
+                props.setdefault("categories", analytics.get("categories", []))
+                props.setdefault("totalSpent", analytics.get("total_spent", 0.0))
+                props.setdefault("total_spent", analytics.get("total_spent", 0.0))
+                props.setdefault("period", analytics.get("period", "Septiembre 2026"))
+                props.setdefault("trend_pct", analytics.get("trend_pct", -7.4))
+                props.setdefault("summary", analytics.get("summary", ""))
+>>>>>>> Stashed changes
             if "totalSpent" not in props and "total_spent" in props:
                 props["totalSpent"] = props["total_spent"]
             if "previousPeriodSpent" not in props and "previous_period_spent" in props:
@@ -347,6 +365,7 @@ class GeminiOrchestrator:
         user_id = request.user_id or "C001"
         combined = (request.message + " " + reply_text).lower()
 
+<<<<<<< Updated upstream
         # 1. Specific Visual Charts & Spending Analytics
         if any(k in combined for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de ingresos"]):
             sankey_data = mcp_client.get_sankey_cashflow(user_id)
@@ -428,6 +447,11 @@ class GeminiOrchestrator:
             )
         elif any(k in combined for k in ["gasto", "gasté", "gastos", "categoría", "en qué"]):
             spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id})
+=======
+        # 1. Spending / Expenses
+        if any(k in combined for k in ["gasto", "gasté", "gastos", "categoría", "en qué", "compras", "consumo"]):
+            spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": request.message})
+>>>>>>> Stashed changes
             return A2UIPayload(component="SpendingDonutCard", props=spending)
 
         # 2. Balances / Accounts
