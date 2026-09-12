@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  LayoutDashboard,
   Plus,
   RotateCcw,
   Sparkles,
@@ -92,14 +91,15 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
   const [isDockCollapsed, setIsDockCollapsed] = useState(false);
   const [columnsLayout, setColumnsLayout] = useState<'two' | 'one'>('two');
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const [isClearConfirmationOpen, setIsClearConfirmationOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Chat in Maya Studio Dock
+  // Chat in the Maya dock
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'init-msg',
       role: 'assistant',
-      content: 'Hola. Estoy en modo **Maya Studio** para asistirte en la composición y análisis de tu Command Center. Puedes pedirme proyecciones o gráficos avanzados para montarlos aquí.',
+      content: 'Hola. Soy **Maya** y puedo ayudarte a componer y analizar tu Dashboard. Pídeme proyecciones o gráficos avanzados para montarlos aquí.',
       timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -170,7 +170,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
             {
               id: 'init-msg',
               role: 'assistant',
-              content: `Hola. Estoy en modo **Maya Studio** para asistirte en la composición y análisis de tu Command Center. Puedes pedirme proyecciones o gráficos avanzados para montarlos aquí.`,
+              content: 'Hola. Soy **Maya** y puedo ayudarte a componer y analizar tu Dashboard. Pídeme proyecciones o gráficos avanzados para montarlos aquí.',
               timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
             },
           ]);
@@ -289,15 +289,15 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
               currency: 'MXN',
               data: {
                 nodes: [
-                  { name: 'Nómina Banorte', category: 'Ingresos' },
-                  { name: 'Cuenta Principal', category: 'Cuentas' },
-                  { name: 'Servicios', category: 'Gastos' },
-                  { name: 'Ahorro Inversión', category: 'Patrimonio' },
+                  { id: 'nomina', label: 'Nómina Banorte', color: '#061D3A' },
+                  { id: 'cuenta', label: 'Cuenta Principal', color: '#EB0029' },
+                  { id: 'servicios', label: 'Servicios', color: '#C89319' },
+                  { id: 'ahorro', label: 'Ahorro e inversión', color: '#008A5A' },
                 ],
                 links: [
-                  { source: 'Nómina Banorte', target: 'Cuenta Principal', value: 25000 },
-                  { source: 'Cuenta Principal', target: 'Servicios', value: 4500 },
-                  { source: 'Cuenta Principal', target: 'Ahorro Inversión', value: 20500 },
+                  { source: 'nomina', target: 'cuenta', value: 25000 },
+                  { source: 'cuenta', target: 'servicios', value: 4500 },
+                  { source: 'cuenta', target: 'ahorro', value: 20500 },
                 ],
               },
             },
@@ -615,6 +615,19 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
         </div>
       )}
 
+      {isClearConfirmationOpen && (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/35 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="clear-widgets-title">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+            <h2 id="clear-widgets-title" className="text-base font-extrabold text-[#061D3A]">¿Limpiar widgets?</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">Se retirarán los {widgets.length} widgets personalizados de este Dashboard.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setIsClearConfirmationOpen(false)} className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50">Cancelar</button>
+              <button type="button" onClick={() => { handleClearWidgets(); setIsClearConfirmationOpen(false); }} className="rounded-xl bg-[#EB0029] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#C70023]">Limpiar widgets</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div>
         {/* 1. Official Banorte Top Segment Bar */}
         <BanortePortalSegmentBar activeSegment="Personas" />
@@ -622,60 +635,22 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
         {/* 2. Official Banorte Header (with User Switcher) */}
         <BanortePortalHeader
           clientName={clientName}
-          tier="Power User / Command Center"
-          hasToken
-          mcpCallCount={mcpLogs.length}
-          onOpenInspector={() => setIsInspectorOpen(true)}
+          minimal
           selectedUserId={selectedUserId}
           onSelectUser={(newId) => setSelectedUserId(newId)}
           onLogout={onLogout}
         />
 
-        {/* 3. Command Center Subheader & Status Bar */}
+        {/* 3. Dashboard controls */}
         <div className="sticky top-[70px] z-30 w-full border-b border-[#E1EAF2] bg-white shadow-xs px-4 sm:px-6 lg:px-8 py-2.5">
           <div className="mx-auto flex max-w-[1536px] flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EB0029] text-white shadow-xs">
-                <LayoutDashboard className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-sm font-extrabold text-[#061D3A] tracking-tight">
-                    Command Center Analítico
-                  </h1>
-                  <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-black uppercase text-[#EB0029]">
-                    Power User Edition
-                  </span>
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Sync Móvil Activo
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#6D85A1]">
-                  Estación de trabajo para analistas • {widgets.length} widgets activos
-                </p>
-              </div>
+            <div>
+              <h1 className="text-sm font-black tracking-[0.12em] text-[#061D3A]">DASHBOARD</h1>
+              <p className="mt-0.5 text-[11px] font-medium text-[#6D85A1]">{widgets.length} widgets activos</p>
             </div>
 
             {/* Top Command Actions */}
             <div className="flex items-center gap-2">
-              {/* Quick Link to Mobile Experience */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (onNavigateHome) {
-                    onNavigateHome();
-                  } else {
-                    window.location.href = '/';
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition cursor-pointer"
-                title="Abrir la Banca Móvil en tamaño smartphone"
-              >
-                <Smartphone className="h-3.5 w-3.5 text-[#EB0029]" />
-                <span>Banca Móvil</span>
-              </button>
-
               {/* Add Widget Dropdown */}
               <div className="relative">
                 <button
@@ -757,9 +732,9 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
               {widgets.length > 0 && (
                 <button
                   type="button"
-                  onClick={handleClearWidgets}
+                  onClick={() => setIsClearConfirmationOpen(true)}
                   className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
-                  title="Limpiar widgets personalizados del canvas"
+                title="Limpiar widgets personalizados"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Limpiar Widgets</span>
@@ -800,7 +775,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                     ? 'bg-[#061D3A] text-white hover:bg-slate-800'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
-                title={isDockCollapsed ? 'Mostrar Maya Studio' : 'Ocultar Maya Studio para pantalla completa'}
+                title={isDockCollapsed ? 'Mostrar Maya' : 'Ocultar Maya para pantalla completa'}
               >
                 <Sparkles className="h-3.5 w-3.5 text-amber-400" />
                 <span>{isDockCollapsed ? 'Abrir Asistente' : 'Ocultar Asistente'}</span>
@@ -857,9 +832,6 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                       <span>Transferir por SPEI</span>
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </button>
-                    <span className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                      En Línea
-                    </span>
                   </div>
                 </div>
 
@@ -910,13 +882,6 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                       <span>{(bankAccounts.totalDebt ?? 0) > 0 ? 'Ver plan de pago fijo' : 'Sin saldo deudor'}</span>
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </button>
-                    <span
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                        (bankAccounts.totalDebt ?? 0) > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
-                      }`}
-                    >
-                      {(bankAccounts.totalDebt ?? 0) > 0 ? 'Vence 27 Sep' : 'Al Corriente'}
-                    </span>
                   </div>
                 </div>
 
@@ -967,7 +932,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                     </span>
                     <button
                       type="button"
-                      onClick={handleClearWidgets}
+                      onClick={() => setIsClearConfirmationOpen(true)}
                       className="text-[11px] font-bold text-slate-500 hover:text-[#EB0029] transition cursor-pointer"
                     >
                       Limpiar Widgets
@@ -1004,7 +969,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                             ) : widget.source === 'studio' ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
                                 <Sparkles className="h-3 w-3" />
-                                <span>Maya Studio</span>
+                                <span>Maya</span>
                               </span>
                             ) : (
                               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
@@ -1165,7 +1130,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
               </div>
             </div>
 
-            {/* RIGHT COLUMN: Maya Studio Dock (Simplified Assistant) */}
+            {/* RIGHT COLUMN: Maya Dock */}
             {!isDockCollapsed && (
               <div className="space-y-4">
                 <div className="banorte-card rounded-2xl border border-[#CBD9E6] bg-white shadow-sm flex flex-col h-[760px] overflow-hidden">
@@ -1176,7 +1141,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                         M
                       </div>
                       <div>
-                        <div className="text-xs font-bold leading-none">Maya Studio</div>
+                        <div className="text-xs font-bold leading-none">Maya</div>
                         <span className="text-[10px] text-emerald-300 font-medium">
                           Asistente de Composición
                         </span>
@@ -1240,7 +1205,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                           {
                             id: `rst-${Date.now()}`,
                             role: 'assistant',
-                            content: 'Historial de Maya Studio restablecido. ¿Qué componente deseas montar en el Command Center?',
+                            content: 'Historial de Maya restablecido. ¿Qué componente deseas montar en el Dashboard?',
                             timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
                           },
                         ]);

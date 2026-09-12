@@ -130,19 +130,32 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
   const nodeFromPointer = p.sankeyNodesPath ? pointer(p.data, p.sankeyNodesPath) : undefined;
   const linkFromPointer = p.sankeyLinksPath ? pointer(p.data, p.sankeyLinksPath) : undefined;
 
-  const rawNodesInput: Array<{ id: string; label?: string; color?: string }> = toSafeArray(
+  const rawNodesInput = toSafeArray<Record<string, unknown>>(
     nodeFromPointer,
     p.data && typeof p.data === 'object' ? (p.data as any).nodes : undefined,
     (p as any).nodes
   );
-  const rawLinksInput: Array<{ source: string; target: string; value: number; color?: string }> = toSafeArray(
+  const rawLinksInput = toSafeArray<Record<string, unknown>>(
     linkFromPointer,
     p.data && typeof p.data === 'object' ? (p.data as any).links : undefined,
     (p as any).links
   );
 
-  let nodes = [...rawNodesInput];
-  let links = [...rawLinksInput];
+  // Payloads produced by different A2UI surfaces use either id/label or name.
+  // Normalize both shapes before the layout pass so malformed data degrades safely.
+  let nodes: Array<{ id: string; label: string; color?: string }> = rawNodesInput.map((node: any, index) => ({
+    id: String(node?.id ?? node?.name ?? `node_${index}`),
+    label: String(node?.label ?? node?.name ?? node?.id ?? `Categoría ${index + 1}`),
+    color: node?.color,
+  }));
+  let links: Array<{ source: string; target: string; value: number; color?: string }> = rawLinksInput
+    .filter((link: any) => link && link.source != null && link.target != null)
+    .map((link: any) => ({
+      source: String(link.source),
+      target: String(link.target),
+      value: num(link.value),
+      color: link.color,
+    }));
 
   if (!links.length) {
     const list = rows(p.data, p.dataPath);

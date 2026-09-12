@@ -11,6 +11,7 @@ export interface BanortePortalHeaderProps {
   selectedUserId?: string;
   onSelectUser?: (userId: string) => void;
   onLogout?: () => void;
+  minimal?: boolean;
 }
 
 export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
@@ -22,6 +23,7 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
   selectedUserId = 'C001',
   onSelectUser,
   onLogout,
+  minimal = false,
 }) => {
   const initials = clientName
     .split(' ')
@@ -44,11 +46,13 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
         {/* Left: Official Banorte Brand logo & Banking subtitle */}
         <div className="flex items-center gap-3 sm:gap-5">
           <BanorteLogo className="h-[27px] w-auto" theme="red" />
-          <div className="hidden border-l border-white/20 pl-4 md:block">
-            <span className="text-[13px] font-bold text-white tracking-tight">
-              Banca en Línea
-            </span>
-          </div>
+          {!minimal && (
+            <div className="hidden border-l border-white/20 pl-4 md:block">
+              <span className="text-[13px] font-bold text-white tracking-tight">
+                Banca en Línea
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Right: Security indicators, MCP telemetry, and Client profile switcher */}
@@ -64,7 +68,7 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
           </a>
 
           {/* FastMCP Inspector discrete badge */}
-          {onOpenInspector && (
+          {!minimal && onOpenInspector && (
             <button
               type="button"
               onClick={onOpenInspector}
@@ -80,7 +84,7 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
           )}
 
           {/* Token Móvil status */}
-          {hasToken && (
+          {!minimal && hasToken && (
             <span className="inline-flex h-9 items-center gap-1.5 rounded-2xl bg-white/10 px-3 text-[13px] font-bold text-white shadow-sm">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <LockKeyhole className="h-3 w-3" />
@@ -111,9 +115,11 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
               ) : (
                 <p className="text-[13px] font-bold text-white leading-tight">{clientName}</p>
               )}
-              <p className="text-[11px] font-medium text-white/80 leading-tight mt-0.5">
-                {currentTier}
-              </p>
+              {!minimal && (
+                <p className="text-[11px] font-medium text-white/80 leading-tight mt-0.5">
+                  {currentTier}
+                </p>
+              )}
             </div>
             <div
               className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-[13px] font-bold text-[#D00039] shadow-sm"
