@@ -70,8 +70,8 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
   onAction,
   hasActiveRestructure = false,
 }) => {
-  const nominaBalance = accounts?.nominaBalance ?? 27900.0;
-  const cardDebt = accounts?.totalDebt ?? 0.0;
+  const nominaBalance = Number(accounts?.nominaBalance ?? 27900.0) || 0;
+  const cardDebt = Number(accounts?.totalDebt ?? 0.0) || 0;
   const accountLast4 =
     accounts?.accountLast4 ||
     (selectedUserId === 'C002' ? '7721' : selectedUserId === 'C003' ? '8359' : '4582');
@@ -684,7 +684,7 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
                     <td className="py-3 px-4 text-right font-black tabular-nums text-xs">
                       <span className={tx.type === 'credit' ? 'text-emerald-700' : 'text-slate-900'}>
                         {tx.type === 'credit' ? '+' : ''}$
-                        {Math.abs(tx.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                        {Math.abs(Number(tx.amount) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">

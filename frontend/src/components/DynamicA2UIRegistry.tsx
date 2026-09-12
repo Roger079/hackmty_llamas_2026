@@ -59,10 +59,11 @@ for (const path in componentModules) {
  * Defensive property normalizer ensuring components receive both camelCase,
  * snake_case, and accounts array data regardless of how Gemini formats the payload.
  */
-function normalizeProps(component: string, rawProps: Record<string, any>): Record<string, any> {
-  const p = { ...rawProps };
+function normalizeProps(component?: string, rawProps?: Record<string, any>): Record<string, any> {
+  const p = { ...(rawProps || {}) };
+  const comp = String(component || '');
 
-  if (component === 'BanorteBalanceCard' || component.includes('Balance') || component.includes('Account') || component.includes('Cuentas')) {
+  if (comp === 'BanorteBalanceCard' || comp.includes('Balance') || comp.includes('Account') || comp.includes('Cuentas')) {
     const accounts = Array.isArray(p.accounts) ? p.accounts : [];
     const firstAcc = accounts[0];
     const cardAcc = accounts.find((a: any) => a.type === 'oro' || a.current_debt > 0);
@@ -89,11 +90,11 @@ function normalizeProps(component: string, rawProps: Record<string, any>): Recor
     } else {
       p.totalDebt = p.totalDebt ?? p.total_debt ?? 0;
     }
-  } else if (component === 'SpendingDonutCard' || component.includes('Spending') || component.includes('Desglose') || component.includes('Breakdown') || component.includes('Gastos')) {
+  } else if (comp === 'SpendingDonutCard' || comp.includes('Spending') || comp.includes('Desglose') || comp.includes('Breakdown') || comp.includes('Gastos')) {
     if (!p.categories && Array.isArray(p.items)) {
       p.categories = p.items;
     }
-  } else if (component === 'DebtRestructureCard') {
+  } else if (comp === 'DebtRestructureCard') {
     p.totalDebt = p.totalDebt ?? p.total_debt ?? 28000.00;
     p.cardName = p.cardName ?? p.card_name ?? 'Tarjeta Banorte Mastercard';
     p.cardLast4 = p.cardLast4 ?? p.card_last4 ?? '8812';
@@ -108,7 +109,7 @@ function normalizeProps(component: string, rawProps: Record<string, any>): Recor
       total_savings: opt.total_savings ?? 0,
       label: opt.label,
     }));
-  } else if (component === 'ConfirmationReceipt') {
+  } else if (comp === 'ConfirmationReceipt') {
     p.folio = p.folio || p.folio_convenio || 'FOL-BNTE-2026-R8812';
     p.status = p.status || 'APROBADO';
     p.monthlyPayment = p.monthlyPayment ?? p.monthly_payment ?? 1376.67;
@@ -116,23 +117,23 @@ function normalizeProps(component: string, rawProps: Record<string, any>): Recor
     p.nextPaymentDate = p.nextPaymentDate || p.next_payment_date || '15 Oct 2026';
     p.bankSeal = p.bankSeal || p.bank_seal || 'BANORTE-CRYPTO-SHA256-VALID';
     p.clientName = p.clientName || p.client_name || 'Carlos Ramírez';
-  } else if (component === 'SpeiConfirmCard') {
+  } else if (comp === 'SpeiConfirmCard') {
     p.transferId = p.transferId || p.transfer_id || 'prep-spei-101';
     p.beneficiary = p.beneficiary || p.beneficiary_name || 'SOFÍA MENDOZA RÍOS';
     p.bank = p.bank || p.recipient_bank || 'BBVA México';
     p.clabe = p.clabe || '012 180 01594839201 9';
-  } else if (component === 'SpeiReceiptCard') {
+  } else if (comp === 'SpeiReceiptCard') {
     p.trackingKey = p.trackingKey || p.tracking_key || 'BNTE202609118492019';
     p.date = p.date || p.execution_timestamp || '11 Sep 2026, 23:45 hrs';
-  } else if (component === 'InvestmentSimulatorCard') {
+  } else if (comp === 'InvestmentSimulatorCard') {
     p.initialAmount = p.initialAmount ?? p.initial_amount ?? 25000;
     p.initialTermDays = p.initialTermDays ?? p.initial_term_days ?? 91;
     p.annualRate = p.annualRate ?? p.annual_rate ?? '9.1%';
     p.estimatedGain = p.estimatedGain ?? p.estimated_gain;
     p.totalMaturity = p.totalMaturity ?? p.total_maturity;
   } else if (
-    ['StackedBarChart', 'BarChart', 'GroupedBarChart', 'LineChart', 'AreaChart', 'StackedAreaChart', 'BanorteChartCard', 'MultiLineChart', 'ProjectionChart'].includes(component) ||
-    component.toLowerCase().includes('chart')
+    ['StackedBarChart', 'BarChart', 'GroupedBarChart', 'LineChart', 'AreaChart', 'StackedAreaChart', 'BanorteChartCard', 'MultiLineChart', 'ProjectionChart'].includes(comp) ||
+    comp.toLowerCase().includes('chart')
   ) {
     let rawList: any[] = [];
     if (Array.isArray(p.data)) {
@@ -253,9 +254,11 @@ export const DynamicA2UIRegistry: React.FC<DynamicA2UIRegistryProps> = ({
   onAction,
   disabled = false,
 }) => {
-  const { component, props = {} } = payload;
-  const normalized = normalizeProps(component, props);
-  const ComponentToRender = componentRegistry[component];
+  if (!payload || typeof payload !== 'object') return null;
+  const comp = payload.component || 'GenericBanorteCard';
+  const rawProps = payload.props || {};
+  const normalized = normalizeProps(comp, rawProps);
+  const ComponentToRender = componentRegistry[comp];
 
   if (ComponentToRender) {
     return <ComponentToRender {...normalized} onAction={onAction} disabled={disabled} />;
@@ -263,7 +266,7 @@ export const DynamicA2UIRegistry: React.FC<DynamicA2UIRegistryProps> = ({
 
   return (
     <GenericBanorteCard
-      componentName={component}
+      componentName={comp}
       props={normalized}
       onAction={onAction}
       disabled={disabled}

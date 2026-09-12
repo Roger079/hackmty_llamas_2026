@@ -8,6 +8,7 @@ import { BanorteFooter } from './components/BanorteFooter';
 import { ChatStream } from './components/ChatStream';
 import { McpInspector } from './components/McpInspector';
 import { MobileSimulator } from './components/MobileSimulator';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { A2UIPayload, ActionContext, ChatMessage, McpCallLog, UserCognitiveProfile } from './types/a2ui';
 
 const DEFAULT_USER_ID = 'C001';
@@ -601,18 +602,20 @@ export const App: React.FC = () => {
                 ${activeTab === 'maya' ? 'hidden lg:block' : ''}
               `}
             >
-              <BanorteGlobalPosition
-                clientName={clientName}
-                selectedUserId={selectedUserId}
-                accounts={bankAccounts}
-                transactions={transactions}
-                cognitiveProfile={cognitiveProfile}
-                activeTab={activeTab}
-                onSelectTab={(tab) => setActiveTab(tab)}
-                onTriggerMayaPrompt={handleSendMessage}
-                onAction={handleAction}
-                hasActiveRestructure={hasRestructure}
-              />
+              <ErrorBoundary fallbackTitle="Panel de Control Financiero">
+                <BanorteGlobalPosition
+                  clientName={clientName}
+                  selectedUserId={selectedUserId}
+                  accounts={bankAccounts}
+                  transactions={transactions}
+                  cognitiveProfile={cognitiveProfile}
+                  activeTab={activeTab}
+                  onSelectTab={(tab) => setActiveTab(tab)}
+                  onTriggerMayaPrompt={handleSendMessage}
+                  onAction={handleAction}
+                  hasActiveRestructure={hasRestructure}
+                />
+              </ErrorBoundary>
             </div>
 
             {/* Right 5 Columns: Maya Copiloto Dock (Seamlessly integrated, no overlapping buttons) */}

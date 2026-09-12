@@ -25,13 +25,23 @@ interface SpendingDonutCardProps {
 }
 
 export const SpendingDonutCard: React.FC<SpendingDonutCardProps> = (props) => {
-  const cats: CategoryItem[] = props.categories && props.categories.length > 0 ? props.categories : [
+  const rawCats = Array.isArray(props.categories) && props.categories.length > 0 ? props.categories : [
     { name: 'Supermercado', amount: 5420, percentage: 36.5, color: '#EB0029' },
     { name: 'Restaurantes', amount: 3280, percentage: 22.1, color: '#FF5A70' },
     { name: 'Servicios', amount: 2650, percentage: 17.8, color: '#4A5568' },
     { name: 'Transporte', amount: 1950, percentage: 13.1, color: '#718096' },
     { name: 'Entretenimiento', amount: 1550, percentage: 10.5, color: '#CBD5E0' }
   ];
+
+  const cats: CategoryItem[] = rawCats.map((c: any) => ({
+    name: String(c?.name || c?.categoria || c?.category || 'Otros'),
+    amount: Number(c?.amount ?? c?.monto ?? 0) || 0,
+    percentage: Number(c?.percentage ?? c?.porcentaje ?? 0) || 0,
+    color: c?.color || '#EB0029',
+    icon: c?.icon
+  }));
+
+  const totalCalculated = cats.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
   const chartData = {
     gastos: cats.map(c => ({
@@ -98,7 +108,7 @@ export const SpendingDonutCard: React.FC<SpendingDonutCardProps> = (props) => {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right font-black tabular-nums text-slate-900 text-xs">
-                    ${c.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
+                    ${(Number(c.amount) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
                     <span className="text-[10px] font-semibold text-slate-500">MXN</span>
                   </td>
                 </tr>
@@ -109,7 +119,7 @@ export const SpendingDonutCard: React.FC<SpendingDonutCardProps> = (props) => {
                 <td className="py-3 px-4 text-slate-700 uppercase tracking-wide">Total Periodo</td>
                 <td className="py-3 px-4 text-center text-slate-500 font-mono text-[11px]">100%</td>
                 <td className="py-3 px-4 text-right font-black tabular-nums text-[#061D3A]">
-                  ${cats.reduce((sum, item) => sum + item.amount, 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
+                  ${totalCalculated.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
                   <span className="text-[10px] font-semibold text-slate-500">MXN</span>
                 </td>
               </tr>

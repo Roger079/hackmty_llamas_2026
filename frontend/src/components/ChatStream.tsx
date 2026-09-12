@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Send, Sparkles, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
 import { ActionContext, ChatMessage } from '../types/a2ui';
 import { DynamicA2UIRegistry } from './DynamicA2UIRegistry';
+import { ErrorBoundary } from './ErrorBoundary';
 import mayaAvatar from '../assets/12ui/maya-avatar.png';
 import mayaMessage from '../assets/12ui/maya-message.png';
 
@@ -254,7 +255,9 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
 
                 {message.a2ui && (
                   <div className="animate-in fade-in zoom-in-95 duration-150">
-                    <DynamicA2UIRegistry payload={message.a2ui} onAction={onAction} disabled={isLoading} />
+                    <ErrorBoundary fallbackTitle={`Componente ${message.a2ui.component || 'A2UI'}`}>
+                      <DynamicA2UIRegistry payload={message.a2ui} onAction={onAction} disabled={isLoading} />
+                    </ErrorBoundary>
                   </div>
                 )}
 
