@@ -259,6 +259,32 @@ export const App: React.FC = () => {
   };
 
   const streamChat = async (payload: Record<string, unknown>) => {
+    const assistantMsgId = `stream-${Date.now()}`;
+    setMessages((current) => [
+      ...current,
+      {
+        id: assistantMsgId,
+        role: 'assistant',
+        content: '',
+        timestamp: timeNow(),
+      },
+    ]);
+
+    const updateAssistantMessage = (reply: string, a2ui?: A2UIPayload | null) => {
+      setMessages((current) =>
+        current.map((m) =>
+          m.id === assistantMsgId
+            ? {
+                ...m,
+                content: reply,
+                a2ui: a2ui || m.a2ui,
+              }
+            : m
+        )
+      );
+      if (a2ui) setLastA2UI(a2ui);
+    };
+
     try {
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
@@ -268,7 +294,7 @@ export const App: React.FC = () => {
 
       if (!response.ok || !response.body) {
         const fallbackData = await postChat(payload);
-        appendResponse(fallbackData);
+        updateAssistantMessage(fallbackData.reply, fallbackData.a2ui);
         return fallbackData;
       }
 
@@ -278,78 +304,74 @@ export const App: React.FC = () => {
       let fullReply = '';
       let capturedA2UI: A2UIPayload | null = null;
 
-      const assistantMsgId = `stream-${Date.now()}`;
-      setMessages((current) => [
-        ...current,
-        {
-          id: assistantMsgId,
-          role: 'assistant',
-          content: '',
-          timestamp: timeNow(),
-        },
-      ]);
-
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
+        const blocks = buffer.split('\n\n');
+        buffer = blocks.pop() || '';
 
-        for (const block of lines) {
+        for (const block of blocks) {
           if (!block.trim()) continue;
-          const eventMatch = block.match(/event:\s*(.+)/);
-          const dataMatch = block.match(/data:\s*(.+)/);
-          if (!eventMatch || !dataMatch) continue;
+          const eventMatch = block.match(/^event:\s*(.+)$/m);
+          const dataLines: string[] = [];
+          for (const line of block.split('\n')) {
+            if (line.startsWith('data:')) {
+              dataLines.push(line.slice(5).trimStart());
+            }
+          }
+          if (!eventMatch || dataLines.length === 0) continue;
 
           const event = eventMatch[1].trim();
+          const rawData = dataLines.join('\n');
           let dataJson: any = null;
           try {
-            dataJson = JSON.parse(dataMatch[1].trim());
+            dataJson = JSON.parse(rawData);
           } catch {
-            dataJson = dataMatch[1].trim();
+            dataJson = rawData;
           }
 
           if (event === 'token' && typeof dataJson === 'string') {
             fullReply += dataJson;
-            setMessages((current) =>
-              current.map((m) => (m.id === assistantMsgId ? { ...m, content: fullReply } : m))
-            );
+            updateAssistantMessage(fullReply, capturedA2UI);
           } else if (event === 'mcp_call' && dataJson) {
             setMcpLogs((current) => [dataJson, ...current]);
           } else if (event === 'a2ui' && dataJson) {
             capturedA2UI = dataJson;
-            setLastA2UI(dataJson);
-            setMessages((current) =>
-              current.map((m) => (m.id === assistantMsgId ? { ...m, a2ui: dataJson } : m))
-            );
+            updateAssistantMessage(fullReply, dataJson);
           } else if (event === 'done' && dataJson) {
-            if (dataJson.reply && !fullReply) fullReply = dataJson.reply;
+            if (dataJson.reply && (!fullReply || fullReply.trim().length === 0)) {
+              fullReply = dataJson.reply;
+            }
             if (dataJson.a2ui) {
               capturedA2UI = dataJson.a2ui;
-              setLastA2UI(dataJson.a2ui);
             }
-            setMessages((current) =>
-              current.map((m) =>
-                m.id === assistantMsgId
-                  ? {
-                      ...m,
-                      content: fullReply || 'Operación procesada por Maya.',
-                      a2ui: capturedA2UI || undefined,
-                    }
-                  : m
-              )
+            updateAssistantMessage(
+              fullReply || dataJson.reply || 'Operación completada por Maya Banorte.',
+              capturedA2UI || dataJson.a2ui
             );
           }
         }
       }
+
+      if (!fullReply.trim()) {
+        const fallbackData = await postChat(payload);
+        updateAssistantMessage(fallbackData.reply, fallbackData.a2ui);
+        return fallbackData;
+      }
+
       return { reply: fullReply, a2ui: capturedA2UI };
     } catch (err) {
       console.warn('Streaming failed, falling back to POST /api/chat:', err);
-      const fallbackData = await postChat(payload);
-      appendResponse(fallbackData);
-      return fallbackData;
+      try {
+        const fallbackData = await postChat(payload);
+        updateAssistantMessage(fallbackData.reply, fallbackData.a2ui);
+        return fallbackData;
+      } catch (fallbackErr) {
+        console.error('All chat attempts failed:', fallbackErr);
+        updateAssistantMessage('No pude conectar con el asistente Banorte. Verifica la conexión e inténtalo de nuevo.');
+      }
     }
   };
 
