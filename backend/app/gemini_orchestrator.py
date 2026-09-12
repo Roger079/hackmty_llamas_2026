@@ -311,10 +311,7 @@ class GeminiOrchestrator:
             if "date" not in props and "execution_timestamp" in props:
                 props["date"] = props["execution_timestamp"]
 
-<<<<<<< Updated upstream
         elif comp in ["SpendingDonutCard", "BanorteChartCard", "Chart"]:
-=======
-        elif comp in ["SpendingDonutCard", "BanorteChartCard"]:
             if not props.get("categories") or "totalSpent" not in props:
                 analytics = mcp_client._execute_mock("get_spending_analytics", {"user_id": uid, "period": props.get("period", "")})
                 props.setdefault("categories", analytics.get("categories", []))
@@ -323,7 +320,6 @@ class GeminiOrchestrator:
                 props.setdefault("period", analytics.get("period", "Septiembre 2026"))
                 props.setdefault("trend_pct", analytics.get("trend_pct", -7.4))
                 props.setdefault("summary", analytics.get("summary", ""))
->>>>>>> Stashed changes
             if "totalSpent" not in props and "total_spent" in props:
                 props["totalSpent"] = props["total_spent"]
             if "previousPeriodSpent" not in props and "previous_period_spent" in props:
@@ -365,7 +361,6 @@ class GeminiOrchestrator:
         user_id = request.user_id or "C001"
         combined = (request.message + " " + reply_text).lower()
 
-<<<<<<< Updated upstream
         # 1. Specific Visual Charts & Spending Analytics
         if any(k in combined for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de ingresos"]):
             sankey_data = mcp_client.get_sankey_cashflow(user_id)
@@ -405,7 +400,7 @@ class GeminiOrchestrator:
                 }
             )
         elif any(k in combined for k in ["barras", "barra", "bar chart", "gráfico de barras"]):
-            spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id})
+            spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": request.message})
             return A2UIPayload(
                 component="BanorteChartCard",
                 props={
@@ -421,37 +416,9 @@ class GeminiOrchestrator:
                     "data": {"data": spending["categories"]}
                 }
             )
-        elif any(k in combined for k in ["línea", "linea", "líneas", "lineas", "evolución", "evolucion", "tendencia"]):
-            monthly_data = [
-                {"mes": "Abr 2026", "monto": 7450.00},
-                {"mes": "May 2026", "monto": 7100.00},
-                {"mes": "Jun 2026", "monto": 7800.00},
-                {"mes": "Jul 2026", "monto": 6900.00},
-                {"mes": "Ago 2026", "monto": 7200.00},
-                {"mes": "Sep 2026", "monto": 6450.00}
-            ]
-            return A2UIPayload(
-                component="BanorteChartCard",
-                props={
-                    "id": "banorte-line-spending",
-                    "chartType": "line",
-                    "title": "Evolución Histórica de Gastos (Últimos 6 Meses)",
-                    "subtitle": "Tendencia mensual de consumos con reducción sostenida",
-                    "categoryKey": "mes",
-                    "valueKey": "monto",
-                    "valueFormat": "currency",
-                    "currency": "MXN",
-                    "height": 290,
-                    "data": {"data": monthly_data}
-                }
-            )
-        elif any(k in combined for k in ["gasto", "gasté", "gastos", "categoría", "en qué"]):
-            spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id})
-=======
-        # 1. Spending / Expenses
-        if any(k in combined for k in ["gasto", "gasté", "gastos", "categoría", "en qué", "compras", "consumo"]):
+        elif any(k in combined for k in ["gasto", "gasté", "gastos", "categoría", "en qué", "compras", "consumo"]):
             spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": request.message})
->>>>>>> Stashed changes
+            return A2UIPayload(component="SpendingDonutCard", props=spending)
             return A2UIPayload(component="SpendingDonutCard", props=spending)
 
         # 2. Balances / Accounts
