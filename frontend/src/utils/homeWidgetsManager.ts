@@ -163,7 +163,21 @@ export function createWidgetItem(widgetType: string): MobileWidgetItem | null {
       },
     };
   }
-  if (norm.includes('donut') || norm.includes('dona') || norm.includes('gasto') || norm.includes('spending')) {
+  if (
+    norm.includes('donut') ||
+    norm.includes('dona') ||
+    norm.includes('gasto') ||
+    norm.includes('spending') ||
+    norm.includes('pay') ||
+    norm.includes('pie') ||
+    norm.includes('pastel') ||
+    norm.includes('grafic') ||
+    norm.includes('grafica') ||
+    norm.includes('grafico') ||
+    norm.includes('chart') ||
+    norm.includes('categoria') ||
+    norm.includes('consumo')
+  ) {
     return {
       id: `spending-donut-${Date.now()}`,
       type: 'a2ui',
