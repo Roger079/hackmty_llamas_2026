@@ -6,11 +6,9 @@ import {
   EyeOff,
   LockKeyhole,
   ShieldCheck,
-  Smartphone,
   UserRound,
 } from 'lucide-react';
 import { BanorteLogo } from './BanorteLogo';
-import { MayaLogo } from './MayaLogo';
 
 interface LoginScreenProps {
   onLogin: (username: string) => void;
@@ -46,87 +44,71 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     setIsEntering(true);
     window.setTimeout(() => {
       onLogin(finalUser);
-    }, 280);
+    }, 250);
   };
 
   return (
     <div className="min-h-screen w-full bg-[#F4F6F9] text-slate-900 flex flex-col justify-between antialiased selection:bg-[#EB0029] selection:text-white">
-      {/* 1. Mobile Header (Clean, Authentic Banorte Red Identity) */}
-      <header className="sticky top-0 z-30 bg-[#EB0029] text-white px-4 sm:px-6 py-3 shadow-md">
-        <div className="mx-auto flex max-w-lg items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BanorteLogo className="h-5 w-auto shrink-0" theme="red" />
-            <span className="hidden h-4 w-px bg-white/30 sm:block" />
-            <span className="hidden text-xs font-semibold text-red-100 sm:block">Banca Móvil</span>
+      {/* 1. Header (Crisp, Institutional Banorte Red) */}
+      <header className="sticky top-0 z-30 bg-[#EB0029] text-white px-4 sm:px-8 py-3.5 border-b border-[#C70023]">
+        <div className="mx-auto flex max-w-5xl items-center justify-between">
+          <div className="flex items-center gap-4">
+            <BanorteLogo className="h-6 w-auto shrink-0" theme="red" />
+            <span className="hidden h-5 w-px bg-white/30 sm:block" />
+            <span className="hidden text-xs font-bold uppercase tracking-wider text-white/90 sm:block">
+              Banca en Línea
+            </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold text-white">
-              <ShieldCheck className="h-3 w-3 text-emerald-300" />
-              <span>Token 2FA Activo</span>
-            </span>
-            <span className="hidden xs:inline-flex items-center gap-1 rounded-full bg-black/15 px-2 py-0.5 text-[10px] text-red-100">
-              <Smartphone className="h-3 w-3" />
-              <span>Banca Digital</span>
+          <div className="flex items-center gap-3 text-xs font-semibold text-white/90">
+            <span className="inline-flex items-center gap-1.5 border border-white/30 bg-black/10 px-2.5 py-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
+              <span>Sitio Seguro</span>
             </span>
           </div>
         </div>
       </header>
 
       {/* 2. Main Login Canvas */}
-      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
-        <div className="w-full max-w-md space-y-4 animate-in fade-in zoom-in-95 duration-200">
-          {/* Main Login Card */}
-          <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
-            {/* Maya Welcome Badge */}
-            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-              <MayaLogo size={42} showStatus label="Maya Copiloto" />
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h2 className="text-sm font-bold text-slate-900">Maya Copiloto</h2>
-                  <span className="rounded-full bg-red-50 border border-red-100 px-2 py-0.2 text-[9px] font-bold text-[#EB0029]">
-                    IA Banorte
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">Bienvenido a tu banca móvil inteligente</p>
-              </div>
-            </div>
-
-            <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+      <main className="flex-1 flex items-center justify-center px-4 py-10 sm:py-16">
+        <div className="w-full max-w-md space-y-3">
+          {/* Main Login Card - Sharp Edges */}
+          <div className="bg-white border border-slate-300 shadow-sm p-7 sm:p-9 space-y-6">
+            <div className="border-b border-slate-200 pb-4">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 uppercase">
                 Iniciar Sesión
               </h1>
-              <p className="mt-1 text-xs text-slate-500">
-                Ingresa tus credenciales para acceder a tus cuentas Banorte
+              <p className="mt-1 text-xs text-slate-500 font-medium">
+                Ingresa tu usuario y contraseña para acceder a tus cuentas.
               </p>
             </div>
 
             {/* Form Inputs */}
-            <form onSubmit={handleSubmit} className="space-y-4 pt-1" noValidate>
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
               <div>
-                <label htmlFor="user-input" className="mb-1.5 block text-xs font-bold text-slate-700">
+                <label htmlFor="user-input" className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-700">
                   Usuario
                 </label>
-                <div className="flex h-12 items-center rounded-2xl border border-slate-200 bg-slate-50/40 px-3.5 transition focus-within:border-[#EB0029] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#EB0029]/10">
+                <div className="flex h-11 items-center border border-slate-300 bg-white px-3 transition focus-within:border-[#EB0029] focus-within:ring-1 focus-within:ring-[#EB0029]">
                   <UserRound className="h-4 w-4 shrink-0 text-slate-400" />
                   <input
                     id="user-input"
                     autoComplete="username"
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
-                    placeholder="Usuario Banorte"
-                    className="h-full min-w-0 flex-1 bg-transparent px-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-normal"
+                    placeholder="Ingresa tu usuario"
+                    className="h-full min-w-0 flex-1 bg-transparent px-2.5 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-normal"
                   />
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label htmlFor="password-input" className="block text-xs font-bold text-slate-700">
+                  <label htmlFor="password-input" className="block text-xs font-bold uppercase tracking-wide text-slate-700">
                     Contraseña
                   </label>
                 </div>
-                <div className="flex h-12 items-center rounded-2xl border border-slate-200 bg-slate-50/40 px-3.5 transition focus-within:border-[#EB0029] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#EB0029]/10">
+                <div className="flex h-11 items-center border border-slate-300 bg-white px-3 transition focus-within:border-[#EB0029] focus-within:ring-1 focus-within:ring-[#EB0029]">
                   <LockKeyhole className="h-4 w-4 shrink-0 text-slate-400" />
                   <input
                     id="password-input"
@@ -134,13 +116,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     autoComplete="current-password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Contraseña"
-                    className="h-full min-w-0 flex-1 bg-transparent px-3 text-xs sm:text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                    placeholder="Ingresa tu contraseña"
+                    className="h-full min-w-0 flex-1 bg-transparent px-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((visible) => !visible)}
-                    className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:text-slate-700 cursor-pointer"
+                    className="grid h-8 w-8 place-items-center text-slate-400 transition hover:text-slate-700 cursor-pointer"
                     aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -148,39 +130,39 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-0.5">
-                <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
+              <div className="flex items-center justify-between pt-1 text-xs">
+                <label className="inline-flex cursor-pointer items-center gap-2 font-medium text-slate-600">
                   <input
                     type="checkbox"
                     checked={rememberUser}
                     onChange={(event) => setRememberUser(event.target.checked)}
                     className="peer sr-only"
                   />
-                  <span className="grid h-4 w-4 place-items-center rounded-md border border-slate-300 bg-white text-white peer-checked:border-[#EB0029] peer-checked:bg-[#EB0029]">
+                  <span className="grid h-4 w-4 place-items-center border border-slate-400 bg-white text-white peer-checked:border-[#EB0029] peer-checked:bg-[#EB0029]">
                     {rememberUser && <Check className="h-3 w-3 stroke-[3]" />}
                   </span>
                   Recordar usuario
                 </label>
 
-                <span className="text-[11px] font-medium text-[#EB0029] hover:underline cursor-pointer">
+                <a href="#recuperar" onClick={(e) => e.preventDefault()} className="text-xs font-medium text-[#EB0029] hover:underline">
                   ¿Olvidaste tu contraseña?
-                </span>
+                </a>
               </div>
 
-              {/* Submit Button */}
+              {/* Submit Button - Sharp, Solid Banorte Red */}
               <button
                 type="submit"
                 disabled={isEntering}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#EB0029] hover:bg-[#C70023] text-sm font-bold text-white shadow-md shadow-red-500/20 transition cursor-pointer hover:-translate-y-0.5 disabled:opacity-75 disabled:cursor-wait"
+                className="flex h-11 w-full items-center justify-center gap-2 bg-[#EB0029] hover:bg-[#C70023] text-xs sm:text-sm font-bold uppercase tracking-wider text-white transition cursor-pointer disabled:opacity-75 disabled:cursor-wait"
               >
                 {isEntering ? (
                   <>
-                    <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    <span>Iniciando sesión segura…</span>
+                    <span className="h-4 w-4 border-2 border-white border-t-transparent animate-spin" />
+                    <span>Iniciando sesión…</span>
                   </>
                 ) : (
                   <>
-                    <span>Entrar a mi Banca Banorte</span>
+                    <span>Entrar</span>
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}
@@ -188,16 +170,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             </form>
           </div>
 
-          {/* Security & Regulatory Footnote */}
-          <div className="rounded-2xl bg-white/70 border border-slate-200/60 p-3.5 text-center flex items-center justify-center gap-2 text-[11px] text-slate-500">
-            <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span>Autenticación 2FA conforme a Circular 14/2017 de Banco de México</span>
+          {/* Security & Regulatory Footnote - Sharp Edges */}
+          <div className="bg-white border border-slate-200 p-3 text-center flex items-center justify-center gap-2 text-[11px] text-slate-500 font-medium">
+            <ShieldCheck className="h-4 w-4 text-slate-600 shrink-0" />
+            <span>Operación protegida bajo estándares de seguridad bancaria CNBV</span>
           </div>
         </div>
       </main>
 
       {/* 3. Corporate Minimalist Footer */}
-      <footer className="py-3 text-center text-[10px] text-slate-400">
+      <footer className="py-4 border-t border-slate-200 bg-white text-center text-[11px] text-slate-500 font-medium">
         Grupo Financiero Banorte S.A.B. de C.V. Todos los derechos reservados.
       </footer>
     </div>
