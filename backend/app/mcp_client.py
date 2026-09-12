@@ -660,59 +660,8 @@ class McpClient:
             }
 
         elif tool_name == "get_spending_analytics":
-            period = args.get("period", "current_month")
-            cust_p = srv.get_customer_profile(user_id)
-            client_name = f"{cust_p.get('first_name', '')} {cust_p.get('last_name', '')}".strip() or "Cliente Banorte"
-
-            if user_id == "C001":
-                return {
-                    "client": client_name,
-                    "period": "Septiembre 2026",
-                    "total_spent": 6450.00,
-                    "previous_period_spent": 7200.00,
-                    "trend_pct": -10.4,
-                    "currency": "MXN",
-                    "summary": "Excelente gestión de liquidez en tu cuenta Nómina. Gastos optimizados con reducción del 10.4%.",
-                    "categories": [
-                        {"name": "Supermercado (HEB)", "amount": 2850.00, "percentage": 44.2, "color": "#EB0029", "icon": "shopping-cart"},
-                        {"name": "Servicios del Hogar", "amount": 1600.00, "percentage": 24.8, "color": "#4A5568", "icon": "zap"},
-                        {"name": "Restaurantes & Cafés", "amount": 1200.00, "percentage": 18.6, "color": "#FF5A70", "icon": "utensils"},
-                        {"name": "Transporte Digital", "amount": 800.00, "percentage": 12.4, "color": "#718096", "icon": "car"}
-                    ]
-                }
-            elif user_id == "C002":
-                return {
-                    "client": client_name,
-                    "period": "Septiembre 2026",
-                    "total_spent": 15200.00,
-                    "previous_period_spent": 16500.00,
-                    "trend_pct": -7.8,
-                    "currency": "MXN",
-                    "summary": "Consumo concentrado en pagos mínimos de tarjeta y combustible. Reestructurar liberará tu quincena.",
-                    "categories": [
-                        {"name": "Supermercado", "amount": 5400.00, "percentage": 35.5, "color": "#EB0029", "icon": "shopping-cart"},
-                        {"name": "Pagos Tarjeta Mastercard", "amount": 3850.00, "percentage": 25.3, "color": "#C59B27", "icon": "credit-card"},
-                        {"name": "Gasolina y Auto", "amount": 3200.00, "percentage": 21.1, "color": "#4A5568", "icon": "car"},
-                        {"name": "Servicios", "amount": 1750.00, "percentage": 11.5, "color": "#718096", "icon": "zap"},
-                        {"name": "Entretenimiento", "amount": 1000.00, "percentage": 6.6, "color": "#CBD5E0", "icon": "film"}
-                    ]
-                }
-            return {
-                "client": client_name,
-                "period": "Septiembre 2026",
-                "total_spent": 14850.00,
-                "previous_period_spent": 16200.00,
-                "trend_pct": -8.3,
-                "currency": "MXN",
-                "categories": [
-                    {"name": "Supermercado & Despensa", "amount": 5420.00, "percentage": 36.5, "color": "#EB0029", "icon": "shopping-cart"},
-                    {"name": "Restaurantes & Cafés", "amount": 3280.00, "percentage": 22.1, "color": "#FF5A70", "icon": "utensils"},
-                    {"name": "Servicios & Hogar", "amount": 2650.00, "percentage": 17.8, "color": "#4A5568", "icon": "zap"},
-                    {"name": "Transporte & Gasolina", "amount": 1950.00, "percentage": 13.1, "color": "#718096", "icon": "car"},
-                    {"name": "Entretenimiento & Streaming", "amount": 1550.00, "percentage": 10.5, "color": "#CBD5E0", "icon": "film"}
-                ],
-                "summary": "Tus gastos disminuyeron un 8.3% respecto a agosto. Tu principal rubro es Supermercado ($5,420 MXN)."
-            }
+            period = str(args.get("period", "") or "")
+            return srv.get_spending_analytics(user_id, period)
 
         elif tool_name == "get_financial_health_score":
             real_state = self.get_real_customer_state(user_id)

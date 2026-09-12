@@ -140,17 +140,17 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
     },
     {
         "name": "get_spending_analytics",
-        "description": "Obtiene el análisis de gastos del cliente desglosado por categorías (Supermercado, Restaurantes, Servicios, etc.), comercios principales, comparativas de periodos y datos para gráficos de dona/barras.",
+        "description": "Obtiene el análisis de gastos del cliente desglosado por categorías (Supermercado, Restaurantes, Servicios, etc.) y comercios principales en SQLite para gráficos como SpendingDonutCard o BarChart. Acepta cualquier mes o periodo solicitado (ej. 'febrero 2025', 'marzo 2024', 'agosto 2026', 'current_month'). Si el mes solicitado no tiene transacciones registradas, la herramienta calcula y retorna automáticamente los datos del periodo más reciente disponible indicando is_fallback=True.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "user_id": {
                     "type": "STRING",
-                    "description": "Identificador del cliente (ej. 'USR-BANORTE-8842')"
+                    "description": "Identificador del cliente (ej. 'C001', 'C002', 'C003')"
                 },
                 "period": {
                     "type": "STRING",
-                    "description": "Periodo a consultar ('current_month', 'last_month', 'last_6m')"
+                    "description": "Mes o periodo a consultar (ej. 'enero 2025', 'marzo 2024', 'agosto 2026', 'last_month', 'current_month')"
                 }
             },
             "required": []
