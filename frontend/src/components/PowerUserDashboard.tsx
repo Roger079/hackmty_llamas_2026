@@ -25,7 +25,6 @@ import {
   RefreshCw,
   Send,
 } from 'lucide-react';
-import { BanortePortalSegmentBar } from './BanortePortalSegmentBar';
 import { BanortePortalHeader } from './BanortePortalHeader';
 import { BanorteLogo } from './BanorteLogo';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -630,10 +629,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
       )}
 
       <div>
-        {/* 1. Official Banorte Top Segment Bar */}
-        <BanortePortalSegmentBar activeSegment="Personas" />
-
-        {/* 2. Official Banorte Header (with User Switcher) */}
+        {/* Official Banorte Header (with User Switcher) */}
         <BanortePortalHeader
           clientName={clientName}
           minimal
@@ -642,7 +638,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
           onLogout={onLogout}
         />
 
-        {/* 3. Dashboard controls */}
+        {/* Dashboard controls */}
         <div className="sticky top-[70px] z-30 w-full border-b border-[#E1EAF2] bg-white shadow-xs px-4 sm:px-6 lg:px-8 py-2.5">
           <div className="mx-auto flex max-w-[1536px] flex-wrap items-center justify-between gap-3">
             <div>

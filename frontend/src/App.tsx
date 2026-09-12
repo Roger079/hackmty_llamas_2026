@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Code2, Cpu, X, Sparkles } from 'lucide-react';
-import { BanortePortalSegmentBar } from './components/BanortePortalSegmentBar';
 import { BanortePortalHeader } from './components/BanortePortalHeader';
 import { BanorteSubNav, PortalTab } from './components/BanorteSubNav';
 import { BanorteGlobalPosition, TransactionItem } from './components/BanorteGlobalPosition';
@@ -724,10 +723,7 @@ export const App: React.FC = () => {
   return (
     <div className="app-shell min-h-screen bg-[#F3F7FA] text-[#061D3A] flex flex-col justify-between">
       <div>
-        {/* 1. Official Banorte Top Segment Bar */}
-        <BanortePortalSegmentBar activeSegment="Personas" />
-
-        {/* 2. Official Banorte Header (Banca en Línea) */}
+        {/* Official Banorte Header (Banca en Línea) */}
         <BanortePortalHeader
           clientName={clientName}
           tier="Cliente Preferente"
