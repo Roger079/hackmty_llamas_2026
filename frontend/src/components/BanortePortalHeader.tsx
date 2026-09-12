@@ -1,5 +1,5 @@
 import React from 'react';
-import { LockKeyhole, Cpu, ChevronDown, LogOut, Code } from 'lucide-react';
+import { LockKeyhole, Cpu, ChevronDown, LogOut } from 'lucide-react';
 import { BanorteLogo } from './BanorteLogo';
 
 export interface BanortePortalHeaderProps {
@@ -57,16 +57,6 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
 
         {/* Right: Security indicators, MCP telemetry, and Client profile switcher */}
         <div className="flex items-center gap-2 sm:gap-3.5">
-          {/* A2UI Component Notebook */}
-          <a
-            href="/notebook"
-            className="inline-flex h-9 items-center gap-1.5 rounded-2xl border border-white/25 bg-white/10 px-3 text-[13px] font-bold text-white transition hover:bg-white/20 cursor-pointer"
-            title="Abrir el catálogo de componentes A2UI Notebook"
-          >
-            <Code className="h-3.5 w-3.5 text-amber-300" />
-            <span className="hidden sm:inline">A2UI Notebook</span>
-          </a>
-
           {/* FastMCP Inspector discrete badge */}
           {!minimal && onOpenInspector && (
             <button
