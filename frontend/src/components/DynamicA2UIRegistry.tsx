@@ -26,6 +26,18 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   BanorteBalanceCard,
   InvestmentSimulatorCard,
   SpendingDonutCard,
+  // Common LLM alias mappings
+  AccountsSummaryCard: BanorteBalanceCard,
+  BanorteAccountSummary: BanorteBalanceCard,
+  AccountSummary: BanorteBalanceCard,
+  ResumenCuentasCard: BanorteBalanceCard,
+  ResumenCuentas: BanorteBalanceCard,
+  SpendingBreakdownCard: SpendingDonutCard,
+  DetailedBreakdownCard: SpendingDonutCard,
+  DesgloseGastosCard: SpendingDonutCard,
+  DesgloseDetalladoCard: SpendingDonutCard,
+  DesgloseDetallado: SpendingDonutCard,
+  ExpensesBreakdownCard: SpendingDonutCard,
 };
 
 // Register any other discovered components
@@ -50,7 +62,7 @@ for (const path in componentModules) {
 function normalizeProps(component: string, rawProps: Record<string, any>): Record<string, any> {
   const p = { ...rawProps };
 
-  if (component === 'BanorteBalanceCard') {
+  if (component === 'BanorteBalanceCard' || component.includes('Balance') || component.includes('Account') || component.includes('Cuentas')) {
     const accounts = Array.isArray(p.accounts) ? p.accounts : [];
     const firstAcc = accounts[0];
     const cardAcc = accounts.find((a: any) => a.type === 'oro' || a.current_debt > 0);
@@ -76,6 +88,10 @@ function normalizeProps(component: string, rawProps: Record<string, any>): Recor
       p.totalDebt = 0;
     } else {
       p.totalDebt = p.totalDebt ?? p.total_debt ?? 0;
+    }
+  } else if (component === 'SpendingDonutCard' || component.includes('Spending') || component.includes('Desglose') || component.includes('Breakdown') || component.includes('Gastos')) {
+    if (!p.categories && Array.isArray(p.items)) {
+      p.categories = p.items;
     }
   } else if (component === 'DebtRestructureCard') {
     p.totalDebt = p.totalDebt ?? p.total_debt ?? 28000.00;
@@ -177,7 +193,7 @@ function normalizeProps(component: string, rawProps: Record<string, any>): Recor
 }
 
 /**
- * Sleek Banorte Fallback Card for any unmapped or brand-new components.
+ * Sleek Light Banorte Card for any unmapped or brand-new components.
  */
 const GenericBanorteCard: React.FC<{
   componentName: string;
@@ -186,16 +202,16 @@ const GenericBanorteCard: React.FC<{
   disabled?: boolean;
 }> = ({ componentName, props, onAction, disabled }) => {
   return (
-    <div className="bg-slate-900 border border-slate-700/80 rounded-3xl p-5 shadow-2xl text-white space-y-4 my-3 animate-in fade-in">
-      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+    <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs text-slate-900 space-y-4 my-3 animate-in fade-in">
+      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#EB0029] flex items-center justify-center font-black text-sm">B</div>
+          <div className="w-8 h-8 rounded-xl bg-[#EB0029] flex items-center justify-center font-black text-sm text-white shadow-xs">B</div>
           <div>
-            <h4 className="text-xs font-bold text-white">{componentName.replace(/([A-Z])/g, ' $1').trim()}</h4>
-            <p className="text-[10px] text-slate-400">Componente Dinámico A2UI • Banorte</p>
+            <h4 className="text-xs font-bold text-[#061D3A]">{componentName.replace(/([A-Z])/g, ' $1').trim()}</h4>
+            <p className="text-[11px] text-slate-500">Componente Dinámico A2UI • Banorte</p>
           </div>
         </div>
-        <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">
+        <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
           Auto-Registrado
         </span>
       </div>
@@ -204,9 +220,9 @@ const GenericBanorteCard: React.FC<{
         {Object.entries(props).map(([key, val]) => {
           if (typeof val === 'object' || Array.isArray(val) || val === null || val === undefined) return null;
           return (
-            <div key={key} className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-              <div className="text-sm font-bold text-white mt-0.5">{String(val)}</div>
+            <div key={key} className="bg-slate-50 p-3 rounded-xl border border-slate-200/70">
+              <span className="text-[10px] text-slate-500 uppercase font-semibold">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+              <div className="text-sm font-bold text-[#061D3A] mt-0.5">{String(val)}</div>
             </div>
           );
         })}
