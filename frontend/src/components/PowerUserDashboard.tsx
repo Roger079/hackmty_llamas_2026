@@ -24,6 +24,8 @@ import {
   Cpu,
   RefreshCw,
   Send,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { BanortePortalHeader } from './BanortePortalHeader';
 import { BanorteLogo } from './BanorteLogo';
@@ -89,6 +91,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
 
   // Layout & Dock States
   const [isDockCollapsed, setIsDockCollapsed] = useState(false);
+  const [isDockExpanded, setIsDockExpanded] = useState(false);
   const [columnsLayout, setColumnsLayout] = useState<'two' | 'one'>('two');
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isClearConfirmationOpen, setIsClearConfirmationOpen] = useState(false);
@@ -1126,7 +1129,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
             </div>
 
             {/* RIGHT COLUMN: Maya Dock */}
-            {!isDockCollapsed && (
+            {!isDockCollapsed && !isDockExpanded && (
               <div className="space-y-4">
                 <div className="banorte-card rounded-2xl border border-[#CBD9E6] bg-white shadow-sm flex flex-col h-[760px] overflow-hidden">
                   {/* Dock Header */}
@@ -1142,14 +1145,25 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                         </span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsDockCollapsed(true)}
-                      className="rounded-lg p-1 text-white/80 transition hover:bg-white/15 hover:text-white cursor-pointer"
-                      title="Ocultar dock"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsDockExpanded(true)}
+                        className="rounded-lg p-1 text-white/80 transition hover:bg-white/15 hover:text-white cursor-pointer"
+                        title="Expandir Maya a pantalla completa"
+                        aria-label="Expandir Maya"
+                      >
+                        <Maximize2 className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsDockCollapsed(true)}
+                        className="rounded-lg p-1 text-white/80 transition hover:bg-white/15 hover:text-white cursor-pointer"
+                        title="Ocultar dock"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Quick Prompts Bar */}
@@ -1213,6 +1227,32 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
           </div>
         </main>
       </div>
+
+      {isDockExpanded && (
+        <div className="fixed inset-0 z-50 bg-[#F3F7FA] p-3 sm:p-5">
+          <ChatStream
+            messages={messages}
+            isLoading={isLoading}
+            onSendMessage={handleSendMessage}
+            onAction={handleAction}
+            clientName={clientName}
+            userId={selectedUserId}
+            isExpanded
+            onToggleExpand={() => setIsDockExpanded(false)}
+            className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-white"
+            onResetDemo={() => {
+              setMessages([
+                {
+                  id: `rst-${Date.now()}`,
+                  role: 'assistant',
+                  content: 'Historial de Maya restablecido. ¿Qué componente deseas montar en el Dashboard?',
+                  timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+                },
+              ]);
+            }}
+          />
+        </div>
+      )}
 
       {/* FastMCP Inspector Drawer */}
       {isInspectorOpen && (
