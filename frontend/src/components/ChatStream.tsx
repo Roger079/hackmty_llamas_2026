@@ -1,144 +1,247 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, Sparkles, AlertCircle } from 'lucide-react';
-import { ChatMessage, ActionContext } from '../types/a2ui';
+import React, { useEffect, useRef, useState } from 'react';
+import { Send, Sparkles, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
+import { ActionContext, ChatMessage } from '../types/a2ui';
 import { DynamicA2UIRegistry } from './DynamicA2UIRegistry';
+import mayaAvatar from '../assets/12ui/maya-avatar.png';
+import mayaMessage from '../assets/12ui/maya-message.png';
 
 interface ChatStreamProps {
   messages: ChatMessage[];
   isLoading: boolean;
   onSendMessage: (text: string) => void;
-  onAction: (actionCtx: ActionContext) => void;
+  onAction: (actionCtx: ActionContext) => Promise<boolean>;
+  clientName: string;
+  onResetDemo?: () => void;
+  onToggleExpand?: () => void;
+  isExpanded?: boolean;
 }
+
+const quickPrompts = [
+  '¿Cómo reestructurar mi tarjeta Platino?',
+  '¿Cuánto saldo disponible tengo en mis cuentas?',
+  'Transfiere $850 a Sofía Mendoza por SPEI',
+  'Quiero simular una inversión a plazo fijo',
+];
+
+const MessageText: React.FC<{ text: string }> = ({ text }) => (
+  <div className="space-y-2">
+    {text.split(/\n{2,}/).map((paragraph, index) => (
+      <p key={index} className="leading-relaxed">
+        {paragraph.split(/(\*\*[^*]+\*\*)/g).map((part, partIndex) =>
+          part.startsWith('**') && part.endsWith('**') ? (
+            <strong key={partIndex} className="font-bold text-slate-900">
+              {part.slice(2, -2)}
+            </strong>
+          ) : (
+            <React.Fragment key={partIndex}>{part}</React.Fragment>
+          )
+        )}
+      </p>
+    ))}
+  </div>
+);
 
 export const ChatStream: React.FC<ChatStreamProps> = ({
   messages,
   isLoading,
   onSendMessage,
   onAction,
+  clientName,
+  onResetDemo,
+  onToggleExpand,
+  isExpanded = false,
 }) => {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollToBottom();
+    const area = scrollAreaRef.current;
+    if (area) {
+      area.scrollTo({
+        top: area.scrollHeight,
+        behavior: messages.length > 1 ? 'smooth' : 'auto',
+      });
+    }
   }, [messages, isLoading]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     if (!inputText.trim() || isLoading) return;
     onSendMessage(inputText.trim());
     setInputText('');
   };
 
-  const quickPrompts = [
-    { label: "💳 Reestructurar deuda", prompt: "Tengo una deuda en mi tarjeta de crédito Banorte y quiero ver opciones de reestructuración." },
-    { label: "💰 Consultar saldos", prompt: "¿Cuánto saldo disponible tengo en mis cuentas?" },
-    { label: "⚡ SPEI $850 a Sofía", prompt: "Transfiere $850 a Sofía Mendoza para la cena." },
-    { label: "📈 Simular Pagaré", prompt: "Quiero invertir $25,000 en Pagaré Banorte." }
-  ];
-
   return (
-    <div className="bg-slate-900/95 backdrop-blur border border-slate-800 rounded-3xl p-5 flex flex-col h-full shadow-2xl">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#EB0029] to-[#FF4D6D] flex items-center justify-center text-white shadow-lg shadow-red-500/20">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
+    <section
+      className="banorte-card flex h-[calc(100svh-204px)] min-h-[700px] w-full min-w-0 flex-col overflow-hidden bg-white"
+      aria-label="Conversación con Maya Copiloto"
+    >
+      {/* Zen Header: Clean, light, airy, institutional and calm */}
+      <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-[#E1EAF2] bg-white px-4 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <img src={mayaAvatar} alt="" className="h-10 w-10 shrink-0 object-contain" />
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white">Maya — Asistente Bancario Banorte</h3>
-              <span className="text-[10px] bg-red-900/40 text-red-300 border border-red-500/30 px-2 py-0.5 rounded font-medium">
-                A2UI Gen
+              <h2 className="truncate text-sm font-bold tracking-tight text-[#061D3A]">
+                Maya Copiloto
+              </h2>
+              <span className="hidden rounded-lg bg-[#F1F5F8] px-2 py-0.5 text-[11px] font-medium text-[#526B87] sm:inline-block">
+                IA Bancaria
               </span>
             </div>
-            <p className="text-xs text-slate-400">Impulsado por Model Context Protocol (MCP) y A2UI</p>
+            <p className="truncate text-xs text-[#6D85A1]">
+              Sesión protegida para {clientName.split(' ')[0]}
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Messages Stream */}
-      <div className="flex-1 overflow-y-auto space-y-4 pr-1 mb-3">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'items-start gap-3'}`}>
-            {msg.role !== 'user' && (
-              <div className="w-8 h-8 rounded-xl bg-[#EB0029] flex items-center justify-center text-white shrink-0 text-xs font-bold shadow-md shadow-red-600/30">
-                M
-              </div>
-            )}
+        {/* Minimalist Controls: Generous, comfortable spacing (gap-2) and subtle ghost buttons */}
+        <div className="flex items-center gap-2">
+          {onToggleExpand && (
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+              title={isExpanded ? 'Vista dividida con dashboard' : 'Expandir a pantalla completa'}
+              aria-label={isExpanded ? 'Acoplar vista' : 'Expandir vista'}
+            >
+              {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
+          )}
 
-            <div className={`max-w-xl space-y-2.5 ${msg.role === 'user' ? 'w-auto' : 'flex-1'}`}>
-              {msg.content && (
+          {onResetDemo && (
+            <button
+              type="button"
+              onClick={onResetDemo}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+              title="Reiniciar conversación"
+              aria-label="Reiniciar conversación"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Messages Feed: Generous, comfortable whitespace */}
+      <div
+        ref={scrollAreaRef}
+        className="chat-scroll min-h-0 flex-1 space-y-4 overflow-y-auto bg-gradient-to-b from-[#FBFDFE] to-white p-4 sm:p-5"
+        aria-live="polite"
+      >
+        {messages.map((message) => {
+          const isUser = message.role === 'user';
+          return (
+            <div
+              key={message.id}
+              className={`flex transition-all duration-150 ${isUser ? 'justify-end' : 'items-start gap-2.5'}`}
+            >
+              {!isUser && (
+                <img src={mayaMessage} alt="" className="mt-0.5 h-9 w-9 shrink-0 object-contain" />
+              )}
+              <div className={`space-y-2.5 ${isUser ? 'max-w-[85%] sm:max-w-[78%]' : 'min-w-0 max-w-2xl flex-1'}`}>
                 <div
-                  className={`rounded-2xl p-4 text-xs sm:text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-[#EB0029] text-white rounded-tr-none shadow-md shadow-red-900/20 font-medium'
-                      : 'bg-slate-800/95 border border-slate-700/80 rounded-tl-none text-slate-200 shadow-lg'
+                  className={`break-words text-xs sm:text-sm leading-relaxed ${
+                    isUser
+                      ? 'rounded-2xl rounded-br-xs bg-[#EB0029] px-4 py-2.5 text-white font-medium shadow-xs'
+                      : 'rounded-2xl border border-[#E1EAF2] bg-white p-4 text-[#526B87] shadow-[0_5px_14px_rgba(39,67,95,0.08)]'
                   }`}
                 >
-                  {msg.content}
+                  <MessageText text={message.content} />
                 </div>
-              )}
 
-              {/* Dynamic A2UI Component Render */}
-              {msg.a2ui && (
-                <DynamicA2UIRegistry
-                  payload={msg.a2ui}
-                  onAction={onAction}
-                  disabled={isLoading}
-                />
-              )}
+                {message.a2ui && (
+                  <div className="animate-in fade-in zoom-in-95 duration-150">
+                    <DynamicA2UIRegistry payload={message.a2ui} onAction={onAction} disabled={isLoading} />
+                  </div>
+                )}
+
+                <time
+                  className={`block text-[10px] text-slate-400 ${isUser ? 'text-right pr-1' : 'pl-1'}`}
+                >
+                  {message.timestamp}
+                </time>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center gap-2.5 text-xs text-slate-600 animate-in fade-in duration-100" role="status">
+            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#EB0029] text-white shadow-xs">
+              <Sparkles className="h-3.5 w-3.5 animate-spin" />
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 shadow-xs flex items-center gap-2">
+              <span className="maya-dots" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="font-medium text-slate-600 text-xs">
+                Consultando finanzas con FastMCP…
+              </span>
             </div>
           </div>
-        ))}
-
-        {isLoading && (
-          <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400 animate-pulse">
-            <div className="w-2 h-2 rounded-full bg-[#EB0029] animate-ping" />
-            <span>Maya consultando herramientas MCP y generando respuesta...</span>
-          </div>
         )}
-
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Prompts */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-none">
-        {quickPrompts.map((qp, idx) => (
-          <button
-            key={idx}
-            onClick={() => onSendMessage(qp.prompt)}
-            disabled={isLoading}
-            className="px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-[11px] font-medium transition whitespace-nowrap cursor-pointer disabled:opacity-50"
-          >
-            {qp.label}
-          </button>
-        ))}
-      </div>
+      {/* Footer: Zen Prompt Chips & Input */}
+      <footer className="shrink-0 border-t border-[#E1EAF2] bg-white p-3.5 sm:p-4">
+        {/* Subtle, non-intrusive suggested prompts with comfortable breathing room */}
+        <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {quickPrompts.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => onSendMessage(prompt)}
+              disabled={isLoading}
+              className="inline-flex shrink-0 items-center rounded-2xl border border-[#E6EDF4] bg-white px-3.5 py-2 text-[11px] font-semibold text-[#68819D] shadow-sm transition hover:border-[#CBD9E6] hover:text-[#061D3A] disabled:opacity-50 cursor-pointer"
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
 
-      {/* Input Bar */}
-      <form onSubmit={handleSubmit} className="relative flex items-center">
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Escribe tu consulta (ej. 'Quiero reestructurar mi tarjeta')..."
-          disabled={isLoading}
-          className="w-full bg-slate-800/90 text-white placeholder-slate-400 text-xs sm:text-sm px-4 py-3.5 pr-24 rounded-2xl border border-slate-700 focus:outline-none focus:border-[#EB0029] focus:ring-1 focus:ring-[#EB0029] transition disabled:opacity-50"
-        />
-        <button
-          type="submit"
-          disabled={isLoading || !inputText.trim()}
-          className="absolute right-2 px-4 py-2 rounded-xl bg-[#EB0029] hover:bg-[#C70023] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-500/20 transition cursor-pointer disabled:opacity-50"
+        {/* Form input */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-end gap-2.5 rounded-2xl border border-[#E1EAF2] bg-white p-2 shadow-[inset_0_1px_2px_rgba(39,67,95,0.03)] transition-all focus-within:border-[#E4003B] focus-within:ring-2 focus-within:ring-[#E4003B]/10"
         >
-          <span>Enviar</span>
-          <Send className="w-3.5 h-3.5" />
-        </button>
-      </form>
-    </div>
+          <label htmlFor="maya-message" className="sr-only">
+            Escribe tu consulta para Maya
+          </label>
+          <textarea
+            id="maya-message"
+            rows={1}
+            value={inputText}
+            onChange={(event) => setInputText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                handleSubmit(event);
+              }
+            }}
+            placeholder="Pregúntale a Maya sobre tus cuentas o pagos…"
+            disabled={isLoading}
+            className="max-h-24 min-h-8 min-w-0 flex-1 resize-none bg-transparent px-2.5 py-1 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !inputText.trim()}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E4003B] text-white shadow-sm transition hover:bg-[#C70032] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            aria-label="Enviar mensaje"
+          >
+            <Send className="h-3.5 w-3.5" />
+          </button>
+        </form>
+
+        <p className="mt-2 text-center text-[10px] text-[#8EA0B4]">
+          Operación protegida con cifrado SSL bancario de 256 bits y Token Móvil.
+        </p>
+      </footer>
+    </section>
   );
 };

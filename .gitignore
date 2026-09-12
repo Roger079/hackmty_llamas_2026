@@ -1,1 +1,12 @@
 .env.example
+.env
+__pycache__/
+*.py[cod]
+frontend/node_modules/
+frontend/dist/
+.impeccable/review/
+.12ui/banorte-renewal/
+.12ui/banorte-alignment/
+.12ui/banorte-alignment-layerdoc/
+.12ui/banorte-alignment-final/
+.12ui/banorte-alignment-1536/

@@ -35,7 +35,7 @@ export const SpeiReceiptCard: React.FC<SpeiReceiptCardProps> = ({
       </div>
 
       <div className="p-5 text-center border-b border-slate-100 bg-slate-50/50">
-        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Monto enviado</span>
+        <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">Monto enviado</span>
         <div className="text-3xl font-black text-[#1C1E21] tabular-nums mt-1">
           ${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
           <span className="text-xs font-medium text-slate-500">MXN</span>
@@ -68,14 +68,14 @@ export const SpeiReceiptCard: React.FC<SpeiReceiptCardProps> = ({
       <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
         <button
           onClick={onDownload || (() => alert(`Comprobante ${trackingKey} descargado`))}
-          className="flex-1 py-3 rounded-xl border border-slate-300 font-bold text-xs text-slate-700 hover:bg-slate-100 transition flex items-center justify-center gap-1.5 cursor-pointer"
+          className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EB0029] cursor-pointer"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Descargar PDF</span>
         </button>
         <button
           onClick={onShare || (() => alert(`Comprobante compartido`))}
-          className="flex-1 py-3 rounded-xl bg-[#EB0029] hover:bg-[#C70023] font-bold text-xs text-white transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-red-500/20"
+          className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#EB0029] py-3 text-xs font-bold text-white shadow-md shadow-red-500/20 transition hover:bg-[#C70023] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EB0029] focus-visible:ring-offset-2 cursor-pointer"
         >
           <Share2 className="w-3.5 h-3.5" />
           <span>Compartir</span>
