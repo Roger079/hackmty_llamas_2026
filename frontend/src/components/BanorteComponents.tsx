@@ -109,13 +109,18 @@ export const MayaChatWidget: React.FC<{
     onSendPrompt?.(value);
     onExpandToFull?.();
   };
+  const submitInput = () => {
+    if (!inputText.trim()) return;
+    dispatchPrompt(inputText);
+    setInputText('');
+  };
 
   const quickPills = [
-    "¿Qué puedo hacer aquí?",
-    "Internacional base pesos",
+    "Muéstrame mi gráfica de gastos semanales",
+    "Compara mis gastos con el mes pasado",
+    "¿Cómo va mi fondo de inversión?",
     "Consultar un estado de cuenta",
-    "Transferencias",
-    "Momentos de vida"
+    "Transferencias"
   ];
 
   if (!isOpen) {
@@ -127,7 +132,7 @@ export const MayaChatWidget: React.FC<{
       >
         <MayaAvatar size="md" />
         <div className="min-w-0 text-left leading-tight">
-          <span className="block text-sm font-black lowercase tracking-tight text-[#EB0029] [-webkit-text-stroke:1px_white]">maya</span>
+          <span className="block text-sm font-black lowercase tracking-tight text-white">maya</span>
           <span className="block max-w-[205px] truncate text-[10px] font-bold text-white drop-shadow-sm">Pregúntame por una gráfica de tus gastos</span>
         </div>
       </button>
@@ -189,16 +194,17 @@ export const MayaChatWidget: React.FC<{
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                submitInput();
+              }
+            }}
             placeholder="Escriba algo..."
             className="w-full rounded-xl border border-red-100 bg-red-50/50 px-3.5 py-2.5 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#EB0029]"
           />
           <button
-            onClick={() => {
-              if (inputText.trim() && onSendPrompt) {
-                dispatchPrompt(inputText);
-                setInputText('');
-              }
-            }}
+            onClick={submitInput}
             className="absolute right-2 p-1 text-[#EB0029] transition hover:text-[#A5002C] cursor-pointer"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

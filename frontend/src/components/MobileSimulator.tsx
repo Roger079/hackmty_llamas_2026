@@ -143,7 +143,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
           <div className="space-y-4">
             {/* Card-first banking area: swipeable products keep the active card centered and substantial on a phone. */}
             <section aria-label="Tus tarjetas" className="-mx-3.5 overflow-hidden pb-1">
-              <div ref={cardRailRef} onScroll={updateSelectedCardFromScroll} className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-3 pt-1 no-scrollbar">
+              <div ref={cardRailRef} onScroll={updateSelectedCardFromScroll} className="card-rail flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-3 pt-1">
                 {mobileCards.map((card, index) => (
                   <button
                     key={`${card.cardType}-${card.last4}`}
@@ -223,6 +223,29 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
+                <article className="col-span-2 row-span-2 min-h-[224px] overflow-hidden rounded-2xl border border-red-100 bg-white shadow-xs">
+                  <div className="flex items-center justify-between bg-[#EB0029] px-3 py-2 text-white">
+                    <div>
+                      <p className="text-[10px] font-extrabold">Gastos de la semana</p>
+                      <p className="text-[9px] text-red-100">Tendencia de los últimos 7 días</p>
+                    </div>
+                    <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] font-bold">-10.4%</span>
+                  </div>
+                  <div className="p-3.5">
+                    <div className="flex items-end justify-between">
+                      <div><p className="text-[10px] font-semibold text-slate-500">Total semanal</p><p className="text-xl font-black tabular-nums text-slate-900">$4,280 <span className="text-[10px] font-bold text-slate-500">MXN</span></p></div>
+                      <span className="rounded-full bg-[#FFF3D1] px-2 py-1 text-[10px] font-bold text-[#8A5B00]">vs. semana previa</span>
+                    </div>
+                    <svg viewBox="0 0 292 120" className="mt-3 h-28 w-full overflow-visible" role="img" aria-label="Tendencia semanal de gastos a la baja">
+                      <defs><linearGradient id="spending-fill" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#EB0029" stopOpacity="0.25" /><stop offset="1" stopColor="#EB0029" stopOpacity="0" /></linearGradient></defs>
+                      <path d="M8 96 L8 70 L54 52 L100 76 L146 24 L192 56 L238 82 L284 42 L284 96 Z" fill="url(#spending-fill)" />
+                      <path d="M8 70 L54 52 L100 76 L146 24 L192 56 L238 82 L284 42" fill="none" stroke="#EB0029" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                      {[['L', 8, 70], ['M', 54, 52], ['M', 100, 76], ['J', 146, 24], ['V', 192, 56], ['S', 238, 82], ['D', 284, 42]].map(([label, cx, cy], index) => <g key={`${label}-${index}`}><circle cx={cx as number} cy={cy as number} r="3" fill="white" stroke="#EB0029" strokeWidth="2" /><text x={cx as number} y="114" textAnchor="middle" fill="#64748B" fontSize="9" fontWeight="700">{label}</text></g>)}
+                      <circle cx="284" cy="42" r="5" fill="#C89319" stroke="white" strokeWidth="3" />
+                    </svg>
+                  </div>
+                </article>
+
                 <div className={`overflow-hidden rounded-2xl border border-red-100 bg-white text-left shadow-xs transition hover:border-[#EB0029] ${isRentConfirmationOpen ? 'col-span-2' : ''}`}>
                   <button
                     type="button"
@@ -248,22 +271,15 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                   )}
                 </div>
 
-                <button type="button" onClick={() => { setActiveTab('maya'); onSendMessage('Muéstrame mi gráfica de gastos de la semana'); }} className="rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-xs transition hover:border-[#EB0029] cursor-pointer">
-                  <div className="flex items-start justify-between gap-2"><div><p className="text-xs font-extrabold text-slate-900">Gastos</p><p className="text-[10px] text-slate-500">Esta semana</p></div><span className="rounded-full bg-[#FFF3D1] px-1.5 py-0.5 text-[9px] font-bold text-[#8A5B00]">-10.4%</span></div>
-                  <svg viewBox="0 0 140 52" className="mt-3 h-12 w-full overflow-visible" role="img" aria-label="Tendencia semanal de gastos a la baja">
-                    <defs><linearGradient id="spending-fill" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#EB0029" stopOpacity="0.28" /><stop offset="1" stopColor="#EB0029" stopOpacity="0" /></linearGradient></defs>
-                    <path d="M4 43 L4 31 L25 24 L46 34 L67 14 L88 27 L109 37 L136 20 L136 43 Z" fill="url(#spending-fill)" />
-                    <path d="M4 31 L25 24 L46 34 L67 14 L88 27 L109 37 L136 20" fill="none" stroke="#EB0029" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx="136" cy="20" r="3.5" fill="#C89319" stroke="white" strokeWidth="2" />
-                  </svg>
-                </button>
-
-                <button type="button" onClick={() => { setActiveTab('maya'); onSendMessage('Muéstrame el rendimiento de mi fondo de inversión'); }} className="rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-xs transition hover:border-[#EB0029] cursor-pointer">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF0F4] text-[#EB0029]"><BarChart3 className="h-4 w-4" /></div>
-                  <p className="mt-2 text-xs font-extrabold text-slate-900">Mi inversión</p>
-                  <p className="mt-0.5 text-[10px] leading-snug text-slate-500">Consulta el rendimiento de tu fondo</p>
-                  <span className="mt-2 inline-block text-[10px] font-bold text-[#EB0029]">Ver resumen <ChevronRight className="inline h-3 w-3" /></span>
-                </button>
+                <article className="overflow-hidden rounded-2xl border border-red-100 bg-white shadow-xs">
+                  <div className="bg-[#EB0029] px-3 py-2 text-white"><p className="text-[10px] font-extrabold">Fondo de inversión</p></div>
+                  <div className="p-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF0F4] text-[#EB0029]"><BarChart3 className="h-4 w-4" /></div>
+                    <p className="mt-2 text-xs font-extrabold text-slate-900">Mi inversión</p>
+                    <p className="mt-0.5 text-[10px] leading-snug text-slate-500">Rendimiento al día</p>
+                    <p className="mt-2 text-sm font-black text-[#8A5B00]">+6.8%</p>
+                  </div>
+                </article>
               </div>
             </section>
 
