@@ -45,6 +45,10 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
         "parameters": {
             "type": "OBJECT",
             "properties": {
+                "user_id": {
+                    "type": "STRING",
+                    "description": "Identificador del cliente autenticado (ej. 'C001', 'C002', 'USR-BANORTE-8842')"
+                },
                 "account_type": {
                     "type": "STRING",
                     "enum": ["all", "nomina", "oro", "inversion"],

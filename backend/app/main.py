@@ -122,11 +122,7 @@ async def reset_bank_state():
 async def get_cognitive_profile(user_id: str = "USR-BANORTE-8842"):
     """Returns the persistent cognitive profile and recorded friction logs for this customer"""
     profile = mcp_client.get_user_cognitive_profile(user_id)
-    user_data = mcp_client._mock_db.get(user_id, mcp_client._mock_db["USR-BANORTE-8842"])
-    return {
-        **profile,
-        "friction_logs": user_data.get("friction_logs", [])
-    }
+    return profile
 
 @app.post("/api/chat/end-session")
 async def end_session(request: EndSessionRequest):

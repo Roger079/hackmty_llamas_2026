@@ -69,19 +69,36 @@ class GeminiOrchestrator:
             except Exception as e:
                 print(f"[GeminiOrchestrator] Warning: could not init genai client: {e}")
 
-    def _build_system_prompt(self, user_id: str = "USR-BANORTE-8842") -> str:
-        """Injects persistent user cognitive profile and previous friction points into prompt"""
+    def _build_system_prompt(self, user_id: str = "C002") -> str:
+        """Injects authenticated client identity, persistent cognitive profile, preferences and SQLite context"""
         prompt = BANORTE_SYSTEM_PROMPT
         profile = mcp_client.get_user_cognitive_profile(user_id)
-        if profile and profile.get("memory_summary"):
-            prompt += f"""
+        client_name = profile.get("client_name") or ("Ana Martínez" if user_id == "C001" else ("Carlos Ramírez" if user_id == "C002" else "Alejandro Ramírez"))
 
-[MEMORIA Y PERFIL COGNITIVO DEL CLIENTE (SESIONES PREVIAS)]:
-- Puntos de dolor anteriores: {profile.get('memory_summary')}
-- Sensibilidades detectadas: {profile.get('sensitivities')}
-- Tono y estrategia recomendada: {profile.get('recommended_tone')}
-- Total de fricciones registradas: {profile.get('total_friction_events', 0)}
-*Directriz de empatía*: Utiliza esta memoria para adaptar tu propuesta y tono, sin ser invasivo. Si el cliente mostró estrés por mensualidades altas, ofrece alternativas con cuotas accesibles y destaca la tranquilidad de congelar intereses.
+        prompt += f"""
+
+[SESIÓN AUTENTICADA DE CLIENTE BANORTE]:
+- ID de Cliente: {user_id}
+- Nombre del Cliente: {client_name}
+- REGLA ESTRICTA DE IDENTIDAD: Dirígete SIEMPRE a este cliente por su nombre: '{client_name}'. NUNCA lo llames Alejandro a menos que su ID sea exactamente 'USR-BANORTE-8842'.
+- En cualquier llamada a herramientas MCP (get_user_debt, get_account_balance, get_spending_analytics, etc.), pasa siempre user_id='{user_id}'.
+
+[MEMORIA COGNITIVA Y PREFERENCIAS GUARDADAS EN BASE DE DATOS SQLITE]:
+- Preferencias de visualización: {profile.get('visual_preferences', 'Prefiere gráficos interactivos A2UI antes que tablas de texto')}
+- Preferencias de información: {profile.get('information_preferences', 'Desglose claro de cuotas y fechas')}
+- Puntos de dolor anteriores: {profile.get('memory_summary', 'Sin antecedentes de fricción')}
+- Sensibilidades detectadas: {profile.get('sensitivities', 'Ninguna registrada')}
+- Tono recomendado: {profile.get('recommended_tone', 'Empático y transparente')}
+
+[DIRECTRICES DE FORMATEO Y GENERACIÓN VISUAL A2UI]:
+1. SIEMPRE debes invocar la herramienta `render_a2ui` para acompañar tus respuestas con la tarjeta interactiva adecuada:
+   - Para consultas sobre gastos, compras o categorías: Invoca `render_a2ui` con componente 'SpendingDonutCard'.
+   - Para consultas sobre saldo o cuentas: Invoca `render_a2ui` con componente 'BanorteBalanceCard'.
+   - Para deudas, pagos de tarjeta o reestructuración: Invoca `render_a2ui` con componente 'DebtRestructureCard'.
+   - Para transferencias SPEI: Invoca `render_a2ui` con 'SpeiConfirmCard'.
+2. FORMATEO DE TEXTO:
+   - Redacta de forma limpia y profesional, sin caracteres de escape extraños (NO escribas \\*\\*\\*1234, escribe simplemente *1234).
+   - Mantén párrafos claros y directos acordes al tono preferido del cliente.
 """
         return prompt
 
@@ -219,6 +236,41 @@ class GeminiOrchestrator:
 
         return A2UIPayload(component=comp, props=props)
 
+    def _ensure_a2ui_component(self, request: ChatRequest, a2ui_payload: Optional[A2UIPayload], reply_text: str) -> Optional[A2UIPayload]:
+        """Guarantees a rich A2UI component is attached whenever financial data or spending is discussed"""
+        if a2ui_payload:
+            return a2ui_payload
+
+        user_id = request.user_id or "C002"
+        combined = (request.message + " " + reply_text).lower()
+
+        # 1. Spending / Expenses
+        if any(k in combined for k in ["gasto", "gasté", "gastos", "categoría", "en qué"]):
+            spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id})
+            return A2UIPayload(component="SpendingDonutCard", props=spending)
+
+        # 2. Balances / Accounts
+        elif any(k in combined for k in ["saldo", "cuentas", "cuánto tengo", "disponible"]):
+            bal = mcp_client._execute_mock("get_account_balance", {"user_id": user_id})
+            nomina_acc = next((a for a in bal.get("accounts", []) if a.get("type") == "nomina"), None)
+            oro_acc = next((a for a in bal.get("accounts", []) if a.get("type") == "oro"), None)
+            return A2UIPayload(
+                component="BanorteBalanceCard",
+                props={
+                    "clientName": bal.get("client", "Cliente Banorte"),
+                    "nominaBalance": nomina_acc["available_balance"] if nomina_acc else 27900.00,
+                    "oroBalance": oro_acc["available_credit"] if oro_acc else 0.00,
+                    "totalDebt": oro_acc.get("current_debt", 0.00) if oro_acc else 0.00
+                }
+            )
+
+        # 3. Debt
+        elif any(k in combined for k in ["deuda", "reestructur", "tarjeta de crédito", "convenio", "pagar menos"]):
+            debt = mcp_client._execute_mock("get_user_debt", {"user_id": user_id})
+            return A2UIPayload(component="DebtRestructureCard", props=debt)
+
+        return None
+
     async def stream_orchestrate(self, request: ChatRequest) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Contextual Server-Sent Events (SSE) streaming generator.
@@ -290,9 +342,14 @@ class GeminiOrchestrator:
             )
 
             if response.function_calls:
+                contents.append(response.candidates[0].content)
+                tool_parts = []
                 for fcall in response.function_calls:
                     tool_name = fcall.name
                     tool_args = dict(fcall.args) if fcall.args else {}
+                    if "user_id" not in tool_args and "customer_id" not in tool_args:
+                        tool_args["user_id"] = request.user_id or "C002"
+                        tool_args["customer_id"] = request.user_id or "C002"
 
                     # Case 1: render_a2ui
                     if tool_name == "render_a2ui":
@@ -306,16 +363,10 @@ class GeminiOrchestrator:
                         ))
                         yield {"event": "a2ui", "data": a2ui_payload.model_dump()}
 
-                        contents.append(response.candidates[0].content)
-                        contents.append(
-                            types.Content(
-                                role="user",
-                                parts=[
-                                    types.Part.from_function_response(
-                                        name=tool_name,
-                                        response={"status": "rendered"}
-                                    )
-                                ]
+                        tool_parts.append(
+                            types.Part.from_function_response(
+                                name=tool_name,
+                                response={"status": "rendered", "component": comp}
                             )
                         )
 
@@ -334,21 +385,22 @@ class GeminiOrchestrator:
                         yield {"event": "status", "data": post_status}
                         await asyncio.sleep(0.04)
 
-                        contents.append(response.candidates[0].content)
-                        contents.append(
-                            types.Content(
-                                role="user",
-                                parts=[
-                                    types.Part.from_function_response(
-                                        name=tool_name,
-                                        response={"result": tool_result}
-                                    )
-                                ]
+                        tool_parts.append(
+                            types.Part.from_function_response(
+                                name=tool_name,
+                                response=tool_result if isinstance(tool_result, dict) else {"result": tool_result}
                             )
                         )
+                contents.append(types.Content(role="user", parts=tool_parts))
+                continue
             else:
                 final_reply = response.text or ""
                 break
+
+        if not a2ui_payload:
+            a2ui_payload = self._ensure_a2ui_component(request, a2ui_payload, final_reply)
+            if a2ui_payload:
+                yield {"event": "a2ui", "data": a2ui_payload.model_dump()}
 
         if not final_reply and a2ui_payload:
             final_reply = "He generado la interfaz bancaria interactiva a continuación:"
@@ -468,54 +520,47 @@ class GeminiOrchestrator:
             # Check if model made function calls
             has_tool_call = False
             if response.function_calls:
+                contents.append(response.candidates[0].content)
+                tool_parts = []
                 for fcall in response.function_calls:
                     tool_name = fcall.name
                     tool_args = dict(fcall.args) if fcall.args else {}
+                    if "user_id" not in tool_args and "customer_id" not in tool_args:
+                        tool_args["user_id"] = request.user_id or "C002"
+                        tool_args["customer_id"] = request.user_id or "C002"
 
                     # Case 1: render_a2ui
                     if tool_name == "render_a2ui":
-                        has_tool_call = True
+                        comp = tool_args.get("component", "DebtRestructureCard")
                         a2ui_payload = self._normalize_a2ui_payload(A2UIPayload(
-                            component=tool_args.get("component", "DebtRestructureCard"),
+                            component=comp,
                             props=tool_args.get("props", {})
                         ))
-                        # Add tool response
-                        contents.append(response.candidates[0].content)
-                        contents.append(
-                            types.Content(
-                                role="user",
-                                parts=[
-                                    types.Part.from_function_response(
-                                        name=tool_name,
-                                        response={"status": "rendered"}
-                                    )
-                                ]
+                        tool_parts.append(
+                            types.Part.from_function_response(
+                                name=tool_name,
+                                response={"status": "rendered", "component": comp}
                             )
                         )
                     # Case 2: MCP Tool execution
                     else:
-                        has_tool_call = True
                         tool_result, log = await mcp_client.execute_tool(tool_name, tool_args)
                         mcp_calls.append(log)
-
-                        # Provide result back to model
-                        contents.append(response.candidates[0].content)
-                        contents.append(
-                            types.Content(
-                                role="user",
-                                parts=[
-                                    types.Part.from_function_response(
-                                        name=tool_name,
-                                        response=tool_result if isinstance(tool_result, dict) else {"result": tool_result}
-                                    )
-                                ]
+                        tool_parts.append(
+                            types.Part.from_function_response(
+                                name=tool_name,
+                                response=tool_result if isinstance(tool_result, dict) else {"result": tool_result}
                             )
                         )
+                contents.append(types.Content(role="user", parts=tool_parts))
                 continue
 
             # Model produced final text
             final_reply = response.text or ""
             break
+
+        if not a2ui_payload:
+            a2ui_payload = self._ensure_a2ui_component(request, a2ui_payload, final_reply)
 
         if not final_reply and a2ui_payload:
             final_reply = "He generado la interfaz solicitada a continuación:"
@@ -545,6 +590,7 @@ class GeminiOrchestrator:
         if self.client and self.api_key and user_turns:
             extract_prompt = f"""Analiza la siguiente conversación entre un cliente de Banorte y el asesor bancario Maya.
 Identifica si el cliente expresó fricción, estrés financiero, objeciones con pagos altos o dudas sobre el crédito.
+Además, detecta QUÉ TIPOS DE VISUALES (gráficos de líneas, donas, barras, tablas detalladas, tarjetas interactivas) y QUÉ TIPO DE INFORMACIÓN (ahorro en intereses, fechas exactas, saldos diarios, pasos de trámites) prefiere recibir.
 Devuelve ÚNICAMENTE un JSON con esta estructura exacta:
 {{
   "has_friction": true,
@@ -552,6 +598,8 @@ Devuelve ÚNICAMENTE un JSON con esta estructura exacta:
   "trigger_snippet": "cita textual breve",
   "memory_summary": "resumen en 1 o 2 oraciones del perfil, preocupaciones y preferencias del cliente para tener en cuenta en la PRÓXIMA sesión",
   "sensitivities": "sensibilidades clave detectadas (ej. mensualidad máxima, liquidez quincenal)",
+  "visual_preferences": "qué visuales o gráficos prefiere el cliente ver (ej. gráficos de dona para categorías, líneas para evolución temporal)",
+  "information_preferences": "qué información valora más (ej. desglose de comisiones, ahorro total en intereses, fechas de corte)",
   "recommended_tone": "tono sugerido para futuras sesiones (ej. empático, directo, enfocado en tranquilidad)"
 }}
 
@@ -575,6 +623,8 @@ Diálogo:
                     friction_detected = 1
                 memory_summary = data.get("memory_summary", "")
                 sensitivities = data.get("sensitivities", "")
+                visual_prefs = data.get("visual_preferences", "")
+                info_prefs = data.get("information_preferences", "")
                 recommended_tone = data.get("recommended_tone", recommended_tone)
             except Exception as e:
                 print(f"[summarize_and_close_session] Gemini extraction error: {e}")
@@ -593,7 +643,9 @@ Diálogo:
             user_id=user_id,
             memory_summary=memory_summary,
             sensitivities=sensitivities,
-            recommended_tone=recommended_tone
+            recommended_tone=recommended_tone,
+            visual_preferences=visual_prefs if 'visual_prefs' in locals() else "",
+            information_preferences=info_prefs if 'info_prefs' in locals() else ""
         )
         return {
             "status": "session_summarized",
@@ -609,6 +661,9 @@ Diálogo:
         """
         mcp_calls: List[McpToolCallLog] = []
         user_id = request.user_id or settings.default_user_id
+        profile = mcp_client.get_user_cognitive_profile(user_id)
+        client_name = profile.get("client_name") or ("Ana Martínez" if user_id == "C001" else ("Carlos Ramírez" if user_id == "C002" else "Alejandro Ramírez"))
+        first_name = client_name.split()[0]
 
         # Feedback Loop: User clicked an action inside an A2UI component
         if request.action_context:
@@ -642,7 +697,7 @@ Diálogo:
                         "termMonths": term_months,
                         "nextPaymentDate": res["next_payment_date"],
                         "bankSeal": res["bank_seal"],
-                        "clientName": "Alejandro Ramírez"
+                        "clientName": client_name
                     }
                 )
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
@@ -683,12 +738,12 @@ Diálogo:
         msg = request.message.lower()
 
         # 1. DEBT RESTRUCTURING INTENT (Core hackathon scenario)
-        if any(k in msg for k in ["deuda", "reestructur", "reestructurar", "convenio", "pagar tarjeta", "no puedo pagar", "intereses"]):
+        if any(k in msg for k in ["deuda", "reestructur", "reestructurar", "convenio", "pagar tarjeta", "no puedo pagar", "intereses", "pagar menos"]):
             res, log = await mcp_client.execute_tool("get_user_debt", {"user_id": user_id})
             mcp_calls.append(log)
 
             reply = (
-                f"Entiendo tu situación, Alejandro. He consultado tu tarjeta **{res['card_name']}** (*{res['card_last4']}). "
+                f"Entiendo tu situación, {first_name}. He consultado tu tarjeta **{res['card_name']}** (*{res['card_last4']}). "
                 f"Actualmente tienes un saldo de **${res['total_debt']:,.2f} MXN** con una tasa de **{res['interest_rate_annual']}**.\n\n"
                 f"Banorte ha diseñado tres alternativas de reestructuración con tasas preferenciales congeladas para ti. "
                 f"Por favor selecciona el plan que mejor se adapte a tu presupuesto y presiona **Aplicar plan**:"
@@ -708,28 +763,43 @@ Diálogo:
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
         # 2. BALANCE INQUIRY
-        elif any(k in msg for k in ["saldo", "cuanto tengo", "cuentas", "dinero disponible"]):
-            res, log = await mcp_client.execute_tool("get_account_balance", {"account_type": "all"})
+        elif any(k in msg for k in ["saldo", "cuanto tengo", "cuentas", "dinero disponible", "ahorro", "nómina", "débito"]):
+            res, log = await mcp_client.execute_tool("get_account_balance", {"user_id": user_id, "account_type": "all"})
             mcp_calls.append(log)
 
             nomina_acc = next((a for a in res["accounts"] if a["type"] == "nomina"), None)
             oro_acc = next((a for a in res["accounts"] if a["type"] == "oro"), None)
 
             reply = (
-                f"Hola {res['client']}. Aquí tienes el resumen actualizado de tus cuentas Banorte en tiempo real:"
+                f"Hola {first_name}. Aquí tienes el resumen actualizado de tus cuentas Banorte en tiempo real:"
             )
             a2ui = A2UIPayload(
                 component="BanorteBalanceCard",
                 props={
-                    "clientName": res["client"],
-                    "nominaBalance": nomina_acc["available_balance"] if nomina_acc else 48650.00,
-                    "oroBalance": oro_acc["available_credit"] if oro_acc else 41550.00,
-                    "totalDebt": oro_acc.get("current_debt", 38450.00) if oro_acc else 38450.00
+                    "clientName": res.get("client", client_name),
+                    "nominaBalance": nomina_acc["available_balance"] if nomina_acc else 27900.00,
+                    "oroBalance": oro_acc["available_credit"] if oro_acc else 0.00,
+                    "totalDebt": oro_acc.get("current_debt", 0.00) if oro_acc else 0.00
                 }
             )
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-        # 3. SPEI TRANSFER INTENT
+        # 3. SPENDING ANALYTICS (Gasto por categoría y donut chart)
+        elif any(k in msg for k in ["gasto", "gasté", "gastos", "categoría", "en qué"]):
+            res, log = await mcp_client.execute_tool("get_spending_analytics", {"user_id": user_id})
+            mcp_calls.append(log)
+
+            reply = (
+                f"Hola, {first_name}. Con gusto te presento el resumen y análisis de tus gastos del mes en curso:\n\n"
+                f"En septiembre llevas un total de **${res['total_spent']:,.2f} MXN** en consumos. {res.get('summary', '')}"
+            )
+            a2ui = A2UIPayload(
+                component="SpendingDonutCard",
+                props=res
+            )
+            return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+        # 4. SPEI TRANSFER INTENT
         elif any(k in msg for k in ["transfer", "enviar", "mandar", "spei", "pago"]):
             beneficiary = "CARLOS GÓMEZ VEGA" if "carlos" in msg else "SOFÍA MENDOZA RÍOS"
             bank = "Santander México" if "carlos" in msg else "BBVA México"
@@ -771,7 +841,7 @@ Diálogo:
             )
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-        # 4. INVESTMENT / PAGARÉ BANORTE
+        # 5. INVESTMENT / PAGARÉ BANORTE
         elif any(k in msg for k in ["invertir", "inversión", "pagaré", "rendimiento"]):
             res, log = await mcp_client.execute_tool("simulate_investment", {"amount": 25000.0, "term_days": 91})
             mcp_calls.append(log)
@@ -794,12 +864,12 @@ Diálogo:
 
         # General friendly fallback
         reply = (
-            "¡Hola, Alejandro! Soy Maya, tu asesora de banca digital Banorte. ¿En qué puedo apoyarte hoy?\n\n"
-            "Puedes pedirme:\n"
-            "• **Reestructurar tu deuda de tarjeta de crédito** con un plan a tu medida.\n"
-            "• **Realizar una transferencia SPEI** en tiempo real.\n"
-            "• **Consultar tus saldos** de Nómina y Crédito Oro.\n"
-            "• **Simular rendimientos de inversión** en Pagaré Banorte."
+            f"¡Hola, {first_name}! Soy Maya, tu asesora de banca digital Banorte. ¿En qué puedo apoyarte hoy?\n\n"
+            f"Puedes pedirme:\n"
+            f"• **Analizar tus gastos y consumos del mes** con gráficos interactivos.\n"
+            f"• **Consultar tus saldos y cuentas activas** en tiempo real.\n"
+            f"• **Reestructurar tu deuda de tarjeta de crédito** con tasas fijas preferenciales.\n"
+            f"• **Realizar una transferencia SPEI** en tiempo real."
         )
         return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
 

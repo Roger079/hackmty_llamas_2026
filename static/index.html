@@ -12,6 +12,8 @@
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Marked.js para formateo profesional de Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -76,6 +78,38 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #94A3B8;
     }
+    .chat-agent-bubble h1, .chat-agent-bubble h2, .chat-agent-bubble h3 {
+      font-weight: 700;
+      color: #0F172A;
+      margin-top: 0.75rem;
+      margin-bottom: 0.35rem;
+    }
+    .chat-agent-bubble h3 {
+      font-size: 0.925rem;
+    }
+    .chat-agent-bubble p {
+      margin-bottom: 0.5rem;
+    }
+    .chat-agent-bubble p:last-child {
+      margin-bottom: 0;
+    }
+    .chat-agent-bubble ul {
+      list-style-type: disc;
+      padding-left: 1.25rem;
+      margin-top: 0.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .chat-agent-bubble li {
+      margin-bottom: 0.25rem;
+    }
+    .chat-agent-bubble strong {
+      color: #0F172A;
+      font-weight: 700;
+    }
+    .chat-agent-bubble hr {
+      border-color: #E2E8F0;
+      margin: 0.75rem 0;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between select-none">
@@ -126,6 +160,16 @@
           <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
           <span>Banorte Móvil</span>
         </a>
+
+        <!-- Botón Inspector de Memoria Cognitiva y Preferencias -->
+        <button 
+          onclick="openCognitiveMemoryModal()" 
+          class="px-3 py-1 rounded-full bg-black/20 hover:bg-black/30 text-white border border-white/30 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+          title="Ver perfil cognitivo, memoria episódica y preferencias visuales del cliente"
+        >
+          <i data-lucide="brain-circuit" class="w-3.5 h-3.5 text-pink-300"></i>
+          <span>Memoria</span>
+        </button>
 
         <!-- Botón Inspector MCP -->
         <button 
@@ -190,10 +234,15 @@
         </div>
 
         <div class="flex items-center gap-2 text-xs">
-          <div class="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
-            <div class="w-6 h-6 rounded-full bg-[#EB0029] text-white flex items-center justify-center font-bold text-[10px]">AR</div>
-            <span class="font-bold text-slate-800">Alejandro Ramírez</span>
-            <span class="text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Preferente</span>
+          <!-- Switcher de Clientes de SQLite -->
+          <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+            <div id="currentUserAvatar" class="w-6 h-6 rounded-full bg-[#EB0029] text-white flex items-center justify-center font-bold text-[10px]">CR</div>
+            <select id="userSelector" onchange="changeActiveCustomer(this.value)" class="bg-transparent font-bold text-slate-800 text-xs outline-none cursor-pointer">
+              <option value="C002">Carlos Ramírez (C002 • Mastercard)</option>
+              <option value="C001">Ana Martínez (C001 • Nómina)</option>
+              <option value="USR-BANORTE-8842">Alejandro Ramírez (Banorte Oro)</option>
+            </select>
+            <span id="tierBadge" class="text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Preferente</span>
           </div>
         </div>
       </div>
@@ -345,9 +394,79 @@
   </div>
 
   <!-- ========================================================================= -->
+  <!-- 4.1 MODAL: MEMORIA COGNITIVA Y PREFERENCIAS VISUALES (SQLITE)              -->
+  <!-- ========================================================================= -->
+  <div id="cognitiveMemoryModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div class="bg-slate-900 border border-slate-800 text-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl flex flex-col max-h-[85vh] text-xs space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <i data-lucide="brain-circuit" class="w-5 h-5 text-pink-400"></i>
+          <div>
+            <h3 class="text-sm font-bold text-white">Memoria Cognitiva & Preferencias en SQLite</h3>
+            <p class="text-[10px] text-slate-400">Persistencia episódica que Gemini consulta antes de cada respuesta</p>
+          </div>
+        </div>
+        <button onclick="closeModal('cognitiveMemoryModal')" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 overflow-y-auto pr-1">
+        <!-- Cliente actual -->
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Cliente Autenticado</span>
+            <span id="memUserId" class="font-mono text-emerald-400 font-bold">C002</span>
+          </div>
+          <div id="memClientName" class="text-base font-black text-white">Carlos Ramírez</div>
+        </div>
+
+        <!-- Preferencias Visuales -->
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+          <div class="flex items-center gap-1.5 text-amber-400 font-bold">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>Preferencias de Visualización (Qué visuales le gustan)</span>
+          </div>
+          <p id="memVisualPrefs" class="text-slate-300 leading-relaxed bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 text-[11px]"></p>
+        </div>
+
+        <!-- Preferencias de Información -->
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+          <div class="flex items-center gap-1.5 text-cyan-400 font-bold">
+            <i data-lucide="info" class="w-4 h-4"></i>
+            <span>Preferencias de Información (Qué datos valora)</span>
+          </div>
+          <p id="memInfoPrefs" class="text-slate-300 leading-relaxed bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 text-[11px]"></p>
+        </div>
+
+        <!-- Memoria de Fricciones Anteriores -->
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+          <div class="flex items-center gap-1.5 text-red-400 font-bold">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            <span>Fricciones y Sensibilidades Detectadas en Sesiones Previas</span>
+          </div>
+          <p id="memSummary" class="text-slate-300 leading-relaxed bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 text-[11px]"></p>
+          <div class="text-[10px] text-slate-400">
+            <span class="text-slate-500">Tono sugerido:</span> <span id="memTone" class="text-emerald-300 font-semibold"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-500">
+        <span id="memLastUpdated">Última actualización: --</span>
+        <button onclick="loadCognitiveMemory(currentCustomerId)" class="text-pink-400 hover:text-pink-300 font-bold underline cursor-pointer">
+          Recargar de SQLite
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
   <!-- 5. JAVASCRIPT: MOTOR A2UI, CONEXIÓN FASTAPI & CLOSED LOOP                  -->
   <!-- ========================================================================= -->
   <script>
+    let currentCustomerId = "C002";
+
     const state = {
       mcpCalls: [],
       lastA2UI: null,
@@ -356,7 +475,75 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       lucide.createIcons();
+      changeActiveCustomer(currentCustomerId);
     });
+
+    async function changeActiveCustomer(userId) {
+      currentCustomerId = userId;
+      state.history = [];
+      const sel = document.getElementById("userSelector");
+      if (sel && sel.value !== userId) sel.value = userId;
+
+      document.getElementById("chatMessagesStream").innerHTML = `
+        <div class="flex items-start gap-3.5 animate-in fade-in">
+          <div class="w-9 h-9 rounded-full bg-[#EB0029] flex items-center justify-center text-white shrink-0 shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-5 h-5" fill="none">
+              <g fill="#FFFFFF">
+                <path d="M12 34 L21 14 L26 14 L17 34 Z" />
+                <path d="M20 34 L29 14 L34 14 L25 34 Z" />
+                <polygon points="27,14 36,14 32,22 23,22" opacity="0.95" />
+              </g>
+            </svg>
+          </div>
+          <div class="max-w-2xl bg-[#F8FAFC] border border-slate-200 rounded-3xl rounded-tl-none p-5 text-sm leading-relaxed text-slate-700 space-y-2 shadow-sm">
+            <p id="welcomeGreeting" class="text-slate-900 font-semibold text-base">Cargando perfil cognitivo para <span class="text-[#EB0029]">${userId}</span>...</p>
+            <p class="text-xs text-slate-500">He cargado tu perfil cognitivo, preferencias visuales e historial desde la base de datos bancaria SQLite. ¿En qué te puedo apoyar hoy?</p>
+          </div>
+        </div>
+      `;
+      await loadCognitiveMemory(userId);
+    }
+
+    async function loadCognitiveMemory(userId) {
+      try {
+        const res = await fetch(`/api/user/cognitive-profile?user_id=${userId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        // Update avatar badge and greeting
+        const initials = data.client_name ? data.client_name.split(" ").map(w => w[0]).slice(0, 2).join("") : "CL";
+        const avatar = document.getElementById("currentUserAvatar");
+        if (avatar) avatar.textContent = initials;
+
+        const greetEl = document.getElementById("welcomeGreeting");
+        if (greetEl && data.client_name) {
+          greetEl.innerHTML = `¡Hola, ${data.client_name.split(" ")[0]}! 👋 <span class="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">${data.user_id}</span>`;
+        }
+
+        // Populate modal fields
+        const uidEl = document.getElementById("memUserId");
+        if (uidEl) uidEl.textContent = data.user_id;
+        const nameEl = document.getElementById("memClientName");
+        if (nameEl) nameEl.textContent = data.client_name;
+        const visEl = document.getElementById("memVisualPrefs");
+        if (visEl) visEl.textContent = data.visual_preferences || "Aún sin registrar. Se auto-calibrará al solicitar gráficos en la conversación.";
+        const infEl = document.getElementById("memInfoPrefs");
+        if (infEl) infEl.textContent = data.information_preferences || "Aún sin registrar. Se adaptará automáticamente según tus consultas.";
+        const sumEl = document.getElementById("memSummary");
+        if (sumEl) sumEl.textContent = data.memory_summary || "Sin fricciones detectadas en sesiones previas.";
+        const toneEl = document.getElementById("memTone");
+        if (toneEl) toneEl.textContent = data.recommended_tone || "Empático y transparente";
+        const updEl = document.getElementById("memLastUpdated");
+        if (updEl) updEl.textContent = "Última actualización: " + (data.last_updated || "Hoy");
+      } catch (err) {
+        console.error("Error loading cognitive memory:", err);
+      }
+    }
+
+    function openCognitiveMemoryModal() {
+      loadCognitiveMemory(currentCustomerId);
+      openModal("cognitiveMemoryModal");
+    }
 
     function openModal(id) {
       document.getElementById(id).classList.remove("hidden");
@@ -392,6 +579,23 @@
       document.getElementById("agentTypingIndicator").classList.add("hidden");
     }
 
+    function formatAgentMarkdown(text) {
+      if (!text) return "";
+      // Clean up common AI escape artifacts like (\*1234)
+      let cleaned = text.replace(/\\\*/g, '*').replace(/\\([#_\[\]()])/g, '$1');
+      if (typeof marked !== "undefined" && marked.parse) {
+        marked.setOptions({ breaks: true, gfm: true });
+        return marked.parse(cleaned);
+      }
+      return cleaned
+        .replace(/^### (.*$)/gim, '<h3 class="text-sm font-bold text-slate-900 mt-2 mb-1">$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2 class="text-base font-bold text-slate-900 mt-3 mb-1">$1</h2>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^\s*[-•]\s+(.*$)/gim, '<li class="ml-4 list-disc text-slate-700">$1</li>')
+        .replace(/\n\n/g, '<br/><br/>')
+        .replace(/\n/g, '<br/>');
+    }
+
     function appendAgentMessage(text, a2uiSpec) {
       hideAgentTyping();
       const stream = document.getElementById("chatMessagesStream");
@@ -417,8 +621,8 @@
         </div>
         <div class="flex-1 max-w-2xl space-y-3">
           ${text ? `
-            <div class="bg-[#F8FAFC] border border-slate-200 rounded-3xl rounded-tl-none p-5 text-sm leading-relaxed text-slate-800 shadow-sm">
-              ${text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')}
+            <div class="chat-agent-bubble bg-[#F8FAFC] border border-slate-200 rounded-3xl rounded-tl-none p-5 text-sm leading-relaxed text-slate-800 shadow-sm">
+              ${formatAgentMarkdown(text)}
             </div>
           ` : ""}
           ${componentHtml}
@@ -485,7 +689,7 @@
         const payload = {
           message: message,
           history: state.history,
-          user_id: "USR-BANORTE-8842",
+          user_id: currentCustomerId,
           action_context: actionContext
         };
 
