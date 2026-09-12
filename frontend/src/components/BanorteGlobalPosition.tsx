@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Wallet,
   CreditCard,
@@ -10,6 +10,12 @@ import {
   TrendingUp,
   Send,
   CheckCircle2,
+  X,
+  ShieldCheck,
+  UserPlus,
+  Trash2,
+  Brain,
+  Info,
 } from 'lucide-react';
 import heroImage from '../assets/12ui/banorte-hero.png';
 import investmentTrend from '../assets/12ui/investment-trend.png';
@@ -75,18 +81,76 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
   const isSilvia = selectedUserId === 'C003' || clientName.includes('Silvia');
   const isAna = !isCarlos && !isSilvia;
 
-  const quickContacts = [
+  const [isCognitiveModalOpen, setIsCognitiveModalOpen] = useState(false);
+  const [isAddingContactModalOpen, setIsAddingContactModalOpen] = useState(false);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactClabe, setNewContactClabe] = useState('');
+  const [newContactAlias, setNewContactAlias] = useState('');
+  const [contactSuccessMsg, setContactSuccessMsg] = useState('');
+
+  const [contacts, setContacts] = useState([
     { name: 'Sofía Mendoza', bank: 'BBVA (*2019)', amount: 850, prompt: 'Transfiere $850 a Sofía Mendoza para la cena.' },
     { name: 'Raúl Salinas', bank: 'Nu (*7777)', amount: 500, prompt: 'Transfiere $500 a Raúl Salinas.' },
     { name: 'Alejandro R.', bank: 'Banorte (*4582)', amount: 1200, prompt: 'Transfiere $1,200 a Alejandro Ramírez.' },
-  ];
+  ]);
+
+  const handleAddContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanClabe = newContactClabe.replace(/\s/g, '');
+    if (cleanClabe.length !== 18 || !/^\d+$/.test(cleanClabe)) {
+      alert('La cuenta CLABE debe contener exactamente 18 dígitos numéricos.');
+      return;
+    }
+
+    const detectedBank = cleanClabe.startsWith('012')
+      ? 'BBVA México'
+      : cleanClabe.startsWith('638')
+      ? 'Nu México'
+      : 'Institución SPEI';
+
+    const aliasName = newContactAlias || newContactName.split(' ')[0];
+    const newEntry = {
+      name: newContactName,
+      bank: `${detectedBank} (*${cleanClabe.slice(-4)})`,
+      amount: 500,
+      prompt: `Transfiere $500 a ${newContactName} con CLABE ${cleanClabe}.`,
+    };
+
+    setContacts([newEntry, ...contacts]);
+    setContactSuccessMsg(`¡Contacto ${newContactName} (${detectedBank}) registrado exitosamente!`);
+    setTimeout(() => {
+      setContactSuccessMsg('');
+      setIsAddingContactModalOpen(false);
+      setNewContactName('');
+      setNewContactClabe('');
+      setNewContactAlias('');
+    }, 1500);
+
+    onTriggerMayaPrompt(`Registra a mi contacto ${newContactName} con CLABE ${cleanClabe} en mi agenda SPEI`);
+  };
+
+  const handlePurgeMemory = async () => {
+    if (confirm('¿Deseas ejercer tu Derecho al Olvido y limpiar la memoria cognitiva almacenada en SQLite?')) {
+      try {
+        await fetch(`/api/chat/history?user_id=${selectedUserId}`, { method: 'DELETE' });
+        alert('Memoria cognitiva e historial de fricción purgados de forma segura.');
+        setIsCognitiveModalOpen(false);
+      } catch (err) {
+        console.warn('Could not purge memory:', err);
+      }
+    }
+  };
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
-      {/* 1. Cognitive Memory & Adaptation Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 bg-white px-4 py-2.5 shadow-xs">
+      {/* 1. Cognitive Memory & Adaptation Banner (Clickable) */}
+      <div
+        onClick={() => setIsCognitiveModalOpen(true)}
+        className="group flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 bg-white px-4 py-2.5 shadow-xs hover:border-emerald-300 hover:bg-emerald-50/20 transition cursor-pointer"
+        title="Ver detalles de Memoria Cognitiva y Transparencia AI"
+      >
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:scale-105 transition">
             <Zap className="h-4 w-4" />
           </div>
           <div>
@@ -117,6 +181,7 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
           <span className="rounded-lg bg-red-50 px-2.5 py-1 text-[11px] font-bold text-[#EB0029] border border-red-100">
             {cognitiveProfile?.visual_preferences || (isCarlos ? 'Proyecciones & Tablas' : isSilvia ? 'Rendimientos & Simulador' : 'Gráficos & Donas')}
           </span>
+          <Info className="h-4 w-4 text-slate-400 group-hover:text-emerald-600 transition" />
         </div>
       </div>
 
@@ -334,15 +399,16 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => onTriggerMayaPrompt('Quiero hacer una nueva transferencia SPEI')}
-                className="rounded-xl bg-[#EB0029] px-4 py-2 text-xs font-bold text-white hover:bg-[#C70023] transition cursor-pointer"
+                onClick={() => setIsAddingContactModalOpen(true)}
+                className="rounded-xl bg-[#EB0029] px-4 py-2 text-xs font-bold text-white hover:bg-[#C70023] transition cursor-pointer flex items-center gap-1.5"
               >
-                + Nueva Transferencia
+                <UserPlus className="h-3.5 w-3.5" />
+                <span>+ Agregar Contacto SPEI</span>
               </button>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {quickContacts.map((contact, idx) => (
+              {contacts.map((contact, idx) => (
                 <div
                   key={idx}
                   className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 hover:border-red-200 hover:bg-white transition"
@@ -508,7 +574,7 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
                   <span className="text-[11px] text-slate-400">1-clic con Maya</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {quickContacts.map((c, i) => (
+                  {contacts.map((c, i) => (
                     <button
                       key={i}
                       type="button"
@@ -639,6 +705,193 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
           </table>
         </div>
       </div>
+
+      {/* MODAL 1: COGNITIVE TRANSPARENCY & DERECHO AL OLVIDO */}
+      {isCognitiveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-200">
+            <header className="flex items-center justify-between border-b border-slate-100 bg-[#F6F9FC] px-6 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+                  <Brain className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#061D3A]">
+                    Memoria Cognitiva & Transparencia AI
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Transparencia y Regulación Banorte • SQLite Almacenamiento Seguro
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCognitiveModalOpen(false)}
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+
+            <div className="space-y-4 p-6 text-xs text-slate-700">
+              <div className="rounded-xl bg-emerald-50/80 border border-emerald-200 p-3 flex items-start gap-2.5">
+                <ShieldCheck className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                <div className="text-[11px] leading-relaxed text-emerald-950">
+                  Maya adapta el tono, las gráficas y las recomendaciones según la interacción real almacenada en SQLite para el cliente <strong className="font-bold text-emerald-900">{clientName} ({selectedUserId})</strong>.
+                </div>
+              </div>
+
+              <div className="space-y-2 font-mono">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Resumen del Perfil</span>
+                  <p className="text-slate-800 font-sans text-xs mt-1">
+                    {cognitiveProfile?.memory_summary || 'Cliente con interacción ágil y sin antecedentes severos de estrés.'}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Visual Preferida</span>
+                    <span className="font-bold text-slate-800 text-xs">
+                      {cognitiveProfile?.visual_preferences || (isCarlos ? 'Proyecciones & Tablas' : isSilvia ? 'Rendimientos & Simulador' : 'Gráficos & Donas')}
+                    </span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Tono de Maya</span>
+                    <span className="font-bold text-slate-800 text-xs">
+                      {cognitiveProfile?.recommended_tone || 'Empático y transparente'}
+                    </span>
+                  </div>
+                </div>
+
+                {cognitiveProfile?.sensitivities && (
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Sensibilidades Detectadas</span>
+                    <p className="text-slate-800 font-sans text-xs mt-1">{cognitiveProfile.sensitivities}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={handlePurgeMemory}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 text-[#EB0029] border border-red-200 px-3.5 py-2 text-xs font-bold hover:bg-red-100 transition cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Derecho al Olvido (Borrar Memoria)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCognitiveModalOpen(false)}
+                  className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 transition cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: REGISTRO NUEVO CONTACTO SPEI */}
+      {isAddingContactModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-200">
+            <header className="flex items-center justify-between border-b border-slate-100 bg-[#EB0029] px-6 py-4 text-white">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-white" />
+                <h3 className="text-sm font-extrabold">Nuevo Contacto Frecuente SPEI</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddingContactModalOpen(false)}
+                className="rounded-xl p-1.5 text-white/80 hover:bg-white/20 hover:text-white transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+
+            <form onSubmit={handleAddContactSubmit} className="space-y-4 p-6 text-xs">
+              {contactSuccessMsg ? (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-center text-emerald-800 font-bold">
+                  {contactSuccessMsg}
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Nombre completo del beneficiario:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. María Fernández"
+                      value={newContactName}
+                      onChange={(e) => setNewContactName(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 p-3 text-xs focus:border-[#EB0029] focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Cuenta CLABE (18 dígitos numéricos):
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={18}
+                      placeholder="Ej. 012180001234567890"
+                      value={newContactClabe}
+                      onChange={(e) => setNewContactClabe(e.target.value.replace(/\D/g, ''))}
+                      className="w-full font-mono rounded-xl border border-slate-300 p-3 text-xs focus:border-[#EB0029] focus:outline-none"
+                    />
+                    {newContactClabe.length === 18 && (
+                      <span className="mt-1 inline-block text-[11px] font-bold text-emerald-600">
+                        ✓ CLABE válida • Banco:{' '}
+                        {newContactClabe.startsWith('012')
+                          ? 'BBVA México'
+                          : newContactClabe.startsWith('638')
+                          ? 'Nu México'
+                          : 'Institución SPEI'}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Alias (opcional):
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Mamá / Renta"
+                      value={newContactAlias}
+                      onChange={(e) => setNewContactAlias(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 p-3 text-xs focus:border-[#EB0029] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingContactModalOpen(false)}
+                      className="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-[#EB0029] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#C70023] shadow-xs cursor-pointer"
+                    >
+                      Guardar y Validar
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

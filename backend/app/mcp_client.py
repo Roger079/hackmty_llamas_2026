@@ -562,6 +562,7 @@ class McpClient:
                     acc_row = conn.execute("SELECT account_id FROM account WHERE customer_id = ? LIMIT 1", (user_id,)).fetchone()
                     acc_id = acc_row["account_id"] if acc_row else ("A001" if user_id == "C001" else ("A002" if user_id == "C002" else "A003"))
 
+                    conn.execute("BEGIN TRANSACTION")
                     # Insert into bank_transaction
                     tx_id = f"TX{int(time.time()) % 1000000:06d}"
                     conn.execute("""
@@ -583,7 +584,8 @@ class McpClient:
                     if bal_row:
                         rem_bal = float(bal_row["available_balance"])
                 except Exception as e:
-                    print(f"[execute_spei_transfer] SQLite transaction error: {e}")
+                    conn.rollback()
+                    print(f"[execute_spei_transfer] SQLite transaction error (rolled back): {e}")
                 finally:
                     conn.close()
 
@@ -596,6 +598,51 @@ class McpClient:
                 "execution_timestamp": now_display,
                 "remaining_balance": rem_bal,
                 "message": f"Transferencia por ${amount:,.2f} MXN liquidada exitosamente por Banco de México (SPEI)."
+            }
+
+        elif tool_name == "add_spei_contact":
+            b_name = args.get("beneficiary_name", "Beneficiario SPEI")
+            clabe = str(args.get("clabe", "")).replace(" ", "")
+            alias = args.get("alias") or b_name.split()[0]
+            bank = args.get("recipient_bank") or ("BBVA México" if clabe.startswith("012") else ("Nu México" if clabe.startswith("638") else "Institución SPEI"))
+            cnt_id = f"cnt-{int(time.time()) % 100000:05d}"
+            now_str = datetime.now().strftime("%d %b %Y, %H:%M hrs")
+
+            conn = self._get_db_conn()
+            if conn:
+                try:
+                    conn.execute("BEGIN TRANSACTION")
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS spei_contacts (
+                            id TEXT PRIMARY KEY,
+                            user_id TEXT NOT NULL,
+                            beneficiary_name TEXT NOT NULL,
+                            bank_name TEXT NOT NULL,
+                            clabe TEXT NOT NULL,
+                            alias TEXT,
+                            created_at TEXT
+                        )
+                    """)
+                    conn.execute("""
+                        INSERT INTO spei_contacts (id, user_id, beneficiary_name, bank_name, clabe, alias, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (cnt_id, user_id, b_name, bank, clabe, alias, now_str))
+                    conn.commit()
+                except Exception as e:
+                    conn.rollback()
+                    print(f"[add_spei_contact] SQLite error (rolled back): {e}")
+                finally:
+                    conn.close()
+
+            return {
+                "status": "SUCCESS",
+                "contact_id": cnt_id,
+                "beneficiary_name": b_name,
+                "bank_name": bank,
+                "clabe": clabe,
+                "alias": alias,
+                "registered_at": now_str,
+                "message": f"Contacto {b_name} ({bank}) registrado exitosamente en tu agenda SPEI Banorte."
             }
 
         elif tool_name == "simulate_investment":

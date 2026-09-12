@@ -299,6 +299,57 @@ def prepare_spei_transfer(beneficiary_name: str, recipient_bank: str, clabe: str
     }
 
 @mcp.tool()
+def add_spei_contact(user_id: str, beneficiary_name: str, clabe: str, recipient_bank: str = "", alias: str = "") -> dict:
+    """Registra un nuevo contacto frecuente SPEI respaldado por validación de CLABE de 18 dígitos."""
+    clean_clabe = clabe.replace(" ", "")
+    if len(clean_clabe) != 18 or not clean_clabe.isdigit():
+        return {
+            "status": "ERROR",
+            "message": "La cuenta CLABE debe contener exactamente 18 dígitos numéricos."
+        }
+
+    bank = recipient_bank or ("BBVA México" if clean_clabe.startswith("012") else ("Nu México" if clean_clabe.startswith("638") else "Institución SPEI"))
+    contact_id = f"cnt-{int(time.time()) % 100000:05d}"
+    now_str = datetime.now().strftime("%d %b %Y, %H:%M hrs")
+
+    conn = get_connection()
+    try:
+        conn.execute("BEGIN TRANSACTION")
+        # Ensure spei_contacts table exists
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS spei_contacts (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                beneficiary_name TEXT NOT NULL,
+                bank_name TEXT NOT NULL,
+                clabe TEXT NOT NULL,
+                alias TEXT,
+                created_at TEXT
+            )
+        """)
+        conn.execute("""
+            INSERT INTO spei_contacts (id, user_id, beneficiary_name, bank_name, clabe, alias, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (contact_id, user_id, beneficiary_name, bank, clean_clabe, alias or beneficiary_name.split()[0], now_str))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return {"status": "ERROR", "message": f"Fallo al registrar contacto en SQLite: {e}"}
+    finally:
+        conn.close()
+
+    return {
+        "status": "SUCCESS",
+        "contact_id": contact_id,
+        "beneficiary_name": beneficiary_name,
+        "bank_name": bank,
+        "clabe": clean_clabe,
+        "alias": alias or beneficiary_name.split()[0],
+        "registered_at": now_str,
+        "message": f"Contacto {beneficiary_name} ({bank}) registrado exitosamente para transferencias SPEI."
+    }
+
+@mcp.tool()
 def execute_spei_transfer(transfer_id: str, auth_token: str) -> dict:
     """Ejecuta la transferencia SPEI con token dinámico ante Banxico."""
     return {

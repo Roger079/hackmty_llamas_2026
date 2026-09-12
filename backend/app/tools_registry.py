@@ -228,6 +228,36 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
         }
     },
 
+    {
+        "name": "add_spei_contact",
+        "description": "Registra un nuevo destinatario o contacto para transferencias SPEI en la base de datos bancaria del cliente, respaldado por validación de la CLABE de 18 dígitos y detección de banco receptor.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "user_id": {
+                    "type": "STRING",
+                    "description": "ID del cliente autenticado (ej. 'C001', 'C002')"
+                },
+                "beneficiary_name": {
+                    "type": "STRING",
+                    "description": "Nombre completo del beneficiario"
+                },
+                "recipient_bank": {
+                    "type": "STRING",
+                    "description": "Nombre del banco receptor (ej. 'BBVA México', 'Nu México', 'Banorte')"
+                },
+                "clabe": {
+                    "type": "STRING",
+                    "description": "Cuenta CLABE interbancaria de 18 dígitos"
+                },
+                "alias": {
+                    "type": "STRING",
+                    "description": "Alias opcional para identificar la cuenta rápidamente"
+                }
+            },
+            "required": ["beneficiary_name", "clabe"]
+        }
+    },
     # --- HERRAMIENTA DE PERSONA 2: MOTOR A2UI (AGENT-TO-USER INTERFACE) ---
     {
         "name": "render_a2ui",

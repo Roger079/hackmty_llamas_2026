@@ -257,6 +257,101 @@ export const App: React.FC = () => {
     return response.json();
   };
 
+  const streamChat = async (payload: Record<string, unknown>) => {
+    try {
+      const response = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok || !response.body) {
+        const fallbackData = await postChat(payload);
+        appendResponse(fallbackData);
+        return fallbackData;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let fullReply = '';
+      let capturedA2UI: A2UIPayload | null = null;
+
+      const assistantMsgId = `stream-${Date.now()}`;
+      setMessages((current) => [
+        ...current,
+        {
+          id: assistantMsgId,
+          role: 'assistant',
+          content: '',
+          timestamp: timeNow(),
+        },
+      ]);
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const block of lines) {
+          if (!block.trim()) continue;
+          const eventMatch = block.match(/event:\s*(.+)/);
+          const dataMatch = block.match(/data:\s*(.+)/);
+          if (!eventMatch || !dataMatch) continue;
+
+          const event = eventMatch[1].trim();
+          let dataJson: any = null;
+          try {
+            dataJson = JSON.parse(dataMatch[1].trim());
+          } catch {
+            dataJson = dataMatch[1].trim();
+          }
+
+          if (event === 'token' && typeof dataJson === 'string') {
+            fullReply += dataJson;
+            setMessages((current) =>
+              current.map((m) => (m.id === assistantMsgId ? { ...m, content: fullReply } : m))
+            );
+          } else if (event === 'mcp_call' && dataJson) {
+            setMcpLogs((current) => [dataJson, ...current]);
+          } else if (event === 'a2ui' && dataJson) {
+            capturedA2UI = dataJson;
+            setLastA2UI(dataJson);
+            setMessages((current) =>
+              current.map((m) => (m.id === assistantMsgId ? { ...m, a2ui: dataJson } : m))
+            );
+          } else if (event === 'done' && dataJson) {
+            if (dataJson.reply && !fullReply) fullReply = dataJson.reply;
+            if (dataJson.a2ui) {
+              capturedA2UI = dataJson.a2ui;
+              setLastA2UI(dataJson.a2ui);
+            }
+            setMessages((current) =>
+              current.map((m) =>
+                m.id === assistantMsgId
+                  ? {
+                      ...m,
+                      content: fullReply || 'Operación procesada por Maya.',
+                      a2ui: capturedA2UI || undefined,
+                    }
+                  : m
+              )
+            );
+          }
+        }
+      }
+      return { reply: fullReply, a2ui: capturedA2UI };
+    } catch (err) {
+      console.warn('Streaming failed, falling back to POST /api/chat:', err);
+      const fallbackData = await postChat(payload);
+      appendResponse(fallbackData);
+      return fallbackData;
+    }
+  };
+
   const handleSendMessage = async (text: string) => {
     if (isLoading) return;
     const requestHistory = history();
@@ -266,14 +361,12 @@ export const App: React.FC = () => {
     ]);
     setIsLoading(true);
 
-    // On mobile, automatically switch to Maya view so user sees response
     if (window.innerWidth < 1024) {
       setActiveTab('maya');
     }
 
     try {
-      const data = await postChat({ message: text, user_id: selectedUserId, history: requestHistory });
-      appendResponse(data);
+      await streamChat({ message: text, user_id: selectedUserId, history: requestHistory });
       refreshBankState(selectedUserId);
     } catch (error) {
       appendConnectionError(error);
@@ -304,13 +397,12 @@ export const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const data = await postChat({
+      await streamChat({
         message: actionMessage,
         ...(isExploratory ? {} : { action_context: actionContext }),
         user_id: selectedUserId,
         history: requestHistory,
       });
-      appendResponse(data);
       refreshBankState(selectedUserId);
       return true;
     } catch (error) {
