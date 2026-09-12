@@ -57,28 +57,64 @@ export const SpendingDonutCard: React.FC<SpendingDonutCardProps> = (props) => {
         height={260}
       />
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white shadow-xl">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Desglose Detallado</span>
+      {/* Banorte Unified Breakdown Table */}
+      <div className="banorte-card overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-[#061D3A]">Desglose Detallado de Gastos</h3>
+            <p className="text-xs text-[#6D85A1]">Consumos clasificados por categoría y porcentaje de presupuesto</p>
+          </div>
           {props.trend_pct !== undefined && (
-            <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
+            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
               {props.trend_pct}% vs mes anterior
             </span>
           )}
         </div>
-        <div className="space-y-2.5">
-          {cats.map((c, i) => (
-            <div key={i} className="flex justify-between items-center text-xs">
-              <div className="flex items-center gap-2.5">
-                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color || '#EB0029' }} />
-                <span className="text-slate-200 font-medium">{c.name}</span>
-              </div>
-              <div className="flex items-center gap-3 font-mono">
-                <span className="text-slate-400 text-[11px]">{c.percentage}%</span>
-                <span className="text-white font-bold">${c.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</span>
-              </div>
-            </div>
-          ))}
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-[#E1EAF2] bg-[#F6F9FC] text-xs font-bold uppercase tracking-wide text-[#617A96]">
+                <th className="py-3 px-4">Categoría / Rubro</th>
+                <th className="py-3 px-4 text-center">Distribución</th>
+                <th className="py-3 px-4 text-right">Monto</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {cats.map((c, i) => (
+                <tr key={i} className="hover:bg-slate-50/60 transition-colors">
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0 shadow-xs"
+                        style={{ backgroundColor: c.color || '#EB0029' }}
+                      />
+                      <span className="font-bold text-slate-800">{c.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 font-mono text-[11px] font-semibold text-slate-700">
+                      {c.percentage}%
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right font-black tabular-nums text-slate-900 text-xs">
+                    ${c.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
+                    <span className="text-[10px] font-semibold text-slate-500">MXN</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-[#E1EAF2] bg-[#F6F9FC]/80 font-bold text-xs">
+                <td className="py-3 px-4 text-slate-700 uppercase tracking-wide">Total Periodo</td>
+                <td className="py-3 px-4 text-center text-slate-500 font-mono text-[11px]">100%</td>
+                <td className="py-3 px-4 text-right font-black tabular-nums text-[#061D3A]">
+                  ${cats.reduce((sum, item) => sum + item.amount, 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
+                  <span className="text-[10px] font-semibold text-slate-500">MXN</span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
     </div>

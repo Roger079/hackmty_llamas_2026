@@ -57,82 +57,90 @@ export const BanorteBalanceCard: React.FC<BanorteBalanceCardProps> = ({
   const effectiveSecBal = secondaryAccountBalance ?? (isSilvia ? 32689.41 : 0.00);
 
   return (
-    <div className="bg-slate-900 border border-slate-700/80 rounded-3xl p-5 shadow-2xl text-white space-y-4 my-3">
-      <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+    <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs text-slate-900 space-y-4 my-3">
+      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#EB0029] flex items-center justify-center font-black text-sm">B</div>
+          <div className="w-8 h-8 rounded-xl bg-[#EB0029] flex items-center justify-center font-black text-sm text-white shadow-xs">B</div>
           <div>
-            <h4 className="text-xs font-bold text-white">Resumen de Cuentas Banorte</h4>
-            <p className="text-[11px] text-slate-300">{clientName}</p>
+            <h4 className="text-xs font-bold text-[#061D3A]">Resumen de Cuentas Banorte</h4>
+            <p className="text-[11px] text-slate-500">{clientName}</p>
           </div>
         </div>
-        <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">
+        <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
           En Línea • SPEI Activo
         </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Box 1: Primary Account */}
-        <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-slate-300 uppercase font-semibold">
+            <span className="text-[11px] text-slate-600 uppercase font-semibold">
               {effectivePrimaryName} (*{effectivePrimaryLast4})
             </span>
-            <Wallet className="w-4 h-4 text-emerald-400" />
+            <div className="h-7 w-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Wallet className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-xl font-extrabold text-white tabular-nums mt-1">
+          <div className="text-xl font-extrabold text-[#061D3A] tabular-nums mt-1">
             ${effectivePrimaryBal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
-            <span className="text-xs font-medium text-slate-400">MXN</span>
+            <span className="text-xs font-medium text-slate-500">MXN</span>
           </div>
-          <span className="text-[10px] text-emerald-400 font-medium">Disponible para transferir</span>
+          <span className="text-[10px] text-emerald-700 font-medium">Disponible para transferir</span>
         </div>
 
         {/* Box 2: Conditional on customer products */}
         {hasCardDebt ? (
           // A) Credit Card with active debt (e.g. Carlos)
-          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-amber-400 uppercase font-semibold">
+              <span className="text-[10px] text-amber-700 uppercase font-semibold">
                 {effectiveCardName} (*{effectiveCardLast4})
               </span>
-              <CreditCard className="w-4 h-4 text-amber-400" />
+              <div className="h-7 w-7 rounded-lg bg-red-50 text-[#EB0029] flex items-center justify-center">
+                <CreditCard className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-xl font-extrabold text-amber-200 tabular-nums mt-1">
+            <div className="text-xl font-extrabold text-[#061D3A] tabular-nums mt-1">
               ${(oroBalance ?? 72000.00).toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
-              <span className="text-xs font-medium text-slate-400">MXN</span>
+              <span className="text-xs font-medium text-slate-500">MXN</span>
             </div>
-            <span className="text-[11px] text-red-300 font-semibold">
+            <span className="text-[11px] text-[#EB0029] font-semibold">
               Deuda actual: ${effectiveDebt.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
             </span>
           </div>
         ) : hasSecondAccount ? (
           // B) Second deposit account (e.g. Silvia with Cheques)
-          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] text-slate-300 uppercase font-semibold">
+              <span className="text-[11px] text-slate-600 uppercase font-semibold">
                 {effectiveSecName} (*{effectiveSecLast4})
               </span>
-              <Wallet className="w-4 h-4 text-blue-400" />
+              <div className="h-7 w-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <Wallet className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-xl font-extrabold text-white tabular-nums mt-1">
+            <div className="text-xl font-extrabold text-[#061D3A] tabular-nums mt-1">
               ${effectiveSecBal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
-              <span className="text-xs font-medium text-slate-400">MXN</span>
+              <span className="text-xs font-medium text-slate-500">MXN</span>
             </div>
-            <span className="text-[10px] text-emerald-400 font-medium">Saldo en cheques disponible</span>
+            <span className="text-[10px] text-emerald-700 font-medium">Saldo en cheques disponible</span>
           </div>
         ) : (
           // C) Investment option for debt-free single account client (e.g. Ana)
-          <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/70">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-blue-300 uppercase font-semibold">
+              <span className="text-[10px] text-blue-700 uppercase font-semibold">
                 Pagaré Banorte Plazo Fijo
               </span>
-              <Landmark className="w-4 h-4 text-blue-400" />
+              <div className="h-7 w-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <Landmark className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-xl font-extrabold text-blue-200 tabular-nums mt-1">
-              9.10% <span className="text-xs font-medium text-slate-400">Rendimiento Anual</span>
+            <div className="text-xl font-extrabold text-[#061D3A] tabular-nums mt-1">
+              9.10% <span className="text-xs font-medium text-slate-500">Rendimiento Anual</span>
             </div>
-            <span className="text-[10px] text-slate-300 font-medium">Sin adeudos de crédito • Ahorro seguro</span>
+            <span className="text-[10px] text-slate-500 font-medium">Sin adeudos de crédito • Ahorro seguro</span>
           </div>
         )}
       </div>
@@ -141,7 +149,7 @@ export const BanorteBalanceCard: React.FC<BanorteBalanceCardProps> = ({
         {hasCardDebt ? (
           <button
             onClick={() => onAction && onAction({ action: 'query_restructure', params: {}, source_component: 'BanorteBalanceCard' })}
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#EB0029] py-3 text-center text-xs font-bold text-white transition hover:bg-[#C70023] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer shadow-sm"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#EB0029] py-3 text-center text-xs font-bold text-white transition hover:bg-[#C70023] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EB0029] cursor-pointer shadow-xs"
           >
             <span>Reestructurar Tarjeta</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -149,7 +157,7 @@ export const BanorteBalanceCard: React.FC<BanorteBalanceCardProps> = ({
         ) : (
           <button
             onClick={() => onAction && onAction({ action: 'simulate_investment', params: { amount: effectivePrimaryBal > 50000 ? 50000 : 15000 }, source_component: 'BanorteBalanceCard' })}
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 py-3 text-center text-xs font-bold text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer shadow-sm"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 py-3 text-center text-xs font-bold text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer shadow-xs"
           >
             <TrendingUp className="w-3.5 h-3.5" />
             <span>Simular Inversión</span>
@@ -157,10 +165,10 @@ export const BanorteBalanceCard: React.FC<BanorteBalanceCardProps> = ({
         )}
         <button
           onClick={() => onAction && onAction({ action: 'prepare_spei', params: { amount: 850 }, source_component: 'BanorteBalanceCard' })}
-          className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 py-3 text-center text-xs font-bold text-slate-200 transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
+          className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-3 text-center text-xs font-bold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 cursor-pointer"
         >
           <span>Enviar SPEI</span>
-          <ArrowUpRight className="w-3.5 h-3.5" />
+          <ArrowUpRight className="w-3.5 h-3.5 text-slate-500" />
         </button>
       </div>
     </div>
