@@ -10,7 +10,7 @@ from sse_starlette.sse import EventSourceResponse
 from .config import settings
 from .gemini_orchestrator import orchestrator
 from .mcp_client import mcp_client
-from .schemas import ChatRequest, ChatResponse
+from .schemas import ChatRequest, ChatResponse, EndSessionRequest
 from .tools_registry import TOOL_DECLARATIONS
 
 app = FastAPI(
@@ -108,8 +108,27 @@ async def get_bank_state():
         "user_id": user_id,
         "client_name": user_data["client_name"],
         "accounts": user_data["accounts"],
-        "restructures": user_data.get("restructures", [])
+        "restructures": user_data.get("restructures", []),
+        "transactions": user_data.get("transactions", [])
     }
+
+@app.post("/api/bank/reset")
+async def reset_bank_state():
+    """Resets mock banking accounts, debts and balances to initial state"""
+    result = mcp_client.reset_database()
+    return result
+
+@app.get("/api/user/cognitive-profile")
+async def get_cognitive_profile(user_id: str = "USR-BANORTE-8842"):
+    """Returns the persistent cognitive profile and recorded friction logs for this customer"""
+    profile = mcp_client.get_user_cognitive_profile(user_id)
+    return profile
+
+@app.post("/api/chat/end-session")
+async def end_session(request: EndSessionRequest):
+    """Summarizes conversation, registers friction events, and updates cognitive memory profile"""
+    result = await orchestrator.summarize_and_close_session(request.user_id, request.history)
+    return result
 
 @app.get("/")
 async def serve_index():

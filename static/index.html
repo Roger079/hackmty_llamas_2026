@@ -12,6 +12,8 @@
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Marked.js para formateo profesional de Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -76,6 +78,38 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #94A3B8;
     }
+    .chat-agent-bubble h1, .chat-agent-bubble h2, .chat-agent-bubble h3 {
+      font-weight: 700;
+      color: #0F172A;
+      margin-top: 0.75rem;
+      margin-bottom: 0.35rem;
+    }
+    .chat-agent-bubble h3 {
+      font-size: 0.925rem;
+    }
+    .chat-agent-bubble p {
+      margin-bottom: 0.5rem;
+    }
+    .chat-agent-bubble p:last-child {
+      margin-bottom: 0;
+    }
+    .chat-agent-bubble ul {
+      list-style-type: disc;
+      padding-left: 1.25rem;
+      margin-top: 0.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .chat-agent-bubble li {
+      margin-bottom: 0.25rem;
+    }
+    .chat-agent-bubble strong {
+      color: #0F172A;
+      font-weight: 700;
+    }
+    .chat-agent-bubble hr {
+      border-color: #E2E8F0;
+      margin: 0.75rem 0;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between select-none">
@@ -126,6 +160,16 @@
           <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
           <span>Banorte Móvil</span>
         </a>
+
+        <!-- Botón Inspector de Memoria Cognitiva y Preferencias -->
+        <button 
+          onclick="openCognitiveMemoryModal()" 
+          class="px-3 py-1 rounded-full bg-black/20 hover:bg-black/30 text-white border border-white/30 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+          title="Ver perfil cognitivo, memoria episódica y preferencias visuales del cliente"
+        >
+          <i data-lucide="brain-circuit" class="w-3.5 h-3.5 text-pink-300"></i>
+          <span>Memoria</span>
+        </button>
 
         <!-- Botón Inspector MCP -->
         <button 
@@ -190,10 +234,15 @@
         </div>
 
         <div class="flex items-center gap-2 text-xs">
-          <div class="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
-            <div class="w-6 h-6 rounded-full bg-[#EB0029] text-white flex items-center justify-center font-bold text-[10px]">AR</div>
-            <span class="font-bold text-slate-800">Alejandro Ramírez</span>
-            <span class="text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Preferente</span>
+          <!-- Switcher de Clientes de SQLite -->
+          <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+            <div id="currentUserAvatar" class="w-6 h-6 rounded-full bg-[#EB0029] text-white flex items-center justify-center font-bold text-[10px]">CR</div>
+            <select id="userSelector" onchange="changeActiveCustomer(this.value)" class="bg-transparent font-bold text-slate-800 text-xs outline-none cursor-pointer">
+              <option value="C002">Carlos Ramírez (C002 • Mastercard)</option>
+              <option value="C001">Ana Martínez (C001 • Nómina)</option>
+              <option value="USR-BANORTE-8842">Alejandro Ramírez (Banorte Oro)</option>
+            </select>
+            <span id="tierBadge" class="text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Preferente</span>
           </div>
         </div>
       </div>
@@ -231,11 +280,19 @@
       <div class="pb-3 flex items-center gap-2 overflow-x-auto scrollbar-none">
         <button onclick="sendQuickPrompt('Tengo una deuda con mi tarjeta de crédito y quiero reestructurarla')" class="px-4 py-2 rounded-full bg-red-50 hover:bg-red-100 text-[#EB0029] border border-red-200 text-xs font-bold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
           <i data-lucide="shield-check" class="w-4 h-4"></i>
-          <span>💳 Reestructurar tarjeta de crédito</span>
+          <span>💳 Reestructurar tarjeta</span>
         </button>
-        <button onclick="sendQuickPrompt('Transfiere $850 a Sofía Mendoza para la cena')" class="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
+        <button onclick="sendQuickPrompt('¿En qué se me fue el dinero este mes? Desglósame mis gastos por categoría')" class="px-4 py-2 rounded-full bg-red-50 hover:bg-red-100 text-[#EB0029] border border-red-200 text-xs font-bold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
+          <i data-lucide="pie-chart" class="w-4 h-4"></i>
+          <span>📊 Gastos por categoría</span>
+        </button>
+        <button onclick="sendQuickPrompt('¿Cómo está mi salud financiera general? Dame mi diagnóstico 360')" class="px-4 py-2 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
+          <i data-lucide="activity" class="w-4 h-4 text-amber-600"></i>
+          <span>🩺 Salud Financiera 360°</span>
+        </button>
+        <button onclick="sendQuickPrompt('Transfiere $1,000 a Sofía Mendoza para la cena')" class="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
           <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i>
-          <span>⚡ Transferir $850 SPEI</span>
+          <span>⚡ Transferir $1,000 SPEI</span>
         </button>
         <button onclick="sendQuickPrompt('¿Cuánto saldo disponible tengo en mis cuentas?')" class="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
           <i data-lucide="wallet" class="w-4 h-4 text-emerald-600"></i>
@@ -337,9 +394,79 @@
   </div>
 
   <!-- ========================================================================= -->
+  <!-- 4.1 MODAL: MEMORIA COGNITIVA Y PREFERENCIAS VISUALES (SQLITE)              -->
+  <!-- ========================================================================= -->
+  <div id="cognitiveMemoryModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div class="bg-slate-900 border border-slate-800 text-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl flex flex-col max-h-[85vh] text-xs space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <i data-lucide="brain-circuit" class="w-5 h-5 text-pink-400"></i>
+          <div>
+            <h3 class="text-sm font-bold text-white">Memoria Cognitiva & Preferencias en SQLite</h3>
+            <p class="text-[10px] text-slate-400">Persistencia episódica que Gemini consulta antes de cada respuesta</p>
+          </div>
+        </div>
+        <button onclick="closeModal('cognitiveMemoryModal')" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 overflow-y-auto pr-1">
+        <!-- Cliente actual -->
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Cliente Autenticado</span>
+            <span id="memUserId" class="font-mono text-emerald-400 font-bold">C002</span>
+          </div>
+          <div id="memClientName" class="text-base font-black text-white">Carlos Ramírez</div>
+        </div>
+
+        <!-- Preferencias Visuales -->
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+          <div class="flex items-center gap-1.5 text-amber-400 font-bold">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>Preferencias de Visualización (Qué visuales le gustan)</span>
+          </div>
+          <p id="memVisualPrefs" class="text-slate-300 leading-relaxed bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 text-[11px]"></p>
+        </div>
+
+        <!-- Preferencias de Información -->
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+          <div class="flex items-center gap-1.5 text-cyan-400 font-bold">
+            <i data-lucide="info" class="w-4 h-4"></i>
+            <span>Preferencias de Información (Qué datos valora)</span>
+          </div>
+          <p id="memInfoPrefs" class="text-slate-300 leading-relaxed bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 text-[11px]"></p>
+        </div>
+
+        <!-- Memoria de Fricciones Anteriores -->
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5">
+          <div class="flex items-center gap-1.5 text-red-400 font-bold">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            <span>Fricciones y Sensibilidades Detectadas en Sesiones Previas</span>
+          </div>
+          <p id="memSummary" class="text-slate-300 leading-relaxed bg-slate-900/70 p-2.5 rounded-xl border border-slate-800 text-[11px]"></p>
+          <div class="text-[10px] text-slate-400">
+            <span class="text-slate-500">Tono sugerido:</span> <span id="memTone" class="text-emerald-300 font-semibold"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-500">
+        <span id="memLastUpdated">Última actualización: --</span>
+        <button onclick="loadCognitiveMemory(currentCustomerId)" class="text-pink-400 hover:text-pink-300 font-bold underline cursor-pointer">
+          Recargar de SQLite
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
   <!-- 5. JAVASCRIPT: MOTOR A2UI, CONEXIÓN FASTAPI & CLOSED LOOP                  -->
   <!-- ========================================================================= -->
   <script>
+    let currentCustomerId = "C002";
+
     const state = {
       mcpCalls: [],
       lastA2UI: null,
@@ -348,7 +475,75 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       lucide.createIcons();
+      changeActiveCustomer(currentCustomerId);
     });
+
+    async function changeActiveCustomer(userId) {
+      currentCustomerId = userId;
+      state.history = [];
+      const sel = document.getElementById("userSelector");
+      if (sel && sel.value !== userId) sel.value = userId;
+
+      document.getElementById("chatMessagesStream").innerHTML = `
+        <div class="flex items-start gap-3.5 animate-in fade-in">
+          <div class="w-9 h-9 rounded-full bg-[#EB0029] flex items-center justify-center text-white shrink-0 shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-5 h-5" fill="none">
+              <g fill="#FFFFFF">
+                <path d="M12 34 L21 14 L26 14 L17 34 Z" />
+                <path d="M20 34 L29 14 L34 14 L25 34 Z" />
+                <polygon points="27,14 36,14 32,22 23,22" opacity="0.95" />
+              </g>
+            </svg>
+          </div>
+          <div class="max-w-2xl bg-[#F8FAFC] border border-slate-200 rounded-3xl rounded-tl-none p-5 text-sm leading-relaxed text-slate-700 space-y-2 shadow-sm">
+            <p id="welcomeGreeting" class="text-slate-900 font-semibold text-base">Cargando perfil cognitivo para <span class="text-[#EB0029]">${userId}</span>...</p>
+            <p class="text-xs text-slate-500">He cargado tu perfil cognitivo, preferencias visuales e historial desde la base de datos bancaria SQLite. ¿En qué te puedo apoyar hoy?</p>
+          </div>
+        </div>
+      `;
+      await loadCognitiveMemory(userId);
+    }
+
+    async function loadCognitiveMemory(userId) {
+      try {
+        const res = await fetch(`/api/user/cognitive-profile?user_id=${userId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        // Update avatar badge and greeting
+        const initials = data.client_name ? data.client_name.split(" ").map(w => w[0]).slice(0, 2).join("") : "CL";
+        const avatar = document.getElementById("currentUserAvatar");
+        if (avatar) avatar.textContent = initials;
+
+        const greetEl = document.getElementById("welcomeGreeting");
+        if (greetEl && data.client_name) {
+          greetEl.innerHTML = `¡Hola, ${data.client_name.split(" ")[0]}! 👋 <span class="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">${data.user_id}</span>`;
+        }
+
+        // Populate modal fields
+        const uidEl = document.getElementById("memUserId");
+        if (uidEl) uidEl.textContent = data.user_id;
+        const nameEl = document.getElementById("memClientName");
+        if (nameEl) nameEl.textContent = data.client_name;
+        const visEl = document.getElementById("memVisualPrefs");
+        if (visEl) visEl.textContent = data.visual_preferences || "Aún sin registrar. Se auto-calibrará al solicitar gráficos en la conversación.";
+        const infEl = document.getElementById("memInfoPrefs");
+        if (infEl) infEl.textContent = data.information_preferences || "Aún sin registrar. Se adaptará automáticamente según tus consultas.";
+        const sumEl = document.getElementById("memSummary");
+        if (sumEl) sumEl.textContent = data.memory_summary || "Sin fricciones detectadas en sesiones previas.";
+        const toneEl = document.getElementById("memTone");
+        if (toneEl) toneEl.textContent = data.recommended_tone || "Empático y transparente";
+        const updEl = document.getElementById("memLastUpdated");
+        if (updEl) updEl.textContent = "Última actualización: " + (data.last_updated || "Hoy");
+      } catch (err) {
+        console.error("Error loading cognitive memory:", err);
+      }
+    }
+
+    function openCognitiveMemoryModal() {
+      loadCognitiveMemory(currentCustomerId);
+      openModal("cognitiveMemoryModal");
+    }
 
     function openModal(id) {
       document.getElementById(id).classList.remove("hidden");
@@ -384,6 +579,23 @@
       document.getElementById("agentTypingIndicator").classList.add("hidden");
     }
 
+    function formatAgentMarkdown(text) {
+      if (!text) return "";
+      // Clean up common AI escape artifacts like (\*1234)
+      let cleaned = text.replace(/\\\*/g, '*').replace(/\\([#_\[\]()])/g, '$1');
+      if (typeof marked !== "undefined" && marked.parse) {
+        marked.setOptions({ breaks: true, gfm: true });
+        return marked.parse(cleaned);
+      }
+      return cleaned
+        .replace(/^### (.*$)/gim, '<h3 class="text-sm font-bold text-slate-900 mt-2 mb-1">$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2 class="text-base font-bold text-slate-900 mt-3 mb-1">$1</h2>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^\s*[-•]\s+(.*$)/gim, '<li class="ml-4 list-disc text-slate-700">$1</li>')
+        .replace(/\n\n/g, '<br/><br/>')
+        .replace(/\n/g, '<br/>');
+    }
+
     function appendAgentMessage(text, a2uiSpec) {
       hideAgentTyping();
       const stream = document.getElementById("chatMessagesStream");
@@ -409,8 +621,8 @@
         </div>
         <div class="flex-1 max-w-2xl space-y-3">
           ${text ? `
-            <div class="bg-[#F8FAFC] border border-slate-200 rounded-3xl rounded-tl-none p-5 text-sm leading-relaxed text-slate-800 shadow-sm">
-              ${text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')}
+            <div class="chat-agent-bubble bg-[#F8FAFC] border border-slate-200 rounded-3xl rounded-tl-none p-5 text-sm leading-relaxed text-slate-800 shadow-sm">
+              ${formatAgentMarkdown(text)}
             </div>
           ` : ""}
           ${componentHtml}
@@ -477,7 +689,7 @@
         const payload = {
           message: message,
           history: state.history,
-          user_id: "USR-BANORTE-8842",
+          user_id: currentCustomerId,
           action_context: actionContext
         };
 
@@ -521,7 +733,9 @@
     // FEEDBACK LOOP DISPATCHER (Action Callbacks)
     // =========================================================================
     function dispatchA2UIAction(actionName, params, sourceComponent) {
-      appendUserMessage(`[Acción]: Confirmar ${actionName}`);
+      // No agregar burbuja fea de '[Acción]: Confirmar ...' al chat del usuario.
+      // Se envía directamente el action_context al orquestador backend con indicador de carga.
+      showAgentTyping("Maya formalizando y aplicando en tu cuenta...");
       sendToOrchestrator(`Confirmar acción ${actionName}`, {
         action: actionName,
         params: params,
@@ -576,14 +790,20 @@
             `;
           }).join("");
 
+          const cardName = props.cardName || props.card_name || 'Tarjeta Banorte Oro';
+          const cardLast4 = props.cardLast4 || props.card_last4 || '8842';
+          const totalDebt = props.totalDebt !== undefined ? props.totalDebt : (props.total_debt !== undefined ? props.total_debt : 38450);
+          const currentRate = props.currentRate || props.interest_rate_annual || props.rate || '64.8% CAT';
+          const dueDate = props.dueDate || props.payment_due_date || props.due_date || '18 Sep 2026';
+
           return `
             <div id="debtCardContainer" class="bg-white text-slate-900 rounded-3xl shadow-xl border border-slate-200 overflow-hidden my-3 animate-in fade-in">
               <div class="bg-gradient-to-r from-[#EB0029] via-[#C70023] to-[#8C0018] text-white p-6">
                 <div class="flex justify-between items-start">
                   <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-red-100 block">Convenio y Reestructuración Banorte</span>
-                    <h3 class="text-lg font-black tracking-tight mt-0.5">${props.cardName || 'Tarjeta Banorte Oro'}</h3>
-                    <p class="text-xs font-mono text-red-100">•••• •••• •••• ${props.cardLast4 || '8842'}</p>
+                    <h3 class="text-lg font-black tracking-tight mt-0.5">${cardName}</h3>
+                    <p class="text-xs font-mono text-red-100">•••• •••• •••• ${cardLast4}</p>
                   </div>
                   <div class="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm border border-white/30">
                     Elegible
@@ -594,13 +814,13 @@
                   <div>
                     <span class="text-[10px] text-red-100 uppercase tracking-wider block">Deuda total actual</span>
                     <span class="text-2xl sm:text-3xl font-black tracking-tight tabular-nums">
-                      $ ${(props.totalDebt || 38450).toLocaleString('es-MX', { minimumFractionDigits: 2 })} <span class="text-xs font-normal">MXN</span>
+                      $ ${Number(totalDebt).toLocaleString('es-MX', { minimumFractionDigits: 2 })} <span class="text-xs font-normal">MXN</span>
                     </span>
                   </div>
                   <div class="text-right">
                     <span class="text-[10px] text-red-100 uppercase tracking-wider block">Tasa actual ordinaria</span>
-                    <span class="text-base sm:text-lg font-bold text-amber-300 tabular-nums">${props.currentRate || '64.8% CAT'}</span>
-                    <span class="block text-[10px] text-red-200">Vence: ${props.dueDate || '18 Sep 2026'}</span>
+                    <span class="text-base sm:text-lg font-bold text-amber-300 tabular-nums">${currentRate}</span>
+                    <span class="block text-[10px] text-red-200">Vence: ${dueDate}</span>
                   </div>
                 </div>
               </div>
@@ -622,7 +842,7 @@
 
                 <button 
                   id="btnApplyPlan"
-                  onclick="triggerApplyRestructure()"
+                  onclick="triggerApplyRestructure(this)"
                   class="w-full py-4 bg-[#EB0029] hover:bg-[#C70023] active:bg-[#9E001B] text-white rounded-2xl font-bold text-sm tracking-wide shadow-xl shadow-red-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <span id="btnApplyPlanText">Aplicar plan seleccionado</span>
@@ -777,6 +997,14 @@
 
         // 5. BANORTE BALANCE CARD
         case "BanorteBalanceCard": {
+          const nominaAcc = Array.isArray(props.accounts) ? props.accounts.find(a => a.type === 'nomina') : null;
+          const oroAcc = Array.isArray(props.accounts) ? props.accounts.find(a => a.type === 'oro') : null;
+
+          const nominaBalance = props.nominaBalance !== undefined ? props.nominaBalance : (props.nomina_balance !== undefined ? props.nomina_balance : (nominaAcc?.available_balance ?? 48650));
+          const oroBalance = props.oroBalance !== undefined ? props.oroBalance : (props.oro_balance !== undefined ? props.oro_balance : (oroAcc?.available_credit ?? 41550));
+          const totalDebt = props.totalDebt !== undefined ? props.totalDebt : (props.total_debt !== undefined ? props.total_debt : (oroAcc?.current_debt ?? 38450));
+          const clientName = props.clientName || props.client || props.client_name || 'Alejandro Ramírez';
+
           return `
             <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xl text-slate-900 space-y-4 my-3">
               <div class="flex justify-between items-center border-b border-slate-100 pb-3">
@@ -784,7 +1012,7 @@
                   <div class="w-8 h-8 rounded-xl bg-[#EB0029] flex items-center justify-center text-white font-black text-sm">B</div>
                   <div>
                     <h4 class="text-xs font-bold text-slate-900">Resumen de Cuentas Banorte</h4>
-                    <p class="text-[10px] text-slate-500">${props.clientName || 'Alejandro Ramírez'}</p>
+                    <p class="text-[10px] text-slate-500">${clientName}</p>
                   </div>
                 </div>
                 <span class="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200">En Línea</span>
@@ -793,13 +1021,13 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <span class="text-[10px] text-slate-500 uppercase font-semibold">Nómina (*1234)</span>
-                  <div class="text-xl font-bold text-slate-900 tabular-nums mt-1">$ ${(props.nominaBalance || 48650).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                  <div class="text-xl font-bold text-slate-900 tabular-nums mt-1">$ ${Number(nominaBalance).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
                   <span class="text-[10px] text-emerald-600 font-medium">Disponible para transferir</span>
                 </div>
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <span class="text-[10px] text-amber-600 uppercase font-semibold">Crédito Oro (*8842)</span>
-                  <div class="text-xl font-bold text-amber-700 tabular-nums mt-1">$ ${(props.oroBalance || 41550).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
-                  <span class="text-[10px] text-slate-500">Deuda actual: $${(props.totalDebt || 38450).toLocaleString('es-MX')} MXN</span>
+                  <div class="text-xl font-bold text-amber-700 tabular-nums mt-1">$ ${Number(oroBalance).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                  <span class="text-[10px] text-slate-500">Deuda actual: $${Number(totalDebt).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</span>
                 </div>
               </div>
 
@@ -842,6 +1070,356 @@
           `;
         }
 
+        // 6. SPENDING DONUT / CATEGORY CHART
+        case "SpendingDonutCard":
+        case "BanorteChartCard": {
+          const total = props.totalSpent || props.total_spent || 14850.00;
+          const cats = props.categories && props.categories.length > 0 ? props.categories : [
+            { name: "Supermercado", amount: 5420, percentage: 36.5, color: "#EB0029" },
+            { name: "Restaurantes", amount: 3280, percentage: 22.1, color: "#FF5A70" },
+            { name: "Servicios", amount: 2650, percentage: 17.8, color: "#4A5568" },
+            { name: "Transporte", amount: 1950, percentage: 13.1, color: "#718096" },
+            { name: "Entretenimiento", amount: 1550, percentage: 10.5, color: "#CBD5E0" }
+          ];
+
+          const categoryItems = cats.map(c => `
+            <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-100 last:border-0">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${c.color || '#EB0029'}"></span>
+                <span class="text-slate-800 font-medium">${c.name}</span>
+              </div>
+              <div class="flex items-center gap-3 font-mono">
+                <span class="text-slate-400 text-[11px]">${c.percentage}%</span>
+                <span class="text-slate-900 font-bold">$ ${c.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          `).join("");
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Gastos por Categoría</h4>
+                  <p class="text-[10px] text-slate-400">${props.period || 'Septiembre 2026'}</p>
+                </div>
+                <span class="text-xs font-bold text-[#EB0029] bg-red-50 border border-red-200 px-3 py-1 rounded-full font-mono">
+                  $ ${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
+                </span>
+              </div>
+
+              <div class="space-y-1">
+                ${categoryItems}
+              </div>
+
+              ${props.summary ? `<p class="text-[11px] text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100 italic">${props.summary}</p>` : ''}
+            </div>
+          `;
+        }
+
+        // 7. FINANCIAL HEALTH GAUGE
+        case "FinancialHealthGauge": {
+          const score = props.overallScore || props.overall_score || 64;
+          const status = props.status || (score < 70 ? 'MODERADO' : 'ÓPTIMO');
+          const color = props.statusColor || (score < 70 ? '#F59E0B' : '#10B981');
+          const util = (props.metrics && props.metrics.credit_utilization_pct) || 48.1;
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Diagnóstico de Salud Financiera 360°</h4>
+                  <p class="text-[10px] text-slate-400">Score crediticio y de liquidez</p>
+                </div>
+                <span class="text-xs font-bold px-3 py-1 rounded-full font-mono uppercase tracking-wide border" style="background-color: ${color}15; color: ${color}; border-color: ${color}40;">
+                  ${status} (${score}/100)
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 text-xs">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span class="text-[10px] text-slate-500 font-semibold uppercase">Uso de Línea</span>
+                  <div class="text-base font-black text-slate-900 mt-0.5 font-mono">${util}%</div>
+                  <span class="text-[10px] text-amber-600 font-medium">Recomendado: &lt; 30%</span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span class="text-[10px] text-slate-500 font-semibold uppercase">Puntualidad</span>
+                  <div class="text-base font-black text-emerald-600 mt-0.5 font-mono">92 pts</div>
+                  <span class="text-[10px] text-slate-500 font-medium">Historial impecable</span>
+                </div>
+              </div>
+
+              <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs text-amber-900">
+                <div class="font-bold flex items-center gap-1 text-amber-800">⚠️ Riesgo de Pago Mínimo</div>
+                <p class="text-[11px] text-amber-700 mt-1">Pagar solo el mínimo ($3,850) tardará 64 meses y costará más de $36,200 en intereses. Reestructurar ahorra $21,400.</p>
+              </div>
+            </div>
+          `;
+        }
+
+        // 8. LINE CHART (Histórico y Evolución Temporal)
+        case "LineChart":
+        case "MultiLineChart": {
+          const rows = props.rows || [
+            { mes: 'Abril', gasto: 15200 },
+            { mes: 'Mayo', gasto: 16100 },
+            { mes: 'Junio', gasto: 14200 },
+            { mes: 'Julio', gasto: 17100 },
+            { mes: 'Agosto', gasto: 16200 },
+            { mes: 'Septiembre', gasto: 14850 }
+          ];
+          const xKey = props.xKey || props.categoryKey || 'mes';
+          const yKey = props.yKey || props.valueKey || 'gasto';
+          const values = rows.map(r => Number(r[yKey]) || 0);
+          const maxVal = Math.max(...values, 1);
+          const minVal = Math.min(...values, 0);
+          const range = maxVal - minVal || 1;
+          
+          const svgW = 560;
+          const svgH = 180;
+          const padL = 45;
+          const padR = 20;
+          const padT = 25;
+          const padB = 35;
+          const innerW = svgW - padL - padR;
+          const innerH = svgH - padT - padB;
+
+          const points = rows.map((r, i) => {
+            const x = padL + (innerW / Math.max(rows.length - 1, 1)) * i;
+            const y = padT + innerH - ((Number(r[yKey]) - minVal) / range) * innerH;
+            return { x, y, val: r[yKey], label: r[xKey] };
+          });
+
+          const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+          const areaD = `${pathD} L ${points[points.length - 1].x.toFixed(1)} ${svgH - padB} L ${points[0].x.toFixed(1)} ${svgH - padB} Z`;
+
+          const circles = points.map((p, i) => `
+            <g class="group cursor-pointer">
+              <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="#EB0029" stroke="#FFFFFF" stroke-width="2" class="transition-transform hover:scale-150" />
+              <text x="${p.x}" y="${p.y - 8}" text-anchor="middle" font-size="10" font-weight="bold" fill="#1C1E21">$${Number(p.val).toLocaleString('es-MX')}</text>
+              <text x="${p.x}" y="${svgH - 12}" text-anchor="middle" font-size="10" fill="#7A8290">${p.label}</text>
+            </g>
+          `).join("");
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3 animate-in fade-in">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-2.5 h-2.5 rounded-full bg-[#EB0029]"></div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">${props.title || 'Evolución Histórica de Gastos'}</h4>
+                </div>
+                <span class="text-xs font-bold text-[#EB0029] bg-red-50 border border-red-200 px-3 py-1 rounded-full font-mono">
+                  6 Meses
+                </span>
+              </div>
+
+              <div class="w-full overflow-x-auto">
+                <svg viewBox="0 0 ${svgW} ${svgH}" class="w-full h-auto max-h-56">
+                  <defs>
+                    <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#EB0029" stop-opacity="0.25" />
+                      <stop offset="100%" stop-color="#EB0029" stop-opacity="0.0" />
+                    </linearGradient>
+                  </defs>
+                  <!-- Grid horizontal lines -->
+                  <line x1="${padL}" y1="${padT}" x2="${svgW - padR}" y2="${padT}" stroke="#F1F5F9" stroke-width="1" />
+                  <line x1="${padL}" y1="${padT + innerH/2}" x2="${svgW - padR}" y2="${padT + innerH/2}" stroke="#F1F5F9" stroke-width="1" />
+                  <line x1="${padL}" y1="${svgH - padB}" x2="${svgW - padR}" y2="${svgH - padB}" stroke="#E2E8F0" stroke-width="1.5" />
+
+                  <!-- Area & Line -->
+                  <path d="${areaD}" fill="url(#lineGrad)" />
+                  <path d="${pathD}" fill="none" stroke="#EB0029" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+                  <!-- Points & Labels -->
+                  ${circles}
+                </svg>
+              </div>
+
+              <div class="flex justify-between items-center text-xs text-slate-500 pt-2 border-t border-slate-100">
+                <span>Promedio mensual: <strong>$15,758 MXN</strong></span>
+                <span class="text-emerald-600 font-bold">Tendencia a la baja (-8.3% en Sep)</span>
+              </div>
+            </div>
+          `;
+        }
+
+        // 9. BAR CHART (Comparativas de Gastos y Rubros)
+        case "BarChart":
+        case "BarHorizontalChart":
+        case "GroupedBarChart":
+        case "StackedBarChart": {
+          const rows = props.rows || [
+            { category: "Supermercado", amount: 5420, pct: 36.5 },
+            { category: "Restaurantes", amount: 3280, pct: 22.1 },
+            { category: "Servicios", amount: 2650, pct: 17.8 },
+            { category: "Transporte", amount: 1950, pct: 13.1 },
+            { category: "Entretenimiento", amount: 1550, pct: 10.5 }
+          ];
+          const maxVal = Math.max(...rows.map(r => r.amount || r.monto || r.value || 0), 1);
+
+          const barsHtml = rows.map((r, i) => {
+            const cat = r.category || r.categoria || r.name || r.rubro || 'Rubro';
+            const val = Number(r.amount || r.monto || r.value || 0);
+            const pct = r.pct || r.percentage || ((val / maxVal) * 100).toFixed(1);
+            const widthPct = Math.min(100, Math.max(8, (val / maxVal) * 100));
+            const barColor = i === 0 ? '#EB0029' : (i === 1 ? '#FF4D6A' : '#4A5568');
+
+            return `
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold">
+                  <span class="text-slate-800">${cat}</span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-[11px] text-slate-400 font-normal">${pct}%</span>
+                    <span class="text-slate-900 font-bold tabular-nums font-mono">$${val.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+                <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                  <div class="h-full rounded-full transition-all duration-500" style="width: ${widthPct}%; background-color: ${barColor}"></div>
+                </div>
+              </div>
+            `;
+          }).join("");
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3 animate-in fade-in">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">${props.title || 'Comparativa de Gastos por Categoría'}</h4>
+                  <p class="text-[10px] text-slate-400">Distribución de egresos del periodo</p>
+                </div>
+                <span class="text-xs font-bold text-[#EB0029] bg-red-50 border border-red-200 px-3 py-1 rounded-full font-mono">
+                  Septiembre 2026
+                </span>
+              </div>
+
+              <div class="space-y-3 pt-1">
+                ${barsHtml}
+              </div>
+
+              <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 text-xs text-slate-600 flex justify-between items-center">
+                <span>Concentración en top 2: <strong>58.6% del total</strong></span>
+                <span class="text-[#EB0029] font-bold text-[11px]">Total: $14,850 MXN</span>
+              </div>
+            </div>
+          `;
+        }
+
+        // 10. TIMELINE (Seguimiento de Trámites y Reestructuración)
+        case "Timeline": {
+          const steps = props.steps || [
+            { label: "Diagnóstico y Elegibilidad", status: "completed", date: "11 Sep, 10:00", description: "Aprobado para convenio preferencial" },
+            { label: "Pre-autorización de Tasa Preferencial", status: "completed", date: "11 Sep, 10:02", description: "Tasa reducida de 64.8% a 21.0% anual" },
+            { label: "Selección y Aceptación de Plan", status: "current", date: "En curso", description: "Elige entre 12, 24 o 36 mensualidades fijas" },
+            { label: "Activación de Pagos Fijos", status: "pending", date: "Pendiente", description: "Congelamiento inmediato de intereses" }
+          ];
+
+          const stepsHtml = steps.map((s, i) => {
+            const isCompleted = s.status === 'completed';
+            const isCurrent = s.status === 'current';
+            const badgeBg = isCompleted ? 'bg-emerald-500 text-white' : (isCurrent ? 'bg-[#EB0029] text-white ring-4 ring-red-100' : 'bg-slate-200 text-slate-500');
+            const icon = isCompleted ? '✓' : (i + 1);
+
+            return `
+              <div class="flex items-start gap-3.5 relative">
+                ${i < steps.length - 1 ? `<div class="absolute left-3.5 top-8 w-0.5 h-10 ${isCompleted ? 'bg-emerald-300' : 'bg-slate-200'}"></div>` : ''}
+                <div class="w-7 h-7 rounded-full ${badgeBg} flex items-center justify-center font-bold text-xs shrink-0 z-10">
+                  ${icon}
+                </div>
+                <div class="flex-1 pb-4">
+                  <div class="flex justify-between items-center">
+                    <h5 class="text-xs font-bold ${isCurrent ? 'text-[#EB0029]' : 'text-slate-900'}">${s.label}</h5>
+                    <span class="text-[10px] font-medium text-slate-400">${s.date || ''}</span>
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-0.5">${s.description || ''}</p>
+                </div>
+              </div>
+            `;
+          }).join("");
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3 animate-in fade-in">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-2.5 h-2.5 rounded-full bg-[#EB0029]"></div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">${props.title || 'Estado de Avance de Trámite'}</h4>
+                </div>
+                <span class="text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                  Paso 3 de 4
+                </span>
+              </div>
+
+              <div class="pt-2">
+                ${stepsHtml}
+              </div>
+
+              <button onclick="sendQuickPrompt('Tengo una deuda con mi tarjeta de crédito y quiero reestructurarla')" class="w-full py-3 bg-[#EB0029] hover:bg-[#C70023] text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer">
+                Completar Selección de Plan
+              </button>
+            </div>
+          `;
+        }
+
+        // 11. DATA TABLE (Movimientos Bancarios Detallados)
+        case "DataTable": {
+          const columns = props.columns || [
+            { key: "fecha", label: "Fecha" },
+            { key: "comercio", label: "Comercio / Detalle" },
+            { key: "categoria", label: "Categoría" },
+            { key: "monto", label: "Monto" }
+          ];
+          const rows = props.rows || [
+            { fecha: "11 Sep 2026", comercio: "HEB San Pedro", categoria: "Supermercado", monto: -1850.00 },
+            { fecha: "10 Sep 2026", comercio: "Starbucks Valle", categoria: "Restaurantes", monto: -145.00 },
+            { fecha: "09 Sep 2026", comercio: "Gasolinera OXXO GAS", categoria: "Transporte", monto: -850.00 },
+            { fecha: "08 Sep 2026", comercio: "Netflix Mensual", categoria: "Entretenimiento", monto: -299.00 },
+            { fecha: "05 Sep 2026", comercio: "CFE Suministrador", categoria: "Servicios", monto: -920.00 }
+          ];
+
+          const rowsHtml = rows.map((r, i) => `
+            <tr class="border-b border-slate-100 hover:bg-slate-50 transition text-xs">
+              <td class="py-2.5 px-3 text-slate-500 whitespace-nowrap">${r.fecha || r.date}</td>
+              <td class="py-2.5 px-3 font-semibold text-slate-800">${r.comercio || r.description}</td>
+              <td class="py-2.5 px-3">
+                <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                  ${r.categoria || r.category}
+                </span>
+              </td>
+              <td class="py-2.5 px-3 text-right font-mono font-bold ${Number(r.monto || r.amount) < 0 ? 'text-[#EB0029]' : 'text-emerald-600'}">
+                $${Math.abs(Number(r.monto || r.amount)).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+              </td>
+            </tr>
+          `).join("");
+
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4 my-3 animate-in fade-in">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">${props.title || 'Detalle de Movimientos Recientes'}</h4>
+                  <p class="text-[10px] text-slate-400">Últimas transacciones registradas</p>
+                </div>
+                <span class="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full font-mono">
+                  ${rows.length} registros
+                </span>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                  <thead>
+                    <tr class="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th class="py-2 px-3">Fecha</th>
+                      <th class="py-2 px-3">Concepto</th>
+                      <th class="py-2 px-3">Categoría</th>
+                      <th class="py-2 px-3 text-right">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rowsHtml}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+
         default:
           return `<div class="p-4 bg-slate-100 rounded-2xl text-xs text-slate-600">Componente A2UI: ${component}</div>`;
       }
@@ -860,11 +1438,12 @@
       });
     }
 
-    function triggerApplyRestructure() {
-      const btn = document.getElementById("btnApplyPlan");
+    function triggerApplyRestructure(btnEl) {
+      const btn = btnEl || document.getElementById("btnApplyPlan");
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>Aplicando reestructuración en base de datos bancaria...</span>`;
+        btn.classList.add("opacity-80", "cursor-wait");
+        btn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></span><span>Formalizando convenio con Banorte...</span>`;
       }
       const plan = window.__restructurePlan || { id: "plan_24m", months: 24, payment: 1920 };
       dispatchA2UIAction("commit_restructure", {
@@ -874,11 +1453,12 @@
       }, "DebtRestructureCard");
     }
 
-    function triggerExecuteSpei() {
-      const btn = document.getElementById("btnConfirmSpeiToken");
+    function triggerExecuteSpei(btnEl) {
+      const btn = btnEl || document.getElementById("btnConfirmSpeiToken");
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>Validando Token Móvil con Banxico SPEI...</span>`;
+        btn.classList.add("opacity-80", "cursor-wait");
+        btn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></span><span>Validando Token Móvil con Banxico SPEI...</span>`;
       }
       const transfer = window.__pendingSpei || { amount: 850, beneficiary: "SOFÍA MENDOZA RÍOS", bank: "BBVA México", clabe: "012 180 01594839201 9" };
       dispatchA2UIAction("execute_spei", transfer, "SpeiConfirmCard");
