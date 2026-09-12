@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banorte Móvil — Vista en Vivo para Jueces</title>
+
+  <!-- Fuentes Oficiales Banorte -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            banorte: {
+              red: {
+                DEFAULT: '#EB0029',
+                hover: '#C70023',
+                dark: '#9E001B',
+                light: '#FFF0F2',
+                subtle: '#FDE2E4'
+              },
+              gold: {
+                DEFAULT: '#C59B27',
+                light: '#F6E8B7',
+                dark: '#936F11'
+              }
+            }
+          },
+          fontFamily: {
+            sans: ['Montserrat', 'system-ui', 'sans-serif'],
+            mono: ['"Roboto Mono"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background-color: #070D18;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col items-center justify-start p-3 sm:p-6 antialiased">
+
+  <!-- TOP BAR: Control de Demo & Enlace al Chat -->
+  <header class="w-full max-w-xl mb-4 bg-slate-900/95 backdrop-blur border border-slate-800 rounded-2xl px-5 py-3 shadow-xl flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <a href="/" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition flex items-center gap-1 text-xs font-bold">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        <span>Volver a Maya Chat</span>
+      </a>
+      <div>
+        <h1 class="text-xs font-bold text-white">Banorte Móvil • Vista de Jueces</h1>
+        <p class="text-[10px] text-emerald-400 font-mono">Sincronización en Tiempo Real</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 text-xs">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+      <span class="text-[11px] text-slate-400 hidden sm:inline">Live Sync</span>
+      <button onclick="fetchLiveBankState()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Refrescar">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- BANNER EXPLICATIVO PARA JUECES -->
+  <div class="w-full max-w-md mb-4 bg-red-950/40 border border-red-500/30 rounded-2xl p-3 text-xs text-red-200 flex items-center gap-2.5">
+    <i data-lucide="info" class="w-4 h-4 text-red-400 shrink-0"></i>
+    <span>Abre el <strong>Chat de Maya</strong> en otra pestaña o ventana. Cuando el agente aplique una reestructuración o SPEI, esta pantalla se actualizará en vivo.</span>
+  </div>
+
+  <!-- DISPOSITIVO SMARTPHONE BANORTE -->
+  <div class="w-full max-w-md bg-[#F4F6F9] text-slate-800 rounded-[44px] shadow-2xl overflow-hidden border-[10px] border-slate-900 flex flex-col relative min-h-[810px]">
+
+    <!-- PUSH NOTIFICATION -->
+    <div id="pushNotification" class="hidden absolute top-3 inset-x-3 z-50 bg-white rounded-2xl p-3.5 shadow-2xl border border-slate-200 animate-in slide-in-from-top duration-300">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-xl bg-[#EB0029] flex items-center justify-center text-white shrink-0">
+          <i data-lucide="bell" class="w-4 h-4"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-slate-900">Banorte Móvil</span>
+            <span class="text-[10px] text-slate-400 font-medium">Justo ahora</span>
+          </div>
+          <p id="pushNotificationTitle" class="text-xs font-bold text-slate-800 mt-0.5">Notificación Bancaria</p>
+          <p id="pushNotificationBody" class="text-[11px] text-slate-600 truncate">Operación ejecutada por Maya</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="bg-[#EB0029] text-white px-6 pt-3 pb-1 flex justify-between items-center text-xs tracking-tight z-30 font-medium select-none">
+      <span id="statusBarClock">11:15</span>
+      <div class="w-18 h-3.5 bg-black/30 rounded-full"></div>
+      <div class="flex items-center gap-1.5">
+        <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+        <i data-lucide="battery-charging" class="w-3.5 h-3.5"></i>
+        <span class="text-[10px]">100%</span>
+      </div>
+    </div>
+
+    <!-- APP HEADER -->
+    <div class="bg-[#EB0029] text-white px-5 pt-2 pb-5 rounded-b-[28px] shadow-lg shadow-red-900/20 relative z-20">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <svg class="h-6 w-auto" viewBox="0 0 240 44" fill="none">
+            <g fill="#FFFFFF">
+              <path d="M6 34 L18 10 L25 10 L13 34 Z" />
+              <path d="M17 34 L29 10 L36 10 L24 34 Z" />
+              <path d="M28 34 L40 10 L47 10 L35 34 Z" />
+              <polygon points="39,10 47,10 41,22 33,22" />
+            </g>
+            <text x="56" y="28" font-family="'Montserrat', sans-serif" font-size="22" font-weight="800" letter-spacing="1.5" fill="#FFFFFF">
+              BANORTE
+            </text>
+          </svg>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1 bg-black/20 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm border border-white/10">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Token Activo</span>
+          </div>
+          <div class="w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center font-bold text-xs">
+            AR
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 flex justify-between items-end">
+        <div>
+          <p class="text-xs text-red-100 font-medium">Banca Digital Activa</p>
+          <h2 class="text-base font-bold tracking-tight text-white">¡Hola, Alejandro Ramírez!</h2>
+        </div>
+        <span class="text-[10px] text-white/90 bg-red-700/60 px-2 py-0.5 rounded-md border border-red-400/30 font-semibold">
+          Preferente
+        </span>
+      </div>
+    </div>
+
+    <!-- CONTENIDO SCROLLEABLE -->
+    <main class="flex-1 overflow-y-auto px-4 py-3 space-y-4 pb-20">
+      <!-- SELECTOR DE CUENTAS -->
+      <section>
+        <div class="flex justify-between items-center mb-2 px-1">
+          <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mis Cuentas</span>
+          <div class="flex gap-1.5 text-xs">
+            <button id="tabNominaBtn" onclick="switchCard('nomina')" class="px-2.5 py-0.5 rounded-full font-semibold bg-[#EB0029] text-white transition">Nómina</button>
+            <button id="tabOroBtn" onclick="switchCard('oro')" class="px-2.5 py-0.5 rounded-full font-semibold bg-slate-200 text-slate-600 hover:bg-slate-300 transition">Oro</button>
+          </div>
+        </div>
+
+        <!-- TARJETA BANORTE -->
+        <div id="heroCard" class="relative w-full h-48 rounded-2xl p-5 text-white overflow-hidden shadow-xl bg-gradient-to-br from-[#EB0029] via-[#C70023] to-[#8C0018] transition-all duration-300">
+          <div class="absolute -right-8 -bottom-10 w-44 h-44 rounded-full bg-white/10 blur-xl pointer-events-none"></div>
+          <div class="absolute right-4 top-3 opacity-15 font-black text-6xl tracking-widest pointer-events-none">///</div>
+
+          <div class="flex justify-between items-start relative z-10">
+            <div>
+              <span id="heroCardLabel" class="text-[11px] font-semibold tracking-wider uppercase text-white/80">Débito Enlace Digital</span>
+              <div class="text-xs font-extrabold tracking-widest text-white">BANORTE</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="rss" class="w-4 h-4 text-white/80 rotate-90"></i>
+              <div class="w-8 h-5 rounded bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 border border-amber-600/30 flex items-center justify-center shadow-inner">
+                <div class="w-4 h-3 border border-amber-800/40 rounded-[2px]"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="my-2.5 relative z-10">
+            <div class="text-xs text-white/80 flex items-center gap-1.5">
+              <span id="heroBalanceTitle">Saldo disponible</span>
+              <button onclick="toggleBalanceVisibility()" class="p-0.5 text-white/80 hover:text-white transition">
+                <i id="heroEyeIcon" data-lucide="eye" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            <div id="heroBalanceDisplay" class="text-2xl font-bold tracking-tight tabular-nums mt-0.5">
+              $ 48,650.00 <span class="text-xs font-medium text-white/80">MXN</span>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-end relative z-10 pt-2 border-t border-white/20">
+            <div>
+              <div id="heroCardMasked" class="text-xs font-mono tracking-widest text-white/95">
+                •••• •••• •••• 1234
+              </div>
+              <div class="text-[10px] uppercase tracking-wider font-semibold text-white/85">
+                ALEJANDRO RAMIREZ
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-[9px] uppercase tracking-wider text-white/60 block">Vence</span>
+              <span class="text-xs font-mono font-medium">08/29</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESTRUCTURING STATUS ALERT IF ACTIVE -->
+      <div id="restructureAlert" class="hidden bg-emerald-50 border border-emerald-300 rounded-2xl p-3.5 text-emerald-900 text-xs">
+        <div class="flex items-center gap-2 font-bold text-emerald-800">
+          <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+          <span>Convenio de Reestructuración Aprobado</span>
+        </div>
+        <p class="text-[11px] mt-1 text-emerald-700 leading-relaxed">
+          Tu deuda ha sido congelada y reprogramada en cuotas mensuales fijas. Folio: <strong id="folioText" class="font-mono text-slate-800">FOL-BNTE-2026</strong>.
+        </p>
+      </div>
+
+      <!-- QUICK ACTIONS -->
+      <section>
+        <div class="grid grid-cols-4 gap-2 text-center">
+          <a href="/" class="flex flex-col items-center group cursor-pointer">
+            <div class="w-12 h-12 p-2.5 rounded-2xl bg-white border border-slate-200 text-[#EB0029] group-hover:bg-[#EB0029] group-hover:text-white transition-all shadow-sm flex items-center justify-center">
+              <i data-lucide="arrow-left-right" class="w-5 h-5"></i>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-700 mt-1">Transferir</span>
+          </a>
+          <a href="/" class="flex flex-col items-center group cursor-pointer">
+            <div class="w-12 h-12 p-2.5 rounded-2xl bg-white border border-slate-200 text-[#EB0029] group-hover:bg-[#EB0029] group-hover:text-white transition-all shadow-sm flex items-center justify-center">
+              <i data-lucide="credit-card" class="w-5 h-5"></i>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-700 mt-1">Reestructurar</span>
+          </a>
+          <a href="/" class="flex flex-col items-center group cursor-pointer">
+            <div class="w-12 h-12 p-2.5 rounded-2xl bg-white border border-slate-200 text-[#EB0029] group-hover:bg-[#EB0029] group-hover:text-white transition-all shadow-sm flex items-center justify-center">
+              <i data-lucide="trending-up" class="w-5 h-5"></i>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-700 mt-1">Inversión</span>
+          </a>
+          <a href="/" class="flex flex-col items-center group cursor-pointer">
+            <div class="w-12 h-12 p-2.5 rounded-2xl bg-white border border-slate-200 text-[#EB0029] group-hover:bg-[#EB0029] group-hover:text-white transition-all shadow-sm flex items-center justify-center">
+              <i data-lucide="bot" class="w-5 h-5"></i>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-700 mt-1">Maya IA</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- MOVIMIENTOS RECIENTES -->
+      <section class="space-y-2">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold text-[#1C1E21] flex items-center gap-1.5">
+            <span>Movimientos Recientes</span>
+            <span id="txBadgeCount" class="text-[10px] bg-slate-200 text-slate-700 font-semibold px-2 py-0.2 rounded-full">4</span>
+          </h3>
+          <span class="text-[10px] text-slate-400 font-medium">Sincronizado</span>
+        </div>
+
+        <div id="phoneTxList" class="space-y-2">
+          <!-- Dinámico -->
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      activeAccount: "nomina",
+      showBalance: true,
+      nominaBalance: 48650.00,
+      oroDebt: 38450.00,
+      oroAvailable: 41550.00,
+      restructures: [],
+      transactions: [
+        { id: "tx-1", type: "charge", title: "Starbucks Paseo San Pedro", category: "Cafeterías", amount: 145.00, date: "Hoy, 09:15 hrs", icon: "coffee" },
+        { id: "tx-2", type: "deposit", title: "Nómina Quincenal CEMEX", category: "Nómina", amount: 28500.00, date: "Ayer, 18:30 hrs", icon: "arrow-down-left" },
+        { id: "tx-3", type: "charge", title: "Uber Technologies", category: "Transporte", amount: 230.50, date: "10 Sep, 21:10 hrs", icon: "car" },
+        { id: "tx-4", type: "charge", title: "Amazon México Marketplace", category: "Compras en línea", amount: 1299.00, date: "09 Sep, 14:22 hrs", icon: "shopping-bag" }
+      ]
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      renderTransactions();
+      updateClock();
+      setInterval(updateClock, 1000);
+      fetchLiveBankState();
+      // Poll every 3 seconds for live demo synchronization
+      setInterval(fetchLiveBankState, 3000);
+    });
+
+    function updateClock() {
+      const now = new Date();
+      const clockEl = document.getElementById("statusBarClock");
+      if (clockEl) {
+        clockEl.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      }
+    }
+
+    async function fetchLiveBankState() {
+      try {
+        const res = await fetch('/api/bank/state');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const nomina = data.accounts.nomina;
+        const oro = data.accounts.oro;
+
+        // Check for updates
+        const oldDebt = state.oroDebt;
+        state.nominaBalance = nomina.balance;
+        state.oroDebt = oro.debt;
+        state.oroAvailable = oro.credit_limit - oro.debt;
+        state.restructures = data.restructures || [];
+
+        // Check if a restructure happened
+        if (state.restructures.length > 0) {
+          const lastRestructure = state.restructures[state.restructures.length - 1];
+          const alertBox = document.getElementById("restructureAlert");
+          const folioEl = document.getElementById("folioText");
+          if (alertBox && folioEl) {
+            folioEl.textContent = lastRestructure.folio;
+            alertBox.classList.remove("hidden");
+          }
+        }
+
+        updateDisplay();
+      } catch (e) {
+        console.warn("Could not sync bank state:", e);
+      }
+    }
+
+    function toggleBalanceVisibility() {
+      state.showBalance = !state.showBalance;
+      updateDisplay();
+    }
+
+    function switchCard(key) {
+      state.activeAccount = key;
+      const card = document.getElementById("heroCard");
+      const label = document.getElementById("heroCardLabel");
+      const masked = document.getElementById("heroCardMasked");
+      const tabNomina = document.getElementById("tabNominaBtn");
+      const tabOro = document.getElementById("tabOroBtn");
+      const title = document.getElementById("heroBalanceTitle");
+
+      if (key === "nomina") {
+        card.className = "relative w-full h-48 rounded-2xl p-5 text-white overflow-hidden shadow-xl bg-gradient-to-br from-[#EB0029] via-[#C70023] to-[#8C0018] transition-all duration-300";
+        label.textContent = "Débito Enlace Digital";
+        masked.textContent = "•••• •••• •••• 1234";
+        tabNomina.className = "px-2.5 py-0.5 rounded-full font-semibold bg-[#EB0029] text-white transition";
+        tabOro.className = "px-2.5 py-0.5 rounded-full font-semibold bg-slate-200 text-slate-600 hover:bg-slate-300 transition";
+        title.textContent = "Saldo disponible";
+      } else {
+        card.className = "relative w-full h-48 rounded-2xl p-5 text-white overflow-hidden shadow-xl bg-gradient-to-br from-[#C59B27] via-[#A68018] to-[#6E540C] transition-all duration-300";
+        label.textContent = "Tarjeta Banorte Oro";
+        masked.textContent = "•••• •••• •••• 8842";
+        tabOro.className = "px-2.5 py-0.5 rounded-full font-semibold bg-[#C59B27] text-white transition";
+        tabNomina.className = "px-2.5 py-0.5 rounded-full font-semibold bg-slate-200 text-slate-600 hover:bg-slate-300 transition";
+        title.textContent = "Crédito disponible";
+      }
+
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      const display = document.getElementById("heroBalanceDisplay");
+      const icon = document.getElementById("heroEyeIcon");
+
+      let amount = state.activeAccount === "nomina" ? state.nominaBalance : state.oroAvailable;
+      if (state.showBalance) {
+        display.innerHTML = `$ ${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} <span class="text-xs font-medium text-white/80">MXN</span>`;
+        icon.setAttribute("data-lucide", "eye");
+      } else {
+        display.innerHTML = `•••••••••• <span class="text-xs font-medium text-white/80">MXN</span>`;
+        icon.setAttribute("data-lucide", "eye-off");
+      }
+      lucide.createIcons();
+    }
+
+    function renderTransactions() {
+      const container = document.getElementById("phoneTxList");
+      if (!container) return;
+      container.innerHTML = state.transactions.map(tx => {
+        const isDeposit = tx.type === "deposit";
+        const sign = isDeposit ? "+" : "-";
+        const colorClass = isDeposit ? "text-[#008744]" : "text-[#1C1E21]";
+        const iconBg = isDeposit ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-600";
+        return `
+          <div class="p-2.5 bg-white rounded-xl border border-slate-100 flex items-center justify-between hover:bg-slate-50 transition">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center">
+                <i data-lucide="${tx.icon || 'credit-card'}" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-slate-800">${tx.title}</p>
+                <p class="text-[10px] text-slate-400">${tx.date} • ${tx.category}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-xs font-bold ${colorClass} tabular-nums">
+                ${sign} $${tx.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+              </span>
+              <span class="block text-[9px] text-slate-400 uppercase">MXN</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>

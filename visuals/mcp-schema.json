@@ -1,0 +1,105 @@
+{
+  "server": {
+    "name": "banorte-banking-mcp",
+    "version": "1.0.0",
+    "description": "Servidor MCP de Operaciones Bancarias y Servicios Financieros Banorte"
+  },
+  "tools": [
+    {
+      "name": "get_account_balance",
+      "description": "Obtiene el saldo disponible y retenido de las cuentas del cliente autenticado.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_type": {
+            "type": "string",
+            "enum": ["all", "nomina", "oro", "inversion"],
+            "description": "Tipo de cuenta a consultar. 'all' retorna todas las cuentas."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "validate_clabe",
+      "description": "Valida la estructura de una cuenta CLABE mexicana de 18 dígitos, determina el banco emisor y verifica el dígito de control.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "clabe": {
+            "type": "string",
+            "description": "Cuenta CLABE de 18 dígitos numéricos"
+          }
+        },
+        "required": ["clabe"]
+      }
+    },
+    {
+      "name": "prepare_spei_transfer",
+      "description": "Prepara una transferencia SPEI calculando comisiones, validando saldo suficiente y generando el payload de confirmación A2UI.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "beneficiary_name": {
+            "type": "string",
+            "description": "Nombre completo del beneficiario"
+          },
+          "recipient_bank": {
+            "type": "string",
+            "description": "Nombre o código del banco receptor (ej. BBVA México, Nu, Santander)"
+          },
+          "clabe": {
+            "type": "string",
+            "description": "CLABE interbancaria o tarjeta de débito del destinatario"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Monto en MXN a transferir"
+          },
+          "concept": {
+            "type": "string",
+            "description": "Concepto o motivo del pago (máx 35 caracteres)"
+          }
+        },
+        "required": ["beneficiary_name", "recipient_bank", "clabe", "amount"]
+      }
+    },
+    {
+      "name": "execute_spei_transfer",
+      "description": "Ejecuta la transferencia SPEI mediante autenticación de Token Móvil y genera la Clave de Rastreo oficial de Banxico.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transfer_id": {
+            "type": "string",
+            "description": "ID de la transferencia preparada previamente"
+          },
+          "auth_token": {
+            "type": "string",
+            "description": "Token dinámico OTP o verificación biométrica de la app"
+          }
+        },
+        "required": ["transfer_id", "auth_token"]
+      }
+    },
+    {
+      "name": "simulate_investment",
+      "description": "Calcula el rendimiento y ganancia estimada para Pagaré Banorte con tasa fija anual.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Monto a invertir en MXN"
+          },
+          "term_days": {
+            "type": "integer",
+            "enum": [28, 60, 91, 182, 360],
+            "description": "Plazo de la inversión en días"
+          }
+        },
+        "required": ["amount", "term_days"]
+      }
+    }
+  ]
+}

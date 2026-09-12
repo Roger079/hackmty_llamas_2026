@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --banorte-red: #EB0029;
+  --banorte-red-hover: #C70023;
+  --banorte-red-dark: #9E001B;
+  --banorte-gold: #C59B27;
+  --banorte-bg-canvas: #F4F6F9;
+  --banorte-bg-card: #FFFFFF;
+  --banorte-text-primary: #1C1E21;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  background-color: var(--banorte-bg-canvas);
+  color: var(--banorte-text-primary);
+  margin: 0;
+  padding: 0;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MayaUI — Asistente Bancario Banorte | Conversational Banking & A2UI</title>
+
+  <!-- Fuentes Oficiales Banorte -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            banorte: {
+              red: {
+                DEFAULT: '#EB0029',
+                hover: '#C70023',
+                dark: '#9E001B',
+                light: '#FFF0F2',
+                subtle: '#FDE2E4'
+              },
+              gold: {
+                DEFAULT: '#C59B27',
+                light: '#F6E8B7',
+                dark: '#936F11'
+              },
+              graphite: {
+                900: '#1C1E21',
+                800: '#2C3036',
+                700: '#4A515E',
+                500: '#7A8290',
+                200: '#E2E6EC',
+                100: '#EAEFF5',
+                50: '#F4F6F9'
+              }
+            }
+          },
+          fontFamily: {
+            sans: ['Montserrat', 'system-ui', 'sans-serif'],
+            mono: ['"Roboto Mono"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background-color: #F4F6F9;
+      color: #1C1E21;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #EAEFF5;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94A3B8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between select-none">
+
+  <!-- ========================================================================= -->
+  <!-- 1. TOP HEADER OFICIAL BANORTE (BARRA ROJA INSTITUCIONAL)                  -->
+  <!-- ========================================================================= -->
+  <header class="w-full bg-[#EB0029] text-white px-4 sm:px-8 py-2.5 shadow-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- LOGO & NAV -->
+      <div class="flex items-center gap-6">
+        <a href="/" class="flex items-center cursor-pointer">
+          <svg class="h-6 w-auto" viewBox="0 0 240 44" fill="none">
+            <g fill="#FFFFFF">
+              <path d="M6 34 L18 10 L25 10 L13 34 Z" />
+              <path d="M17 34 L29 10 L36 10 L24 34 Z" />
+              <path d="M28 34 L40 10 L47 10 L35 34 Z" />
+              <polygon points="39,10 47,10 41,22 33,22" />
+            </g>
+            <text x="56" y="28" font-family="'Montserrat', sans-serif" font-size="22" font-weight="800" letter-spacing="1.5" fill="#FFFFFF">
+              BANORTE
+            </text>
+          </svg>
+        </a>
+
+        <div class="hidden md:flex items-center gap-2 pl-4 border-l border-white/20 text-xs">
+          <span class="font-bold text-white">MayaUI</span>
+          <span class="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-semibold">Conversational Banking</span>
+        </div>
+      </div>
+
+      <!-- STATUS DEL CLIENTE & ACCESOS RÁPIDOS -->
+      <div class="flex items-center gap-2.5">
+        <!-- Token Móvil Indicator -->
+        <div class="hidden sm:flex items-center gap-1.5 bg-black/15 text-white text-xs px-3 py-1 rounded-full border border-white/20">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-[11px] font-medium">Token Móvil Activo</span>
+        </div>
+
+        <!-- Botón Ver Banorte Móvil (Jueces) -->
+        <a 
+          href="/mobile" 
+          target="_blank" 
+          class="px-3 py-1 rounded-full bg-white text-[#EB0029] hover:bg-red-50 text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+          title="Verificación en smartphone para jueces"
+        >
+          <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+          <span>Banorte Móvil</span>
+        </a>
+
+        <!-- Botón Inspector MCP -->
+        <button 
+          onclick="openModal('mcpModal')" 
+          class="px-3 py-1 rounded-full bg-black/20 hover:bg-black/30 text-white border border-white/30 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+        >
+          <i data-lucide="terminal" class="w-3.5 h-3.5 text-emerald-300"></i>
+          <span>MCP</span>
+          <span id="topMcpBadge" class="bg-white/20 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono">0</span>
+        </button>
+
+        <!-- Botón JSON Spec -->
+        <button 
+          onclick="openModal('schemaModal')" 
+          class="px-3 py-1 rounded-full bg-black/20 hover:bg-black/30 text-white border border-white/30 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+        >
+          <i data-lucide="code-2" class="w-3.5 h-3.5 text-amber-300"></i>
+          <span>A2UI</span>
+        </button>
+
+        <!-- Botón Ver Portal Oficial -->
+        <a 
+          href="/portal" 
+          class="hidden lg:flex items-center gap-1 px-3 py-1 rounded-full bg-black/20 hover:bg-black/30 text-white border border-white/30 text-xs font-semibold transition"
+          title="Ver portal Banorte con widget flotante"
+        >
+          <span>Portal Web</span>
+          <i data-lucide="external-link" class="w-3 h-3 text-white/70"></i>
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 2. CANVAS PRINCIPAL DE MAYAUI (FULL-PAGE CHAT CON A2UI)                    -->
+  <!-- ========================================================================= -->
+  <main class="w-full max-w-4xl mx-auto flex-1 flex flex-col p-3 sm:p-6 my-2">
+    
+    <div class="w-full flex-1 bg-white rounded-3xl shadow-xl border border-slate-200/90 p-4 sm:p-8 flex flex-col justify-between min-h-[720px]">
+
+      <!-- HEADER INTERNO DE LA ASISTENTE MAYA -->
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+        <div class="flex items-center gap-3.5">
+          <!-- Avatar Oficial de Maya -->
+          <div class="w-12 h-12 rounded-full bg-[#EB0029] flex items-center justify-center text-white shadow-lg shadow-red-500/20 border-2 border-white shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-6 h-6" fill="none">
+              <g fill="#FFFFFF">
+                <path d="M12 34 L21 14 L26 14 L17 34 Z" />
+                <path d="M20 34 L29 14 L34 14 L25 34 Z" />
+                <polygon points="27,14 36,14 32,22 23,22" opacity="0.95" />
+              </g>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base font-bold text-slate-900">Maya — Asistente Virtual Banorte</h1>
+              <span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">A2UI Gen</span>
+            </div>
+            <p class="text-xs text-slate-500">Conectada a servicios bancarios en tiempo real vía FastMCP</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 text-xs">
+          <div class="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+            <div class="w-6 h-6 rounded-full bg-[#EB0029] text-white flex items-center justify-center font-bold text-[10px]">AR</div>
+            <span class="font-bold text-slate-800">Alejandro Ramírez</span>
+            <span class="text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Preferente</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STREAM DE MENSAJES CONVERSACIONALES -->
+      <div id="chatMessagesStream" class="flex-1 overflow-y-auto space-y-6 pr-2 mb-4">
+        
+        <!-- Mensaje de bienvenida inicial -->
+        <div class="flex items-start gap-3.5">
+          <div class="w-9 h-9 rounded-full bg-[#EB0029] flex items-center justify-center text-white shrink-0 shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-5 h-5" fill="none">
+              <g fill="#FFFFFF">
+                <path d="M12 34 L21 14 L26 14 L17 34 Z" />
+                <path d="M20 34 L29 14 L34 14 L25 34 Z" />
+                <polygon points="27,14 36,14 32,22 23,22" opacity="0.95" />
+              </g>
+            </svg>
+          </div>
+          <div class="max-w-2xl bg-[#F8FAFC] border border-slate-200 rounded-3xl rounded-tl-none p-5 text-sm leading-relaxed text-slate-700 space-y-3 shadow-sm">
+            <p class="text-slate-900 font-semibold text-base">¡Hola, Alejandro! 👋 Soy Maya, tu asistente virtual Banorte.</p>
+            <p>Puedo ayudarte a gestionar tus cuentas, transferir fondos o encontrar el mejor plan para <strong>reestructurar tu deuda de tarjeta de crédito</strong> con tasas fijas preferenciales, generando interfaces interactivas directamente en este chat.</p>
+            <p class="text-xs text-slate-500 font-medium">Selecciona una opción sugerida o escribe tu consulta:</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- INDICADOR DE PROCESAMIENTO MCP -->
+      <div id="agentTypingIndicator" class="hidden flex items-center gap-3 px-4 py-2.5 mb-3 rounded-2xl bg-red-50/80 border border-red-200 text-xs text-red-700 animate-pulse">
+        <div class="w-2.5 h-2.5 rounded-full bg-[#EB0029] animate-ping"></div>
+        <span id="agentTypingText">Maya ejecutando herramienta bancaria MCP y componiendo interfaz A2UI...</span>
+      </div>
+
+      <!-- SUGERENCIAS RÁPIDAS DE INTENCIÓN (PILLS) -->
+      <div class="pb-3 flex items-center gap-2 overflow-x-auto scrollbar-none">
+        <button onclick="sendQuickPrompt('Tengo una deuda con mi tarjeta de crédito y quiero reestructurarla')" class="px-4 py-2 rounded-full bg-red-50 hover:bg-red-100 text-[#EB0029] border border-red-200 text-xs font-bold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
+          <i data-lucide="shield-check" class="w-4 h-4"></i>
+          <span>💳 Reestructurar tarjeta de crédito</span>
+        </button>
+        <button onclick="sendQuickPrompt('Transfiere $850 a Sofía Mendoza para la cena')" class="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
+          <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i>
+          <span>⚡ Transferir $850 SPEI</span>
+        </button>
+        <button onclick="sendQuickPrompt('¿Cuánto saldo disponible tengo en mis cuentas?')" class="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
+          <i data-lucide="wallet" class="w-4 h-4 text-emerald-600"></i>
+          <span>💰 Consultar saldos</span>
+        </button>
+        <button onclick="sendQuickPrompt('Quiero invertir en Pagaré Banorte')" class="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer shadow-sm">
+          <i data-lucide="trending-up" class="w-4 h-4 text-blue-600"></i>
+          <span>📈 Simular inversión</span>
+        </button>
+      </div>
+
+      <!-- BARRA DE INPUT DEL CHAT -->
+      <form id="chatForm" onsubmit="handleChatSubmit(event)" class="relative flex items-center">
+        <input 
+          id="chatInput" 
+          type="text" 
+          autocomplete="off"
+          placeholder="Escribe tu instrucción (ej. 'Quiero un plan para reestructurar mi tarjeta Oro')..." 
+          class="w-full bg-[#F8FAFC] text-slate-900 placeholder-slate-400 text-sm px-5 py-4 pr-28 rounded-2xl border border-slate-200 focus:outline-none focus:border-[#EB0029] focus:ring-2 focus:ring-[#EB0029]/20 shadow-inner transition"
+        />
+        <button 
+          type="submit" 
+          class="absolute right-2 px-4 py-2.5 rounded-xl bg-[#EB0029] hover:bg-[#C70023] active:bg-[#9E001B] text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-red-500/25 transition cursor-pointer"
+        >
+          <span>Enviar</span>
+          <i data-lucide="send" class="w-3.5 h-3.5"></i>
+        </button>
+      </form>
+
+      <!-- PIE DE SEGURIDAD -->
+      <div class="mt-2 text-center text-[11px] text-slate-400 flex items-center justify-center gap-1.5 select-none">
+        <i data-lucide="lock" class="w-3 h-3 text-slate-400"></i>
+        <span>Operaciones encriptadas y auditadas por Banxico y Comisión Nacional Bancaria y de Valores.</span>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 3. MODAL: LIVE MCP INSPECTOR                                              -->
+  <!-- ========================================================================= -->
+  <div id="mcpModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div class="bg-slate-900 border border-slate-800 text-white w-full max-w-3xl rounded-3xl p-6 shadow-2xl flex flex-col max-h-[85vh] font-mono text-xs">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+        <div class="flex items-center gap-2.5">
+          <i data-lucide="terminal" class="w-5 h-5 text-emerald-400"></i>
+          <h3 class="text-sm font-bold text-white">Live MCP Call Inspector</h3>
+          <span id="mcpCountBadge" class="bg-slate-800 text-emerald-400 text-[11px] px-2 py-0.5 rounded-full font-bold">0 llamadas</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="clearMcpLogs()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer">
+            Limpiar
+          </button>
+          <button onclick="closeModal('mcpModal')" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="mcpLogsContainer" class="flex-1 overflow-y-auto space-y-3 pr-1">
+        <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-300">
+          <div class="text-emerald-400 font-bold">&gt; Herramientas bancarias FastMCP registradas en el backend:</div>
+          <ul class="text-slate-400 list-disc list-inside mt-1.5 space-y-0.5 text-[11px]">
+            <li>get_user_debt(user_id)</li>
+            <li>commit_restructure(user_id, plan_id, term_months)</li>
+            <li>get_account_balance(account_type)</li>
+            <li>prepare_spei_transfer(...)</li>
+            <li>execute_spei_transfer(...)</li>
+            <li>render_a2ui(component, props)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 4. MODAL: A2UI JSON SPECIFICATION                                         -->
+  <!-- ========================================================================= -->
+  <div id="schemaModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div class="bg-slate-900 border border-slate-800 text-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl flex flex-col max-h-[85vh] font-mono text-xs">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+        <div class="flex items-center gap-2.5">
+          <i data-lucide="file-json" class="w-5 h-5 text-amber-400"></i>
+          <h3 class="text-sm font-bold text-white">Último A2UI Component Payload Emitido</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="copySchemaJson()" id="copySchemaBtn" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">
+            Copiar JSON
+          </button>
+          <button onclick="closeModal('schemaModal')" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <pre id="schemaJsonDisplay" class="flex-1 bg-slate-950 p-4 rounded-2xl border border-slate-800 text-emerald-300 overflow-y-auto leading-relaxed">// Aún no se ha emitido ningún componente A2UI en esta sesión.
+// Envía un mensaje en el chat para ver la especificación declarativa generada por Maya.</pre>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 5. JAVASCRIPT: MOTOR A2UI, CONEXIÓN FASTAPI & CLOSED LOOP                  -->
+  <!-- ========================================================================= -->
+  <script>
+    const state = {
+      mcpCalls: [],
+      lastA2UI: null,
+      history: []
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+    });
+
+    function openModal(id) {
+      document.getElementById(id).classList.remove("hidden");
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add("hidden");
+    }
+
+    function appendUserMessage(text) {
+      const stream = document.getElementById("chatMessagesStream");
+      const msg = document.createElement("div");
+      msg.className = "flex justify-end animate-in fade-in duration-200";
+      msg.innerHTML = `
+        <div class="bg-[#EB0029] text-white rounded-3xl rounded-tr-none px-5 py-3.5 max-w-xl text-sm font-medium shadow-md shadow-red-900/20">
+          ${text}
+        </div>
+      `;
+      stream.appendChild(msg);
+      stream.scrollTop = stream.scrollHeight;
+      state.history.push({ role: "user", content: text });
+    }
+
+    function showAgentTyping(label = "Maya consultando herramientas bancarias MCP y componiendo interfaz A2UI...") {
+      const ind = document.getElementById("agentTypingIndicator");
+      document.getElementById("agentTypingText").textContent = label;
+      ind.classList.remove("hidden");
+      const s = document.getElementById("chatMessagesStream");
+      s.scrollTop = s.scrollHeight;
+    }
+
+    function hideAgentTyping() {
+      document.getElementById("agentTypingIndicator").classList.add("hidden");
+    }
+
+    function appendAgentMessage(text, a2uiSpec) {
+      hideAgentTyping();
+      const stream = document.getElementById("chatMessagesStream");
+      const container = document.createElement("div");
+      container.className = "flex items-start gap-3.5 animate-in fade-in duration-200";
+
+      let componentHtml = "";
+      if (a2uiSpec) {
+        state.lastA2UI = a2uiSpec;
+        document.getElementById("schemaJsonDisplay").textContent = JSON.stringify(a2uiSpec, null, 2);
+        componentHtml = renderDynamicA2UI(a2uiSpec);
+      }
+
+      container.innerHTML = `
+        <div class="w-9 h-9 rounded-full bg-[#EB0029] flex items-center justify-center text-white shrink-0 shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-5 h-5" fill="none">
+            <g fill="#FFFFFF">
+              <path d="M12 34 L21 14 L26 14 L17 34 Z" />
+              <path d="M20 34 L29 14 L34 14 L25 34 Z" />
+              <polygon points="27,14 36,14 32,22 23,22" opacity="0.95" />
+            </g>
+          </svg>
+        </div>
+        <div class="flex-1 max-w-2xl space-y-3">
+          ${text ? `
+            <div class="bg-[#F8FAFC] border border-slate-200 rounded-3xl rounded-tl-none p-5 text-sm leading-relaxed text-slate-800 shadow-sm">
+              ${text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')}
+            </div>
+          ` : ""}
+          ${componentHtml}
+        </div>
+      `;
+
+      stream.appendChild(container);
+      stream.scrollTop = stream.scrollHeight;
+      lucide.createIcons();
+      state.history.push({ role: "assistant", content: text });
+    }
+
+    function recordMcpCall(call) {
+      state.mcpCalls.unshift(call);
+      document.getElementById("topMcpBadge").textContent = state.mcpCalls.length;
+      document.getElementById("mcpCountBadge").textContent = `${state.mcpCalls.length} llamadas`;
+
+      const container = document.getElementById("mcpLogsContainer");
+      if (!container) return;
+
+      const div = document.createElement("div");
+      div.className = "p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-300 space-y-2 animate-in fade-in";
+      div.innerHTML = `
+        <div class="flex items-center justify-between text-[11px] text-slate-400">
+          <span class="flex items-center gap-2 text-emerald-400 font-bold">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            ${call.tool_name}
+          </span>
+          <span class="text-slate-500 text-[10px]">${call.timestamp} • ${call.latency_ms}ms</span>
+        </div>
+        <div class="text-[10px] text-slate-400">
+          <span class="text-slate-500">Parámetros:</span>
+          <pre class="text-cyan-300 bg-slate-900/60 p-2 rounded-xl mt-0.5 overflow-x-auto">${JSON.stringify(call.arguments, null, 2)}</pre>
+        </div>
+        <div class="text-[10px] text-slate-400">
+          <span class="text-slate-500">Respuesta MCP:</span>
+          <pre class="text-emerald-300 bg-slate-900/60 p-2 rounded-xl mt-0.5 overflow-x-auto">${JSON.stringify(call.result, null, 2)}</pre>
+        </div>
+      `;
+      container.prepend(div);
+    }
+
+    function clearMcpLogs() {
+      state.mcpCalls = [];
+      document.getElementById("topMcpBadge").textContent = "0";
+      document.getElementById("mcpCountBadge").textContent = "0 llamadas";
+      document.getElementById("mcpLogsContainer").innerHTML = '<div class="text-xs text-slate-500 italic p-3 text-center">Log reiniciado.</div>';
+    }
+
+    function copySchemaJson() {
+      if (!state.lastA2UI) return;
+      navigator.clipboard.writeText(JSON.stringify(state.lastA2UI, null, 2));
+      const btn = document.getElementById("copySchemaBtn");
+      btn.textContent = "¡Copiado!";
+      setTimeout(() => btn.textContent = "Copiar JSON", 1800);
+    }
+
+    // =========================================================================
+    // COMUNICACIÓN CON FASTAPI ORQUESTADOR
+    // =========================================================================
+    async function sendToOrchestrator(message, actionContext = null) {
+      showAgentTyping();
+      try {
+        const payload = {
+          message: message,
+          history: state.history,
+          user_id: "USR-BANORTE-8842",
+          action_context: actionContext
+        };
+
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+
+        if (data.mcp_calls && Array.isArray(data.mcp_calls)) {
+          data.mcp_calls.forEach(recordMcpCall);
+        }
+
+        appendAgentMessage(data.reply, data.a2ui);
+      } catch (err) {
+        hideAgentTyping();
+        console.error(err);
+        appendAgentMessage("⚠️ Error comunicando con el orquestador FastAPI. Verifica que esté corriendo.", null);
+      }
+    }
+
+    function handleChatSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById("chatInput");
+      const text = input.value.trim();
+      if (!text) return;
+      appendUserMessage(text);
+      input.value = "";
+      sendToOrchestrator(text);
+    }
+
+    function sendQuickPrompt(prompt) {
+      appendUserMessage(prompt);
+      sendToOrchestrator(prompt);
+    }
+
+    // =========================================================================
+    // FEEDBACK LOOP DISPATCHER (Action Callbacks)
+    // =========================================================================
+    function dispatchA2UIAction(actionName, params, sourceComponent) {
+      appendUserMessage(`[Acción]: Confirmar ${actionName}`);
+      sendToOrchestrator(`Confirmar acción ${actionName}`, {
+        action: actionName,
+        params: params,
+        source_component: sourceComponent
+      });
+    }
+
+    // =========================================================================
+    // MOTOR DE COMPONENTES DINÁMICOS A2UI (PERSON 2 INTEGRATION)
+    // =========================================================================
+    function renderDynamicA2UI(spec) {
+      const { component, props } = spec;
+
+      switch (component) {
+        // 1. DEBT RESTRUCTURE CARD (CORE SCENARIO)
+        case "DebtRestructureCard": {
+          const options = props.options || [
+            { plan_id: "plan_12m", months: 12, monthly_payment: 3480.00, annual_rate: "24.0%", total_savings: 8900 },
+            { plan_id: "plan_24m", months: 24, monthly_payment: 1920.00, annual_rate: "22.5%", total_savings: 14200 },
+            { plan_id: "plan_36m", months: 36, monthly_payment: 1390.00, annual_rate: "21.0%", total_savings: 18500 }
+          ];
+
+          window.__restructurePlan = {
+            id: options[1]?.plan_id || "plan_24m",
+            months: options[1]?.months || 24,
+            payment: options[1]?.monthly_payment || 1920
+          };
+
+          const optionsHtml = options.map((opt, i) => {
+            const isSelected = i === 1;
+            return `
+              <div 
+                id="plan-opt-${opt.plan_id}" 
+                onclick="selectRestructurePlan('${opt.plan_id}', ${opt.months}, ${opt.monthly_payment})"
+                class="cursor-pointer rounded-2xl p-4 border-2 transition-all relative ${isSelected ? 'border-[#EB0029] bg-red-50/70 shadow-md ring-2 ring-red-500/20 text-slate-900' : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-900'}"
+              >
+                ${isSelected ? '<div class="absolute top-2 right-2 text-[#EB0029] font-black text-xs">✓</div>' : ''}
+                <div class="text-xs font-bold text-slate-800">${opt.months} Meses</div>
+                <div class="text-xl font-black text-[#1C1E21] tabular-nums mt-1">$ ${opt.monthly_payment.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</div>
+                <div class="text-[10px] text-slate-500">mensuales fijos</div>
+                <div class="mt-2.5 pt-2 border-t border-slate-200 text-[10px] space-y-0.5">
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Tasa fija:</span>
+                    <span class="font-bold text-emerald-600">${opt.annual_rate}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Ahorro:</span>
+                    <span class="font-semibold text-slate-700">~$${opt.total_savings.toLocaleString('es-MX')}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join("");
+
+          return `
+            <div id="debtCardContainer" class="bg-white text-slate-900 rounded-3xl shadow-xl border border-slate-200 overflow-hidden my-3 animate-in fade-in">
+              <div class="bg-gradient-to-r from-[#EB0029] via-[#C70023] to-[#8C0018] text-white p-6">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-red-100 block">Convenio y Reestructuración Banorte</span>
+                    <h3 class="text-lg font-black tracking-tight mt-0.5">${props.cardName || 'Tarjeta Banorte Oro'}</h3>
+                    <p class="text-xs font-mono text-red-100">•••• •••• •••• ${props.cardLast4 || '8842'}</p>
+                  </div>
+                  <div class="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm border border-white/30">
+                    Elegible
+                  </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-white/20 grid grid-cols-2 gap-4">
+                  <div>
+                    <span class="text-[10px] text-red-100 uppercase tracking-wider block">Deuda total actual</span>
+                    <span class="text-2xl sm:text-3xl font-black tracking-tight tabular-nums">
+                      $ ${(props.totalDebt || 38450).toLocaleString('es-MX', { minimumFractionDigits: 2 })} <span class="text-xs font-normal">MXN</span>
+                    </span>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-[10px] text-red-100 uppercase tracking-wider block">Tasa actual ordinaria</span>
+                    <span class="text-base sm:text-lg font-bold text-amber-300 tabular-nums">${props.currentRate || '64.8% CAT'}</span>
+                    <span class="block text-[10px] text-red-200">Vence: ${props.dueDate || '18 Sep 2026'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-6 space-y-4">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <i data-lucide="calendar" class="w-4 h-4 text-[#EB0029]"></i>
+                  <span>Selecciona tu esquema preferido de pagos fijos:</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  ${optionsHtml}
+                </div>
+
+                <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2.5">
+                  <i data-lucide="shield-check" class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5"></i>
+                  <span>Al aplicar este convenio, <strong>se congelan inmediatamente intereses moratorios</strong> y se actualiza tu estatus favorable ante Buró de Crédito.</span>
+                </div>
+
+                <button 
+                  id="btnApplyPlan"
+                  onclick="triggerApplyRestructure()"
+                  class="w-full py-4 bg-[#EB0029] hover:bg-[#C70023] active:bg-[#9E001B] text-white rounded-2xl font-bold text-sm tracking-wide shadow-xl shadow-red-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <span id="btnApplyPlanText">Aplicar plan seleccionado</span>
+                  <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        // 2. CONFIRMATION RECEIPT
+        case "ConfirmationReceipt": {
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl shadow-xl border border-slate-200 overflow-hidden my-3 animate-in zoom-in-95">
+              <div class="bg-[#008744] text-white p-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center font-black text-lg">✓</div>
+                  <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-100 block">Convenio Bancario Vigente</span>
+                    <h3 class="text-base font-extrabold tracking-tight">Reestructuración Exitosa</h3>
+                  </div>
+                </div>
+                <div class="bg-white text-[#008744] font-black text-xs px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                  ${props.status || 'APROBADO'}
+                </div>
+              </div>
+
+              <div class="bg-slate-50 p-5 text-center border-b border-slate-200/70">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tu nueva cuota fija mensual</span>
+                <div class="text-3xl font-black text-[#1C1E21] tabular-nums mt-1">$ ${(props.monthlyPayment || 1920).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                <p class="text-xs text-slate-500 mt-1">Diferido a <strong>${props.termMonths || 24} mensualidades fijas</strong></p>
+              </div>
+
+              <div class="p-6 space-y-3 text-xs">
+                <div class="flex justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Titular del crédito</span>
+                  <span class="font-bold text-slate-800">${props.clientName || 'Alejandro Ramírez'}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Folio Oficial de Convenio</span>
+                  <span class="font-mono font-bold text-[#EB0029]">${props.folio || 'FOL-BNTE-2026-R88754'}</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Primer Pago Programado</span>
+                  <span class="font-semibold text-slate-800">${props.nextPaymentDate || '15 Oct 2026'}</span>
+                </div>
+                <div class="flex justify-between py-1">
+                  <span class="text-slate-500">Sello Digital Criptográfico</span>
+                  <span class="font-mono text-[10px] text-slate-400">${props.bankSeal || 'BANORTE-SHA256-4A91E0'}</span>
+                </div>
+              </div>
+
+              <div class="p-4 bg-slate-50 border-t border-slate-200 flex gap-3">
+                <button onclick="alert('Contrato descargado en PDF')" class="flex-1 py-3 rounded-xl border border-slate-300 font-bold text-xs text-slate-700 hover:bg-slate-100 transition cursor-pointer flex items-center justify-center gap-1.5">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                  <span>Descargar Contrato PDF</span>
+                </button>
+                <button onclick="alert('Comprobante compartido')" class="flex-1 py-3 rounded-xl bg-[#EB0029] hover:bg-[#C70023] font-bold text-xs text-white transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-red-500/20">
+                  <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+                  <span>Compartir</span>
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        // 3. SPEI CONFIRM CARD
+        case "SpeiConfirmCard": {
+          window.__pendingSpei = props;
+          return `
+            <div id="speiConfirmBox" class="bg-white text-slate-900 rounded-3xl shadow-xl border-2 border-red-500/30 overflow-hidden my-3 animate-in fade-in">
+              <div class="bg-[#EB0029] text-white px-5 py-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                  <span class="text-xs font-bold uppercase tracking-wide">Confirmar Transferencia SPEI</span>
+                </div>
+                <span class="text-[10px] bg-red-900/60 px-2.5 py-0.5 rounded-full font-mono text-red-100">Token Móvil</span>
+              </div>
+
+              <div class="p-6 space-y-4 text-xs">
+                <div class="text-center py-3 bg-slate-50 rounded-2xl border border-slate-100">
+                  <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Monto a Enviar</span>
+                  <div class="text-3xl font-black text-[#1C1E21] tabular-nums mt-0.5">$ ${(props.amount || 850).toLocaleString('es-MX', { minimumFractionDigits: 2 })} <span class="text-sm font-semibold text-slate-500">MXN</span></div>
+                </div>
+
+                <div class="space-y-2.5 border-y border-slate-100 py-3.5">
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Destinatario:</span>
+                    <span class="font-bold text-slate-800">${props.beneficiary || 'SOFÍA MENDOZA RÍOS'}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Banco Receptor:</span>
+                    <span class="font-semibold text-slate-800">${props.bank || 'BBVA México'}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">CLABE Destino:</span>
+                    <span class="font-mono text-slate-800">${props.clabe || '012 180 01594839201 9'}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Comisión Banorte:</span>
+                    <span class="font-bold text-emerald-600">$0.00 MXN (Gratis)</span>
+                  </div>
+                </div>
+
+                <button 
+                  id="btnConfirmSpeiToken"
+                  onclick="triggerExecuteSpei()"
+                  class="w-full py-3.5 bg-[#EB0029] hover:bg-[#C70023] text-white rounded-2xl font-bold text-xs shadow-lg shadow-red-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <i data-lucide="fingerprint" class="w-4 h-4"></i>
+                  <span>Autorizar con Token Móvil</span>
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        // 4. SPEI RECEIPT CARD
+        case "SpeiReceiptCard": {
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl shadow-xl border border-slate-100 overflow-hidden my-3 animate-in zoom-in-95">
+              <div class="bg-[#008744] text-white px-5 py-4 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center font-black">✓</div>
+                <div>
+                  <h4 class="text-xs font-bold uppercase tracking-wide">Transferencia SPEI Exitosa</h4>
+                  <p class="text-[10px] text-white/90">Banxico CEP validado</p>
+                </div>
+              </div>
+
+              <div class="p-5 text-center border-b border-slate-100 bg-slate-50/50">
+                <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Monto enviado</span>
+                <div class="text-3xl font-black text-[#1C1E21] tabular-nums mt-1">$ ${(props.amount || 850).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+              </div>
+
+              <div class="p-5 space-y-2 text-xs">
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Destinatario</span>
+                  <span class="font-bold text-slate-800">${props.beneficiary || 'SOFÍA MENDOZA RÍOS'}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Banco Receptor</span>
+                  <span class="font-semibold text-slate-800">${props.bank || 'BBVA México'}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Clave de Rastreo Banxico</span>
+                  <span class="font-mono text-slate-800 font-bold">${props.trackingKey || 'BNTE202609118492019'}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        // 5. BANORTE BALANCE CARD
+        case "BanorteBalanceCard": {
+          return `
+            <div class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xl text-slate-900 space-y-4 my-3">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-xl bg-[#EB0029] flex items-center justify-center text-white font-black text-sm">B</div>
+                  <div>
+                    <h4 class="text-xs font-bold text-slate-900">Resumen de Cuentas Banorte</h4>
+                    <p class="text-[10px] text-slate-500">${props.clientName || 'Alejandro Ramírez'}</p>
+                  </div>
+                </div>
+                <span class="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200">En Línea</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <span class="text-[10px] text-slate-500 uppercase font-semibold">Nómina (*1234)</span>
+                  <div class="text-xl font-bold text-slate-900 tabular-nums mt-1">$ ${(props.nominaBalance || 48650).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                  <span class="text-[10px] text-emerald-600 font-medium">Disponible para transferir</span>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <span class="text-[10px] text-amber-600 uppercase font-semibold">Crédito Oro (*8842)</span>
+                  <div class="text-xl font-bold text-amber-700 tabular-nums mt-1">$ ${(props.oroBalance || 41550).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                  <span class="text-[10px] text-slate-500">Deuda actual: $${(props.totalDebt || 38450).toLocaleString('es-MX')} MXN</span>
+                </div>
+              </div>
+
+              <div class="flex gap-3 pt-1">
+                <button onclick="sendQuickPrompt('Quiero reestructurar mi tarjeta Oro')" class="flex-1 py-3 bg-[#EB0029] hover:bg-[#C70023] rounded-xl text-xs font-bold text-white transition cursor-pointer">
+                  Reestructurar Deuda
+                </button>
+                <button onclick="sendQuickPrompt('Transfiere $850 a Sofía por SPEI')" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition border border-slate-200 cursor-pointer">
+                  Enviar SPEI
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        // 6. INVESTMENT SIMULATOR CARD
+        case "InvestmentSimulatorCard": {
+          return `
+            <div class="bg-white text-slate-900 rounded-3xl p-6 border border-amber-300 shadow-xl space-y-4 my-3">
+              <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <span class="text-xs font-bold text-amber-700 uppercase tracking-wider">Simulador Pagaré Banorte</span>
+                <span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-0.5 rounded-full font-bold">11.25% Rendimiento Anual</span>
+              </div>
+
+              <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center text-xs border border-slate-200">
+                <div>
+                  <span class="text-[10px] text-slate-500 uppercase font-semibold">Ganancia estimada a 91 días</span>
+                  <div class="text-lg font-black text-emerald-600 tabular-nums">+ $ ${(props.estimatedGain || 703.12).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] text-slate-500 uppercase font-semibold">Monto total al vencimiento</span>
+                  <div class="text-base font-bold text-slate-900 tabular-nums">$ ${(props.totalMaturity || 25703.12).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                </div>
+              </div>
+
+              <button onclick="alert('Inversión programada en Pagaré Banorte con éxito')" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-110 text-white font-extrabold rounded-2xl text-xs transition shadow-lg cursor-pointer">
+                Invertir Ahora en Pagaré
+              </button>
+            </div>
+          `;
+        }
+
+        default:
+          return `<div class="p-4 bg-slate-100 rounded-2xl text-xs text-slate-600">Componente A2UI: ${component}</div>`;
+      }
+    }
+
+    function selectRestructurePlan(planId, months, payment) {
+      window.__restructurePlan = { id: planId, months, payment };
+      ["plan_12m", "plan_24m", "plan_36m"].forEach(pid => {
+        const el = document.getElementById(`plan-opt-${pid}`);
+        if (!el) return;
+        if (pid === planId) {
+          el.className = "cursor-pointer rounded-2xl p-4 border-2 transition-all relative border-[#EB0029] bg-red-50/70 shadow-md ring-2 ring-red-500/20 text-slate-900";
+        } else {
+          el.className = "cursor-pointer rounded-2xl p-4 border-2 transition-all relative border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-900";
+        }
+      });
+    }
+
+    function triggerApplyRestructure() {
+      const btn = document.getElementById("btnApplyPlan");
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>Aplicando reestructuración en base de datos bancaria...</span>`;
+      }
+      const plan = window.__restructurePlan || { id: "plan_24m", months: 24, payment: 1920 };
+      dispatchA2UIAction("commit_restructure", {
+        plan_id: plan.id,
+        term_months: plan.months,
+        monthly_payment: plan.payment
+      }, "DebtRestructureCard");
+    }
+
+    function triggerExecuteSpei() {
+      const btn = document.getElementById("btnConfirmSpeiToken");
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span><span>Validando Token Móvil con Banxico SPEI...</span>`;
+      }
+      const transfer = window.__pendingSpei || { amount: 850, beneficiary: "SOFÍA MENDOZA RÍOS", bank: "BBVA México", clabe: "012 180 01594839201 9" };
+      dispatchA2UIAction("execute_spei", transfer, "SpeiConfirmCard");
+    }
+  </script>
+</body>
+</html>
