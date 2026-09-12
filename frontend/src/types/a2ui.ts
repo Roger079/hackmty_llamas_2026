@@ -34,3 +34,25 @@ export interface RestructureOption {
   total_savings: number;
   label?: string;
 }
+
+export interface FrictionLog {
+  id: string;
+  category: string;
+  trigger_message: string;
+  severity: string;
+  timestamp: string;
+}
+
+export interface UserCognitiveProfile {
+  user_id: string;
+  client_name?: string;
+  memory_summary?: string;
+  sensitivities?: string;
+  visual_preferences?: string;
+  information_preferences?: string;
+  recommended_tone?: string;
+  total_friction_events?: number;
+  last_updated?: string;
+  friction_logs?: FrictionLog[];
+}
+

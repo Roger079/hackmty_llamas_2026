@@ -3,7 +3,19 @@ export const palette = ['#EB0029','#0066CC','#008744','#C59B27','#7C3AED','#E67E
 export const statusColor: Record<SemaforoStatus, string> = { good:'#008744', warning:'#E67E22', bad:'#D32F2F', neutral:'#7A8290' };
 export function pointer(source: unknown, path?: string): unknown { if (!path) return source; return path.replace(/^\//,'').split('/').filter(Boolean).reduce<unknown>((value, key) => value && typeof value === 'object' ? (value as Record<string, unknown>)[key.replace(/~1/g,'/').replace(/~0/g,'~')] : undefined, source); }
 export function resolve<T>(value: Dynamic<T> | undefined, data?: Record<string, unknown>): T | undefined { if (value && typeof value === 'object') { const dynamicObj = value as { path?: string; value?: T }; if (dynamicObj.path) return pointer(data, dynamicObj.path) as T; if ('value' in dynamicObj) return dynamicObj.value; } return value as T | undefined; }
-export function rows(data: Record<string, unknown> | undefined, path?: string): RecordRow[] { const result = pointer(data, path); return Array.isArray(result) ? result as RecordRow[] : []; }
+export function rows(data: unknown, path?: string): RecordRow[] {
+  if (Array.isArray(data)) return data as RecordRow[];
+  if (!data) return [];
+  const result = pointer(data, path);
+  if (Array.isArray(result)) return result as RecordRow[];
+  if (typeof data === 'object') {
+    for (const key of ['data', 'items', 'rows', 'list', 'categories', 'months', 'values', 'series', 'history', 'records']) {
+      const val = (data as Record<string, unknown>)[key];
+      if (Array.isArray(val)) return val as RecordRow[];
+    }
+  }
+  return [];
+}
 export function num(value: unknown, fallback = 0) { const n = Number(value); return Number.isFinite(n) ? n : fallback; }
 export function extent(values: unknown[]) { const list = values.map(v=>num(v, NaN)).filter(Number.isFinite); return [Math.min(...list,0), Math.max(...list,1)] as const; }
 export function scale(value:number, domain:[number,number], range:[number,number]) { const [a,b]=domain; return range[0] + ((value-a)/(b-a || 1))*(range[1]-range[0]); }

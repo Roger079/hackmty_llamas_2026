@@ -10,3 +10,4 @@ frontend/dist/
 .impeccable/
 .12ui/
 .DS_Store
+backend/banco_simulado2.db

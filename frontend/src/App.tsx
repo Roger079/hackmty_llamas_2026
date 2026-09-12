@@ -8,7 +8,7 @@ import { BanorteFooter } from './components/BanorteFooter';
 import { ChatStream } from './components/ChatStream';
 import { McpInspector } from './components/McpInspector';
 import { MobileSimulator } from './components/MobileSimulator';
-import { A2UIPayload, ActionContext, ChatMessage, McpCallLog } from './types/a2ui';
+import { A2UIPayload, ActionContext, ChatMessage, McpCallLog, UserCognitiveProfile } from './types/a2ui';
 
 const DEFAULT_USER_ID = 'C001';
 const DEFAULT_CLIENT = 'Ana Martínez';
@@ -55,6 +55,7 @@ export const App: React.FC = () => {
     cardLast4: '',
   });
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
+  const [cognitiveProfile, setCognitiveProfile] = useState<UserCognitiveProfile | null>(null);
 
   const inspectorRef = useRef<HTMLElement>(null);
   const closeInspectorRef = useRef<HTMLButtonElement>(null);
@@ -117,6 +118,16 @@ export const App: React.FC = () => {
 
     // 2. Fetch real customer financial state directly from SQLite views via /api/bank/state
     refreshBankState(selectedUserId);
+
+    // 3. Fetch cognitive memory profile from SQLite
+    fetch(`/api/user/cognitive-profile?user_id=${selectedUserId}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((prof) => {
+        if (prof && prof.user_id) {
+          setCognitiveProfile(prof);
+        }
+      })
+      .catch((err) => console.warn('Could not load cognitive profile:', err));
   }, [selectedUserId]);
 
   const refreshBankState = async (userId: string) => {
@@ -500,9 +511,15 @@ export const App: React.FC = () => {
             >
               <BanorteGlobalPosition
                 clientName={clientName}
+                selectedUserId={selectedUserId}
                 accounts={bankAccounts}
                 transactions={transactions}
+                cognitiveProfile={cognitiveProfile}
+                activeTab={activeTab}
+                onSelectTab={(tab) => setActiveTab(tab)}
                 onTriggerMayaPrompt={handleSendMessage}
+                onAction={handleAction}
+                hasActiveRestructure={hasRestructure}
               />
             </div>
 

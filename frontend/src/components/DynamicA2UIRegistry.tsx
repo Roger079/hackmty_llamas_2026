@@ -114,6 +114,63 @@ function normalizeProps(component: string, rawProps: Record<string, any>): Recor
     p.annualRate = p.annualRate ?? p.annual_rate ?? '9.1%';
     p.estimatedGain = p.estimatedGain ?? p.estimated_gain;
     p.totalMaturity = p.totalMaturity ?? p.total_maturity;
+  } else if (
+    ['StackedBarChart', 'BarChart', 'GroupedBarChart', 'LineChart', 'AreaChart', 'StackedAreaChart', 'BanorteChartCard', 'MultiLineChart', 'ProjectionChart'].includes(component) ||
+    component.toLowerCase().includes('chart')
+  ) {
+    let rawList: any[] = [];
+    if (Array.isArray(p.data)) {
+      rawList = p.data;
+    } else if (p.data && typeof p.data === 'object') {
+      rawList = p.data.data || p.data.items || p.data.rows || p.data.list || p.data.months || p.data.categories || p.data.values || [];
+    } else if (Array.isArray(p.items)) {
+      rawList = p.items;
+    } else if (Array.isArray(p.rows)) {
+      rawList = p.rows;
+    } else if (Array.isArray(p.categories)) {
+      rawList = p.categories;
+    } else if (Array.isArray(p.months)) {
+      rawList = p.months;
+    }
+
+    if (rawList.length > 0) {
+      p.data = { data: rawList };
+      p.dataPath = '/data';
+
+      const firstRow = rawList[0] || {};
+      const keys = Object.keys(firstRow);
+
+      if (!p.categoryKey) {
+        const catKey = keys.find(k => typeof firstRow[k] === 'string' && !['color', 'status'].includes(k)) ||
+                       keys.find(k => ['month', 'mes', 'label', 'category', 'categoria', 'name', 'fecha', 'periodo', 'concepto'].includes(k.toLowerCase())) ||
+                       keys[0] || 'label';
+        p.categoryKey = catKey;
+      }
+
+      const numericKeys = keys.filter(k => k !== p.categoryKey && (typeof firstRow[k] === 'number' || (!isNaN(Number(firstRow[k])) && firstRow[k] !== '')));
+      const chartPalette = ['#EB0029', '#0066CC', '#008744', '#C59B27', '#7C3AED', '#E67E22', '#0F766E', '#D32F2F'];
+
+      if (!p.series || !p.series.length) {
+        if (numericKeys.length > 1) {
+          p.series = numericKeys.map((k, i) => ({
+            name: k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            dataPath: '/data',
+            xKey: p.categoryKey,
+            yKey: k,
+            color: chartPalette[i % chartPalette.length],
+          }));
+        } else if (numericKeys.length === 1) {
+          p.valueKey = numericKeys[0];
+          p.series = [{
+            name: p.title || 'Monto',
+            dataPath: '/data',
+            xKey: p.categoryKey,
+            yKey: numericKeys[0],
+            color: '#EB0029'
+          }];
+        }
+      }
+    }
   }
 
   return p;

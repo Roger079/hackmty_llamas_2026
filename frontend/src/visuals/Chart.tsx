@@ -6,9 +6,117 @@ const margin={top:26,right:18,bottom:38,left:52};
 function useWidth(){const ref=useRef<HTMLDivElement>(null);const [w,setW]=useState(640);useEffect(()=>{const o=new ResizeObserver(()=>setW(ref.current?.clientWidth||640));if(ref.current)o.observe(ref.current);return()=>o.disconnect()},[]);return[ref,w] as const}
 const axis=(w:number,h:number,values:number[],fmt:(x:number)=>string)=>{const [lo,hi]=extent(values);const ticks=Array.from({length:5},(_,i)=>lo+(hi-lo)*i/4);return <>{ticks.map(v=>{const y=scale(v,[lo,hi],[h-margin.bottom,margin.top]);return <g key={v}><line x1={margin.left} x2={w-margin.right} y1={y} y2={y} stroke="#E2E6EC"/><text x={margin.left-8} y={y+4} textAnchor="end" fontSize="10" fill="#7A8290">{fmt(v)}</text></g>})}<line x1={margin.left} x2={w-margin.right} y1={h-margin.bottom} y2={h-margin.bottom} stroke="#CBD3DF"/></>}
 function pointsFor(data:RecordRow[], s:SeriesConfig, i:number, w:number,h:number, all:number[]){const xk=s.xKey||'x',yk=s.yKey||'y',[lo,hi]=extent(all);return data.map((d,j)=>({d,x:scale(j,[0,Math.max(data.length-1,1)],[margin.left,w-margin.right]),y:scale(num(d[yk]),[lo,hi],[h-margin.bottom,margin.top]),v:num(d[yk]),label:String(d[xk]??j),color:s.color||palette[i%palette.length]}))}
-function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:RecordRow[];series:SeriesConfig[]}){ if(!series.length)series=[{dataPath:p.dataPath||'',xKey:p.categoryKey,yKey:p.valueKey}]; const source=series.map(s=>rows(p.data,s.dataPath)); const values:number[]=source.flatMap((d,i)=>d.map(r=>num(r[series[i].yKey||p.valueKey||'value']))); const [lo,hi]=extent(values); const grouped=['groupedBar','stackedBar','stackedArea'].includes(p.chartType); const bar=['bar','barHorizontal','groupedBar','stackedBar','waterfall','histogram'].includes(p.chartType); const main=source[0].length?source[0]:data; const count=Math.max(main.length,1); const y=(v:number)=>scale(v,[Math.min(0,lo),hi],[h-margin.bottom,margin.top]); const x=(i:number)=>scale(i,[0,Math.max(count-1,1)],[margin.left,w-margin.right]); const bw=(w-margin.left-margin.right)/count*.68;
- const marks = p.chartType==='barHorizontal' ? main.map((d,i)=>{const v=num(d[p.valueKey||'value']);const yy=margin.top+i*(h-margin.top-margin.bottom)/count;return <g key={i}><text x={margin.left-6} y={yy+15} textAnchor="end" fontSize="10" fill="#4A515E">{String(d[p.categoryKey||'label']??'')}</text><rect x={margin.left} y={yy} width={scale(v,[0,hi],[0,w-margin.left-margin.right])} height={Math.max(8,(h-margin.top-margin.bottom)/count-8)} rx="4" fill={v<0?p.colorNegative||'#D32F2F':p.colorPositive||'#EB0029'}/></g>}) : bar ? main.flatMap((d,i)=>{const vals=grouped?series.map((s,k)=>num((source[k][i]||d)[s.yKey||p.valueKey||'value'])):[num(d[p.valueKey||series[0]?.yKey||'value'])];let base=0;return vals.map((v,k)=>{const xx=x(i)-bw/2+(grouped?bw/vals.length*k:0),yy=y(base+Math.max(v,0)),hh=Math.abs(y(base)-y(base+v));base+=p.chartType==='stackedBar'?v:0;return <rect key={`${i}-${k}`} x={xx} y={yy} width={grouped?bw/vals.length:bw} height={Math.max(hh,1)} rx="3" fill={series[k]?.color||palette[k]}/>})}) : series.map((s,i)=>{const pts=pointsFor(source[i],s,i,w,h,values),last=pts[pts.length-1];const d=path(pts.map(q=>[q.x,q.y]));const fill=p.chartType.includes('area')?`${d} L${last?.x},${h-margin.bottom} L${pts[0]?.x},${h-margin.bottom} Z`:undefined;return <g key={i}>{fill&&<path d={fill} fill={pts[0]?.color} opacity=".14"/>}<path d={d} fill="none" stroke={pts[0]?.color} strokeWidth="2.5"/>{pts.map((q,j)=><circle key={j} cx={q.x} cy={q.y} r="3" fill="#fff" stroke={q.color} strokeWidth="2"/>)}</g>});
- return <><g>{axis(w,h,values,v=>format(v,p.valueFormat,p.currency))}</g>{marks}<g>{main.map((d,i)=><text key={i} x={x(i)} y={h-16} textAnchor="middle" fontSize="10" fill="#7A8290">{String(d[p.categoryKey||series[0]?.xKey||'label']??'').slice(0,10)}</text>)}</g></>}
+function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:RecordRow[];series:SeriesConfig[]}){
+  const rawData = data.length ? data : rows(p.data, p.dataPath);
+  const firstRow = rawData[0] || {};
+  const catKey = p.categoryKey || Object.keys(firstRow).find(k => typeof firstRow[k] === 'string' && !['color', 'status'].includes(k)) || 'label';
+
+  if (!series.length) {
+    const numKeys = Object.keys(firstRow).filter(k => k !== catKey && (typeof firstRow[k] === 'number' || (!isNaN(Number(firstRow[k])) && firstRow[k] !== '')));
+    if (numKeys.length > 1) {
+      series = numKeys.map((k, idx) => ({
+        dataPath: p.dataPath || '',
+        xKey: catKey,
+        yKey: k,
+        name: k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        color: palette[idx % palette.length]
+      }));
+    } else {
+      series = [{ dataPath: p.dataPath || '', xKey: catKey, yKey: p.valueKey || numKeys[0] || 'value', color: palette[0] }];
+    }
+  }
+
+  const source = series.map(s => {
+    const r = rows(p.data, s.dataPath);
+    return r.length ? r : rawData;
+  });
+
+  const main = source[0]?.length ? source[0] : rawData;
+  const count = Math.max(main.length, 1);
+  const isStacked = p.chartType === 'stackedBar' || p.chartType === 'stackedArea';
+  const isGrouped = p.chartType === 'groupedBar';
+
+  const singleValues: number[] = source.flatMap((d, i) => d.map(r => num(r[series[i].yKey || p.valueKey || 'value'])));
+  const stackedSums: number[] = main.map((_, i) => series.reduce((sum, s, k) => sum + Math.max(0, num((source[k][i] || main[i])?.[s.yKey || p.valueKey || 'value'])), 0));
+  const allValues = isStacked ? [...singleValues, ...stackedSums] : singleValues;
+  const [lo, hi] = extent(allValues.length ? allValues : [0, 100]);
+
+  const y = (v: number) => scale(v, [Math.min(0, lo), Math.max(hi, 1)], [h - margin.bottom, margin.top]);
+  const x = (i: number) => scale(i, [0, Math.max(count - 1, 1)], [margin.left, w - margin.right]);
+  const bw = (w - margin.left - margin.right) / count * 0.62;
+
+  const marks = p.chartType === 'barHorizontal' ? main.map((d, i) => {
+    const v = num(d[p.valueKey || series[0]?.yKey || 'value']);
+    const yy = margin.top + i * (h - margin.top - margin.bottom) / count;
+    return (
+      <g key={i}>
+        <text x={margin.left - 6} y={yy + 15} textAnchor="end" fontSize="10" fill="#4A515E">
+          {String(d[catKey] ?? '')}
+        </text>
+        <rect
+          x={margin.left}
+          y={yy}
+          width={scale(v, [0, Math.max(hi, 1)], [0, w - margin.left - margin.right])}
+          height={Math.max(8, (h - margin.top - margin.bottom) / count - 8)}
+          rx="4"
+          fill={v < 0 ? p.colorNegative || '#D32F2F' : p.colorPositive || '#EB0029'}
+        />
+      </g>
+    );
+  }) : ['bar', 'groupedBar', 'stackedBar', 'waterfall', 'histogram'].includes(p.chartType) ? main.flatMap((d, i) => {
+    const vals = (isGrouped || isStacked)
+      ? series.map((s, k) => num((source[k]?.[i] || d)?.[s.yKey || p.valueKey || 'value']))
+      : [num(d[p.valueKey || series[0]?.yKey || 'value'])];
+    let base = 0;
+    return vals.map((v, k) => {
+      const xx = isGrouped ? (x(i) - bw / 2 + (bw / vals.length) * k) : (x(i) - bw / 2);
+      const yy = isStacked ? y(base + Math.max(v, 0)) : y(Math.max(v, 0));
+      const hh = isStacked ? Math.abs(y(base) - y(base + v)) : Math.abs(y(0) - y(v));
+      if (isStacked) base += Math.max(0, v);
+      return (
+        <rect
+          key={`${i}-${k}`}
+          x={xx}
+          y={yy}
+          width={isGrouped ? Math.max(bw / vals.length - 2, 4) : bw}
+          height={Math.max(hh, 2)}
+          rx="3"
+          fill={series[k]?.color || palette[k % palette.length]}
+        >
+          <title>{`${series[k]?.name || 'Valor'}: ${format(v, p.valueFormat, p.currency)}`}</title>
+        </rect>
+      );
+    });
+  }) : series.map((s, i) => {
+    const pts = pointsFor(source[i] || main, s, i, w, h, allValues);
+    const last = pts[pts.length - 1];
+    const d = path(pts.map(q => [q.x, q.y]));
+    const fill = p.chartType.includes('area') ? `${d} L${last?.x},${h - margin.bottom} L${pts[0]?.x},${h - margin.bottom} Z` : undefined;
+    return (
+      <g key={i}>
+        {fill && <path d={fill} fill={pts[0]?.color} opacity=".14" />}
+        <path d={d} fill="none" stroke={pts[0]?.color} strokeWidth="2.5" />
+        {pts.map((q, j) => (
+          <circle key={j} cx={q.x} cy={q.y} r="3" fill="#fff" stroke={q.color} strokeWidth="2" />
+        ))}
+      </g>
+    );
+  });
+
+  return (
+    <>
+      <g>{axis(w, h, allValues, v => format(v, p.valueFormat, p.currency))}</g>
+      {marks}
+      <g>
+        {main.map((d, i) => (
+          <text key={i} x={x(i)} y={h - 14} textAnchor="middle" fontSize="10" fill="#7A8290" fontWeight="500">
+            {String(d[catKey] ?? '').slice(0, 12)}
+          </text>
+        ))}
+      </g>
+    </>
+  );
+}
 function Radial({p,w,h,data}:{p:ChartProps;w:number;h:number;data:RecordRow[]}){const cx=w/2,cy=h/2,r=Math.min(w,h)/2-30, vals:number[]=data.map(d=>num(d[p.valueKey||'value']));const total=vals.reduce((a,b)=>a+b,0)||1;let angle=-Math.PI/2;return <>{data.map((d,i)=>{const next=angle+Math.max(0,vals[i])/total*Math.PI*2;const out=<path key={i} d={arc(cx,cy,r,angle,next,p.chartType==='donut'?r*.6:0)} fill={palette[i%palette.length]} onClick={()=>p.action&&p.onAction?.(p.action.event,d)} style={{cursor:p.action?'pointer':'default'}}/>;angle=next;return out})}<text x={cx} y={cy-2} textAnchor="middle" fontSize="11" fill="#7A8290">{p.chartType==='donut'?'Total':''}</text><text x={cx} y={cy+18} textAnchor="middle" fontSize="18" fontWeight="700" fill="#1C1E21">{p.chartType==='donut'?format(total,p.valueFormat,p.currency):''}</text></>}
 function Gauge({p,w,h}:{p:ChartProps;w:number;h:number}){const min=num(resolve(p.gaugeMin,p.data)),max=num(resolve(p.gaugeMax,p.data),100),value=num(resolve(p.gaugeValue,p.data));const cx=w/2,cy=h*.76,r=Math.min(w*.38,h*.62),ratio=Math.max(0,Math.min(1,(value-min)/(max-min||1)));const bands=p.thresholds||[{from:min,to:max,status:'neutral'} as any];return <>{bands.map((b,i)=>{const from=num(resolve(b.from,p.data)),to=num(resolve(b.to,p.data));return <path key={i} d={arc(cx,cy,r,Math.PI+Math.PI*(from-min)/(max-min||1),Math.PI+Math.PI*(to-min)/(max-min||1),r-15)} fill={statusColor[(b.status||'neutral') as keyof typeof statusColor]}/>})}<line x1={cx} y1={cy} x2={cx+r*.78*Math.cos(Math.PI+Math.PI*ratio)} y2={cy+r*.78*Math.sin(Math.PI+Math.PI*ratio)} stroke="#1C1E21" strokeWidth="3"/><circle cx={cx} cy={cy} r="6" fill="#1C1E21"/><text x={cx} y={cy+30} textAnchor="middle" fontSize="22" fontWeight="700" fill="#1C1E21">{format(value,p.valueFormat,p.currency)}</text></>}
 function Special({p,w,h,data}:{p:ChartProps;w:number;h:number;data:RecordRow[]}){const key=p.valueKey||'value'; if(p.chartType==='histogram'){const values=data.map(d=>num(d[key]));const [lo,hi]=extent(values), bins=Array.from({length:8},()=>0);values.forEach(v=>bins[Math.min(7,Math.floor((v-lo)/(hi-lo||1)*8))]++);return <Cartesian p={{...p,chartType:'bar',data:{bins:bins.map((v,i)=>({label:Math.round(lo+(hi-lo)*i/8),value:v}))},dataPath:'/bins',categoryKey:'label',valueKey:'value'}} w={w} h={h} data={[] } series={[]}/>}
