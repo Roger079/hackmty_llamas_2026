@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { BanortePortalSegmentBar } from './BanortePortalSegmentBar';
 import { BanortePortalHeader } from './BanortePortalHeader';
+import { BanorteLogo } from './BanorteLogo';
 import { ErrorBoundary } from './ErrorBoundary';
 import { McpInspector } from './McpInspector';
 import { DynamicA2UIRegistry } from './DynamicA2UIRegistry';
@@ -823,7 +824,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-[#E6EDF4] pt-4">
+                  <div className="mx-5 mt-4 flex items-center justify-between border-t border-[#E6EDF4] pb-5 pt-4">
                     <button
                       type="button"
                       onClick={() => handleSendMessage('Transfiere $850 a Sofía Mendoza para la cena.')}
@@ -865,7 +866,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-[#E6EDF4] pt-4">
+                  <div className="mx-5 mt-4 flex items-center justify-between border-t border-[#E6EDF4] pb-5 pt-4">
                     <button
                       type="button"
                       onClick={() =>
@@ -905,7 +906,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-[#E6EDF4] pt-4">
+                  <div className="mx-5 mt-4 flex items-center justify-between border-t border-[#E6EDF4] pb-5 pt-4">
                     <button
                       type="button"
                       onClick={() => handleSendMessage('Quiero simular una inversión a plazo fijo.')}
@@ -1133,14 +1134,14 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
               <div className="space-y-4">
                 <div className="banorte-card rounded-2xl border border-[#CBD9E6] bg-white shadow-sm flex flex-col h-[760px] overflow-hidden">
                   {/* Dock Header */}
-                  <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+                  <div className="flex items-center justify-between border-b border-red-900/20 bg-[#EB0029] p-3.5 text-white">
                     <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-xl bg-[#EB0029] text-white flex items-center justify-center font-black text-xs shadow-xs">
-                        M
+                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white ring-2 ring-white/50">
+                        <BanorteLogo variant="icon" className="h-5 w-5" alt="" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold leading-none">Maya</div>
-                        <span className="text-[10px] text-emerald-300 font-medium">
+                        <div className="text-xs font-bold leading-none">Maya Copiloto</div>
+                        <span className="text-[10px] text-red-100 font-medium">
                           Asistente de Composición
                         </span>
                       </div>
@@ -1148,7 +1149,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsDockCollapsed(true)}
-                      className="text-slate-400 hover:text-white p-1 rounded-lg transition cursor-pointer"
+                      className="rounded-lg p-1 text-white/80 transition hover:bg-white/15 hover:text-white cursor-pointer"
                       title="Ocultar dock"
                     >
                       <X className="h-4 w-4" />

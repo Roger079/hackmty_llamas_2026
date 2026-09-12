@@ -6,7 +6,6 @@ import {
   Download,
   Filter,
   Sparkles,
-  Zap,
   TrendingUp,
   Send,
   CheckCircle2,
@@ -15,7 +14,6 @@ import {
   UserPlus,
   Trash2,
   Brain,
-  Info,
 } from 'lucide-react';
 import heroImage from '../assets/12ui/banorte-hero.png';
 import investmentTrend from '../assets/12ui/investment-trend.png';
@@ -143,49 +141,7 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
-      {/* 1. Cognitive Memory & Adaptation Banner (Clickable) */}
-      <div
-        onClick={() => setIsCognitiveModalOpen(true)}
-        className="group flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 bg-white px-4 py-2.5 shadow-xs hover:border-emerald-300 hover:bg-emerald-50/20 transition cursor-pointer"
-        title="Ver detalles de Memoria Cognitiva y Transparencia AI"
-      >
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:scale-105 transition">
-            <Zap className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-800">
-                Adaptabilidad Cognitiva Activa
-              </span>
-              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.2 text-[10px] font-bold text-emerald-800">
-                SQLite Sincronizado
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500">
-              {isCarlos
-                ? 'Perfil detectado: Enfoque en Reestructuración de Deuda y Salud Crediticia'
-                : isSilvia
-                ? 'Perfil detectado: Enfoque Patrimonial y Maximización de Inversiones'
-                : 'Perfil detectado: Visualización de Flujo de Efectivo y Transferencias SPEI'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {cognitiveProfile?.recommended_tone && (
-            <span className="hidden rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 sm:inline-block">
-              Tono: {cognitiveProfile.recommended_tone}
-            </span>
-          )}
-          <span className="rounded-lg bg-red-50 px-2.5 py-1 text-[11px] font-bold text-[#EB0029] border border-red-100">
-            {cognitiveProfile?.visual_preferences || (isCarlos ? 'Proyecciones & Tablas' : isSilvia ? 'Rendimientos & Simulador' : 'Gráficos & Donas')}
-          </span>
-          <Info className="h-4 w-4 text-slate-400 group-hover:text-emerald-600 transition" />
-        </div>
-      </div>
-
-      {/* 2. Welcome & Banking Overview Banner */}
+      {/* Welcome & Banking Overview Banner */}
       <div
         className="banorte-hero relative z-0 flex min-h-[162px] flex-col justify-center gap-5 bg-cover bg-center p-5 sm:flex-row sm:items-center sm:justify-between sm:px-6"
         style={{ backgroundImage: `url(${heroImage})` }}
@@ -267,7 +223,7 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
               </div>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-[#E6EDF4] pt-4">
+          <div className="mx-5 mt-4 flex items-center justify-between border-t border-[#E6EDF4] pb-5 pt-4">
             <button
               type="button"
               onClick={() => onTriggerMayaPrompt('Transfiere $850 a Sofía Mendoza para la cena.')}
@@ -312,7 +268,7 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
               </div>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-[#E6EDF4] pt-4">
+          <div className="mx-5 mt-4 flex items-center justify-between border-t border-[#E6EDF4] pb-5 pt-4">
             <button
               type="button"
               onClick={() =>
@@ -359,7 +315,7 @@ export const BanorteGlobalPosition: React.FC<BanorteGlobalPositionProps> = ({
               </div>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-[#E6EDF4] pt-4">
+          <div className="mx-5 mt-4 flex items-center justify-between border-t border-[#E6EDF4] pb-5 pt-4">
             <button
               type="button"
               onClick={() => onTriggerMayaPrompt('Quiero simular una inversión a plazo fijo.')}

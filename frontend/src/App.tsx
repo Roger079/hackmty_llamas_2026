@@ -732,8 +732,6 @@ export const App: React.FC = () => {
           clientName={clientName}
           tier="Cliente Preferente"
           hasToken
-          mcpCallCount={mcpLogs.length}
-          onOpenInspector={() => setIsInspectorOpen(true)}
           selectedUserId={selectedUserId}
           onSelectUser={(newId) => {
             setSelectedUserId(newId);

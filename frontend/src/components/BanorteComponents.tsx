@@ -132,7 +132,7 @@ export const MayaChatWidget: React.FC<{
       >
         <MayaAvatar size="md" />
         <div className="min-w-0 text-left leading-tight">
-          <span className="block text-sm font-black lowercase tracking-tight text-white">maya</span>
+          <span className="block text-sm font-black tracking-tight text-white">Maya</span>
           <span className="block max-w-[205px] truncate text-[10px] font-bold text-white drop-shadow-sm">Pregúntame por una gráfica de tus gastos</span>
         </div>
       </button>
@@ -250,14 +250,15 @@ export const BanorteCard: React.FC<{
         <BrandLogo variant="icon" theme="red" className="h-14 w-14" alt="" />
       </div>
 
-      <div className="flex justify-between items-start relative z-10">
+      <div className="relative z-10">
         <div>
           <span className="text-[11px] font-semibold tracking-wider uppercase text-white/80">{cardType}</span>
           <BrandLogo className="mt-1 h-4 w-auto" theme="red" />
         </div>
-        <div className="w-10 h-7 rounded-md bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 border border-amber-600/30 flex items-center justify-center shadow-inner">
-          <div className="w-6 h-4 border border-amber-800/40 rounded-[2px]" />
-        </div>
+      </div>
+
+      <div className="absolute right-14 top-10 z-10 flex h-7 w-10 items-center justify-center rounded-md border border-amber-600/30 bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 shadow-inner">
+        <div className="h-4 w-6 rounded-[2px] border border-amber-800/40" />
       </div>
 
       <div className="my-3 relative z-10">
