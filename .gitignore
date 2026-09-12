@@ -10,3 +10,5 @@ frontend/dist/
 .12ui/banorte-alignment-layerdoc/
 .12ui/banorte-alignment-final/
 .12ui/banorte-alignment-1536/
+backend/app/__pycache__/__init__.cpython-310.pyc
+/backend/app/__pycache__
