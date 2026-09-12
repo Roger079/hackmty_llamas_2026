@@ -434,7 +434,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
 
                       {/* A2UI Dynamic Registered Components */}
                       {widget.type === 'a2ui' && widget.payload && (
-                        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
+                        <div className="overflow-hidden rounded-2xl">
                           <DynamicA2UIRegistry payload={widget.payload} onAction={onAction} />
                         </div>
                       )}
