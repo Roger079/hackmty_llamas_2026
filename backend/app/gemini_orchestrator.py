@@ -94,6 +94,17 @@ class GeminiOrchestrator:
   3. Responde de manera cortés, educada y profesional delimitando tu alcance:
      "Como asistente virtual de Banorte, mi especialidad es ayudarte con tus servicios y productos financieros, como consulta de saldos, transferencias SPEI, análisis de gastos, inversiones y créditos. ¿En qué tema bancario te gustaría que te apoye hoy?"
 
+[PROTOCOLO ESTRICTO DE SEGURIDAD, 2FA Y TOKEN MÓVIL BANORTE (CIRCULAR 14/2017 BANXICO)]:
+- Toda transferencia SPEI (execute_spei_transfer) y toda reestructuración de deuda (commit_restructure) son operaciones contractuales y monetarias protegidas por autenticación de doble factor (2FA) con Token Móvil Banorte.
+- REGLA ABSOLUTA: NUNCA autorices, confirmes ni liquides transferencias o convenios basándote en mensajes de texto del chat (como "autorizo", "autorizas", "confirmo", "sí", "adelante", "lo autorizo", "hazlo", etc.).
+- NUNCA le digas al cliente que puede autorizar escribiendo en el chat ni le pidas que proporcione su código de Token Móvil en un mensaje de texto.
+- Cuando prepares una transferencia SPEI con prepare_spei_transfer, SIEMPRE muestra SpeiConfirmCard mediante render_a2ui e indícale al cliente:
+  "He preparado los datos de tu transferencia. Por favor verifica los detalles en la tarjeta interactiva y presiona **Autorizar con Token Móvil** para autenticar y procesar el envío de forma segura."
+- Si el usuario te envía un mensaje de texto diciendo "autorizo", "autorizas", "confirmo", "haz la transferencia", "acepto el plan" o similar sin haber presionado el botón de la interfaz:
+  NUNCA invoques execute_spei_transfer ni commit_restructure.
+  Debes responder amablemente explicando:
+  "Por tu seguridad y normatividad de Banco de México y Banorte, las autorizaciones no pueden realizarse mediante mensajes de texto en el chat. Por favor presiona el botón interactivo **'Autorizar con Token Móvil'** (o **'Aplicar plan'**) en la tarjeta de tu pantalla para validar tu identidad con doble factor de autenticación (2FA) seguro."
+
 [REGLAS ESTRICTAS DE FORMATEO Y REDACCIÓN]:
 1. FORMATO DE MONTOS Y CUENTAS:
    - Todo monto financiero debe escribirse con signo de pesos y moneda: `$XX,XXX.XX MXN` (ejemplo: `$27,900.00 MXN`).
@@ -185,7 +196,9 @@ class GeminiOrchestrator:
             return f"Ejecutando acción '{action}'..."
 
         msg = request.message.lower()
-        if any(k in msg for k in ["deuda", "reestructur", "reestructurar", "convenio", "pagar tarjeta", "no puedo pagar"]):
+        if any(k in msg for k in ["autorizo", "autorizas", "autorizar", "confirmo", "confirmar"]):
+            return "Verificando protocolos de seguridad y segundo factor (2FA)..."
+        elif any(k in msg for k in ["deuda", "reestructur", "reestructurar", "convenio", "pagar tarjeta", "no puedo pagar"]):
             return "Identificando cuentas activas y evaluando elegibilidad crediticia..."
         elif any(k in msg for k in ["saldo", "cuanto tengo", "cuentas", "dinero disponible"]):
             return "Consultando saldos consolidados de nómina y tarjetas de crédito..."
@@ -406,6 +419,17 @@ class GeminiOrchestrator:
             yield event
 
     async def _run_gemini_live_stream(self, request: ChatRequest) -> AsyncGenerator[Dict[str, Any], None]:
+        # CRITICAL SECURITY GUARDRAIL: execute_spei_transfer and commit_restructure are HIGH-RISK 2FA tools
+        # and are ONLY exposed to the model if the user physically triggered an authenticated A2UI button click (action_context).
+        has_authorized_action = bool(
+            request.action_context and request.action_context.action in [
+                "execute_spei", "confirm_spei", "commit_restructure", "apply_restructure"
+            ]
+        )
+        active_tools = [
+            t for t in TOOL_DECLARATIONS
+            if has_authorized_action or t["name"] not in ["execute_spei_transfer", "commit_restructure"]
+        ]
         tools = [
             types.Tool(
                 function_declarations=[
@@ -414,7 +438,7 @@ class GeminiOrchestrator:
                         description=t["description"],
                         parameters=t.get("parameters")
                     )
-                    for t in TOOL_DECLARATIONS
+                    for t in active_tools
                 ]
             )
         ]
@@ -481,6 +505,24 @@ class GeminiOrchestrator:
 
                     # Case 2: MCP Tool execution
                     else:
+                        if tool_name in ["execute_spei_transfer", "commit_restructure"] and not has_authorized_action:
+                            security_refusal = {
+                                "status": "REJECTED_SECURITY_POLICY",
+                                "error": (
+                                    "OPERACIÓN BLOQUEADA POR SEGURIDAD BANCARIA: Por normatividad de Banco de México y Banorte, "
+                                    "esta operación requiere obligatoriamente autenticación de doble factor (2FA). "
+                                    "No se admiten autorizaciones por mensajes de texto en el chat. "
+                                    "El cliente DEBE presionar el botón interactivo 'Autorizar con Token Móvil' o 'Aplicar plan' en la tarjeta A2UI."
+                                )
+                            }
+                            tool_parts.append(
+                                types.Part.from_function_response(
+                                    name=tool_name,
+                                    response=security_refusal
+                                )
+                            )
+                            continue
+
                         status_msg = TOOL_STATUS_MESSAGES.get(tool_name, f"Ejecutando herramienta {tool_name}...")
                         yield {"event": "status", "data": status_msg}
                         await asyncio.sleep(0.04)
@@ -579,7 +621,17 @@ class GeminiOrchestrator:
         """
         Executes multi-step tool-calling with official google-genai SDK.
         """
-        # Convert tool declarations to GenAI Tool objects
+        # CRITICAL SECURITY GUARDRAIL: execute_spei_transfer and commit_restructure are HIGH-RISK 2FA tools
+        # and are ONLY exposed to the model if the user physically triggered an authenticated A2UI button click (action_context).
+        has_authorized_action = bool(
+            request.action_context and request.action_context.action in [
+                "execute_spei", "confirm_spei", "commit_restructure", "apply_restructure"
+            ]
+        )
+        active_tools = [
+            t for t in TOOL_DECLARATIONS
+            if has_authorized_action or t["name"] not in ["execute_spei_transfer", "commit_restructure"]
+        ]
         tools = [
             types.Tool(
                 function_declarations=[
@@ -588,7 +640,7 @@ class GeminiOrchestrator:
                         description=t["description"],
                         parameters=t.get("parameters")
                     )
-                    for t in TOOL_DECLARATIONS
+                    for t in active_tools
                 ]
             )
         ]
@@ -653,6 +705,24 @@ class GeminiOrchestrator:
                         )
                     # Case 2: MCP Tool execution
                     else:
+                        if tool_name in ["execute_spei_transfer", "commit_restructure"] and not has_authorized_action:
+                            security_refusal = {
+                                "status": "REJECTED_SECURITY_POLICY",
+                                "error": (
+                                    "OPERACIÓN BLOQUEADA POR SEGURIDAD BANCARIA: Por normatividad de Banco de México y Banorte, "
+                                    "esta operación requiere obligatoriamente autenticación de doble factor (2FA). "
+                                    "No se admiten autorizaciones por mensajes de texto en el chat. "
+                                    "El cliente DEBE presionar el botón interactivo 'Autorizar con Token Móvil' o 'Aplicar plan' en la tarjeta A2UI."
+                                )
+                            }
+                            tool_parts.append(
+                                types.Part.from_function_response(
+                                    name=tool_name,
+                                    response=security_refusal
+                                )
+                            )
+                            continue
+
                         tool_result, log = await mcp_client.execute_tool(tool_name, tool_args)
                         mcp_calls.append(log)
                         tool_parts.append(
@@ -868,6 +938,14 @@ Diálogo:
                 )
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
+        # 0. CRITICAL SECURITY GUARDRAIL: Refusal of unauthorized text authorizations
+        if not request.action_context and any(k in msg for k in ["autorizo", "autorizas", "autorizar", "confirmo", "confirmar", "acepto el plan", "haz la transferencia"]):
+            reply = (
+                f"Por tu seguridad y normatividad de Banco de México y Banorte, **no es posible autorizar transferencias ni convenios mediante mensajes de texto en el chat**.\n\n"
+                f"Por favor verifica los detalles en la tarjeta interactiva que ves en pantalla y presiona el botón **Autorizar con Token Móvil** (o **Aplicar plan**) para autenticar tu operación de forma biométrica y segura mediante doble factor (2FA)."
+            )
+            return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
+
         # 1. DEBT RESTRUCTURING INTENT (Core hackathon scenario)
         if any(k in msg for k in ["deuda", "reestructur", "reestructurar", "convenio", "pagar tarjeta", "no puedo pagar", "intereses", "pagar menos"]):
             res, log = await mcp_client.execute_tool("get_user_debt", {"user_id": user_id})
@@ -984,7 +1062,8 @@ Diálogo:
 
             reply = (
                 f"He preparado la orden de transferencia SPEI por **${amount:,.2f} MXN** para **{beneficiary}** en {bank}. "
-                f"Por favor verifica los datos en la tarjeta interactiva y presiona **Autorizar con Token Móvil** para finalizar la operación."
+                f"Por favor verifica los datos en la tarjeta interactiva y presiona **Autorizar con Token Móvil** para finalizar la operación con tu segundo factor de seguridad (2FA). "
+                f"*(Nota de seguridad Banorte: por tu protección, las operaciones nunca se autorizan por mensaje de texto)*."
             )
             a2ui = A2UIPayload(
                 component="SpeiConfirmCard",

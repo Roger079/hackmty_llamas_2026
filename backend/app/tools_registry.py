@@ -19,7 +19,7 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
     },
     {
         "name": "commit_restructure",
-        "description": "Aplica y guarda en la base de datos bancaria el plan de reestructuración de deuda seleccionado por el cliente, congelando intereses moratorios y generando un nuevo calendario de pagos fijos.",
+        "description": "ADVERTENCIA DE SEGURIDAD BANCARIA: Esta herramienta SOLO puede ser ejecutada mediante el evento interactivo de interfaz (action_context) cuando el usuario pulsa 'Aplicar plan' en DebtRestructureCard. NUNCA la invoques en respuesta a mensajes de texto del usuario (como 'autorizo', 'autorizas', 'acepto', 'sí'). Si el usuario escribe texto en el chat, indícale que debe presionar el botón en la tarjeta A2UI.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
@@ -74,7 +74,7 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
     },
     {
         "name": "prepare_spei_transfer",
-        "description": "Prepara una transferencia SPEI calculando comisiones, verificando saldo suficiente y generando el identificador de autorización preliminar.",
+        "description": "Prepara una orden de transferencia SPEI calculando comisiones y verificando saldo. Tras ejecutarla, muestra siempre SpeiConfirmCard con render_a2ui e indícale al usuario que debe presionar el botón 'Autorizar con Token Móvil' en la tarjeta interactiva. NUNCA pidas confirmación por chat ni solicites que el usuario escriba su token o 'autorizo'.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
@@ -104,7 +104,7 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
     },
     {
         "name": "execute_spei_transfer",
-        "description": "Ejecuta de manera definitiva la transferencia SPEI mediante autenticación del Token Móvil Banorte y genera la Clave de Rastreo Banxico oficial.",
+        "description": "ADVERTENCIA DE SEGURIDAD CRÍTICA: Esta herramienta SOLO puede ser invocada mediante el evento interactivo de interfaz (action_context) cuando el usuario pulsa 'Autorizar con Token Móvil' en SpeiConfirmCard. NUNCA la invoques en respuesta a mensajes de chat de texto como 'autorizo', 'autorizas' o 'confirmo'. Si el usuario escribe su confirmación en el chat, indícale que debe presionar el botón interactivo en la tarjeta A2UI.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
