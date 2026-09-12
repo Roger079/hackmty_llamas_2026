@@ -13,6 +13,7 @@ import {
   ReceiptText,
   BarChart3,
   LogOut,
+  Monitor,
 } from 'lucide-react';
 import { ChatStream } from './ChatStream';
 import { ActionContext, ChatMessage, McpCallLog } from '../types/a2ui';
@@ -46,6 +47,7 @@ interface MobileSimulatorProps {
   onOpenInspector?: () => void;
   userId?: string;
   onLogout?: () => void;
+  onNavigateDisplay?: () => void;
 }
 
 type MobileTab = 'home' | 'maya' | 'cards' | 'activity';
@@ -64,6 +66,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
   onOpenInspector,
   userId = 'C001',
   onLogout,
+  onNavigateDisplay,
 }) => {
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [showCvv, setShowCvv] = useState(false);
@@ -124,6 +127,17 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
             <div className="h-7 w-7 rounded-full bg-white text-[#EB0029] font-black text-xs grid place-items-center shadow-xs">
               {firstName[0] || 'R'}
             </div>
+            {onNavigateDisplay && (
+              <button
+                type="button"
+                onClick={onNavigateDisplay}
+                className="inline-flex items-center gap-1 rounded-full bg-black/20 hover:bg-black/30 px-2.5 py-1 text-[10px] font-semibold transition border border-white/20 cursor-pointer text-white"
+                title="Cambiar a pantalla de control para PC (/display)"
+              >
+                <Monitor className="h-3 w-3 text-amber-300" />
+                <span>Display PC</span>
+              </button>
+            )}
             {onLogout && (
               <button
                 type="button"

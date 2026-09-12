@@ -1,5 +1,5 @@
 import React from 'react';
-import { LockKeyhole, Cpu, ChevronDown, LogOut } from 'lucide-react';
+import { LockKeyhole, Cpu, ChevronDown, LogOut, Smartphone } from 'lucide-react';
 import { BanorteLogo } from './BanorteLogo';
 
 export interface BanortePortalHeaderProps {
@@ -12,6 +12,7 @@ export interface BanortePortalHeaderProps {
   onSelectUser?: (userId: string) => void;
   onLogout?: () => void;
   minimal?: boolean;
+  onNavigateMobile?: () => void;
 }
 
 export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
@@ -24,6 +25,7 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
   onSelectUser,
   onLogout,
   minimal = false,
+  onNavigateMobile,
 }) => {
   const initials = clientName
     .split(' ')
@@ -80,6 +82,19 @@ export const BanortePortalHeader: React.FC<BanortePortalHeaderProps> = ({
               <LockKeyhole className="h-3 w-3" />
               <span className="hidden sm:inline">Token Móvil</span>
             </span>
+          )}
+
+          {/* Quick Switcher to Mobile view */}
+          {onNavigateMobile && (
+            <button
+              type="button"
+              onClick={onNavigateMobile}
+              className="inline-flex h-9 items-center gap-1.5 rounded-2xl border border-white/30 bg-white/10 px-3 text-[12px] font-bold text-white transition hover:bg-white/20 cursor-pointer shadow-sm"
+              title="Cambiar a vista Banorte Móvil"
+            >
+              <Smartphone className="h-3.5 w-3.5 text-amber-300" />
+              <span className="hidden sm:inline">Ver Móvil</span>
+            </button>
           )}
 
           {/* Real SQLite Customer Profile & Switcher */}

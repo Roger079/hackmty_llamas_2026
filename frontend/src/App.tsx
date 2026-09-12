@@ -54,18 +54,61 @@ export const App: React.FC = () => {
   const [inspectorView, setInspectorView] = useState<InspectorView>('calls');
   const [activeTab, setActiveTab] = useState<PortalTab>('global');
   const [isMayaExpanded, setIsMayaExpanded] = useState(false);
+
+  const checkIsMobileDevice = () => {
+    if (typeof window === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    return isMobileUA || window.innerWidth < 768;
+  };
+
   const [currentPath, setCurrentPath] = useState<string>(() => {
     if (typeof window === 'undefined') return '/';
-    return window.location.pathname;
+    const p = window.location.pathname;
+    if (p === '/' || p === '') {
+      if (!checkIsMobileDevice()) {
+        try {
+          window.history.replaceState({}, '', '/display');
+        } catch (_) {}
+        return '/display';
+      }
+      return '/';
+    }
+    return p;
   });
+
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth < 768 || window.location.pathname.startsWith('/mobile');
+    if (typeof window === 'undefined') return true;
+    const p = window.location.pathname;
+    if (p.startsWith('/display') || p.startsWith('/portal')) return false;
+    if (p.startsWith('/mobile')) return true;
+    return checkIsMobileDevice();
   });
+
+  const handleNavigateView = (view: 'mobile' | 'display') => {
+    const target = view === 'mobile' ? '/' : '/display';
+    window.history.pushState({}, '', target);
+    setCurrentPath(target);
+    setIsMobileViewport(view === 'mobile');
+  };
 
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname);
+      const p = window.location.pathname;
+      setCurrentPath(p);
+      if (p.startsWith('/display') || p.startsWith('/portal')) {
+        setIsMobileViewport(false);
+      } else if (p.startsWith('/mobile')) {
+        setIsMobileViewport(true);
+      } else {
+        if (!checkIsMobileDevice()) {
+          window.history.replaceState({}, '', '/display');
+          setCurrentPath('/display');
+          setIsMobileViewport(false);
+        } else {
+          setIsMobileViewport(true);
+        }
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -98,7 +141,14 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileViewport(window.innerWidth < 768 || window.location.pathname.startsWith('/mobile'));
+      const p = window.location.pathname;
+      if (p.startsWith('/display') || p.startsWith('/portal')) {
+        setIsMobileViewport(false);
+      } else if (p.startsWith('/mobile')) {
+        setIsMobileViewport(true);
+      } else {
+        setIsMobileViewport(checkIsMobileDevice());
+      }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -713,6 +763,7 @@ export const App: React.FC = () => {
           onOpenInspector={() => setIsInspectorOpen(true)}
           userId={selectedUserId}
           onLogout={handleLogout}
+          onNavigateDisplay={() => handleNavigateView('display')}
         />
         {isInspectorOpen && renderInspectorDrawer()}
       </div>
@@ -736,6 +787,7 @@ export const App: React.FC = () => {
             }
           }}
           onLogout={handleLogout}
+          onNavigateMobile={() => handleNavigateView('mobile')}
         />
 
         {/* 3. Operational Subnav Bar */}
