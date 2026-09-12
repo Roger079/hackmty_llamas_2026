@@ -187,8 +187,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       </main>
 
       {/* 3. Corporate Minimalist Footer */}
-      <footer className="py-4 text-center text-[10px] text-slate-400 font-medium">
-        Grupo Financiero Banorte S.A.B. de C.V. Todos los derechos reservados.
+      <footer className="py-4 text-center text-[10px] text-slate-400 font-medium flex flex-col items-center gap-1.5">
+        <span>Grupo Financiero Banorte S.A.B. de C.V. Todos los derechos reservados.</span>
+        <a
+          href="/notebook"
+          className="text-slate-400 hover:text-slate-600 underline font-mono text-[10px]"
+        >
+          [A2UI Component Notebook & Debugger]
+        </a>
       </footer>
     </div>
   );

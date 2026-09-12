@@ -46,17 +46,8 @@ export const BanorteSubNav: React.FC<BanorteSubNavProps> = ({
           })}
         </div>
 
-        {/* Right side controls: Command Center shortcut & Maya Copiloto Toggle */}
+        {/* Right side controls: Maya Copiloto Toggle */}
         <div className="flex items-center gap-2">
-          <a
-            href="/dashboard"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-red-50 hover:bg-red-100/80 text-[#EB0029] border border-red-200 px-3 py-1 text-xs font-bold transition shadow-2xs cursor-pointer"
-            title="Abrir Command Center Web para Power Users"
-          >
-            <LayoutDashboard className="h-3.5 w-3.5" />
-            <span>Command Center</span>
-          </a>
-
           <div className="hidden items-center gap-2 sm:flex lg:hidden">
             <button
               type="button"

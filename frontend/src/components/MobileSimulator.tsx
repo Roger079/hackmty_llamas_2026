@@ -15,6 +15,7 @@ import {
   ReceiptText,
   BarChart3,
   LogOut,
+  Code,
 } from 'lucide-react';
 import { ChatStream } from './ChatStream';
 import { ActionContext, ChatMessage, McpCallLog } from '../types/a2ui';
@@ -106,6 +107,14 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
         <div className="flex items-center justify-between">
           <BanorteLogo className="h-4 w-auto shrink-0" theme="red" />
           <div className="flex items-center gap-2">
+            <a
+              href="/notebook"
+              className="inline-flex items-center gap-1 rounded-full bg-black/20 hover:bg-black/30 px-2 py-0.5 text-[10px] font-semibold transition border border-white/20 cursor-pointer text-white"
+              title="Abrir A2UI Component Notebook"
+            >
+              <Code className="h-3 w-3 text-amber-300" />
+              <span>UI</span>
+            </a>
             {onOpenInspector && (
               <button
                 type="button"

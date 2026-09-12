@@ -10,6 +10,7 @@ import { McpInspector } from './components/McpInspector';
 import { MobileSimulator } from './components/MobileSimulator';
 import { PowerUserDashboard } from './components/PowerUserDashboard';
 import { LoginScreen } from './components/LoginScreen';
+import { A2UINotebook } from './components/A2UINotebook';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { A2UIPayload, ActionContext, ChatMessage, McpCallLog, UserCognitiveProfile } from './types/a2ui';
 
@@ -630,6 +631,17 @@ export const App: React.FC = () => {
       </section>
     </div>
   );
+
+  if (currentPath.startsWith('/notebook')) {
+    return (
+      <A2UINotebook
+        onNavigateHome={() => {
+          window.history.pushState({}, '', '/');
+          setCurrentPath('/');
+        }}
+      />
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginScreen onLogin={handleLogin} />;
