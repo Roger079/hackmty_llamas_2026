@@ -547,24 +547,45 @@ class McpClient:
             if not pending and self._pending_transfers:
                 pending = list(self._pending_transfers.values())[-1]
 
-            amount = pending["amount"] if pending else 850.00
+            amount = float(pending["amount"]) if pending else 850.00
             beneficiary = pending["beneficiary"] if pending else "Destinatario SPEI"
+            now_dt = datetime.now()
+            now_str = now_dt.strftime("%Y-%m-%d %H:%M:%S")
+            now_display = now_dt.strftime("%d %b %Y, %H:%M hrs")
 
-            # Mutate state: deduct from nomina balance
-            nomina = user_data["accounts"]["nomina"]
-            nomina["balance"] = max(0.00, round(nomina["balance"] - amount, 2))
+            # Persist transaction in real SQLite database
+            conn = self._get_db_conn()
+            rem_bal = 0.0
+            if conn:
+                try:
+                    # Find customer primary account
+                    acc_row = conn.execute("SELECT account_id FROM account WHERE customer_id = ? LIMIT 1", (user_id,)).fetchone()
+                    acc_id = acc_row["account_id"] if acc_row else ("A001" if user_id == "C001" else ("A002" if user_id == "C002" else "A003"))
 
-            # Record into transactions
-            new_tx = {
-                "id": f"tx-{int(time.time())}",
-                "title": f"SPEI a {beneficiary}",
-                "date": "Hoy",
-                "amount": amount,
-                "type": "withdrawal",
-                "category": "Transferencia SPEI",
-                "icon": "arrow-up-right"
-            }
-            user_data.setdefault("transactions", []).insert(0, new_tx)
+                    # Insert into bank_transaction
+                    tx_id = f"TX{int(time.time()) % 1000000:06d}"
+                    conn.execute("""
+                        INSERT INTO bank_transaction (transaction_id, account_id, transaction_date, posting_date, transaction_type, merchant_name, amount, currency, channel, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (tx_id, acc_id, now_str, now_str, 'TRANSFER', f"SPEI a {beneficiary}", -amount, 'MXN', 'DIGITAL', 'POSTED'))
+
+                    # Deduct from account_balance
+                    conn.execute("""
+                        UPDATE account_balance
+                        SET available_balance = MAX(0.0, available_balance - ?),
+                            ledger_balance = MAX(0.0, ledger_balance - ?),
+                            last_update = ?
+                        WHERE account_id = ?
+                    """, (amount, amount, now_str, acc_id))
+                    conn.commit()
+
+                    bal_row = conn.execute("SELECT available_balance FROM account_balance WHERE account_id = ?", (acc_id,)).fetchone()
+                    if bal_row:
+                        rem_bal = float(bal_row["available_balance"])
+                except Exception as e:
+                    print(f"[execute_spei_transfer] SQLite transaction error: {e}")
+                finally:
+                    conn.close()
 
             return {
                 "status": "SUCCESS",
@@ -572,8 +593,8 @@ class McpClient:
                 "amount": amount,
                 "beneficiary": beneficiary,
                 "folio_banxico": f"0722026{int(time.time()) % 1000000:06d}",
-                "execution_timestamp": datetime.now().strftime("%d %b %Y, %H:%M hrs"),
-                "remaining_balance": nomina["balance"],
+                "execution_timestamp": now_display,
+                "remaining_balance": rem_bal,
                 "message": f"Transferencia por ${amount:,.2f} MXN liquidada exitosamente por Banco de México (SPEI)."
             }
 

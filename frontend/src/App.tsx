@@ -116,26 +116,32 @@ export const App: React.FC = () => {
       .catch((err) => console.warn('Could not load persistent chat history:', err));
 
     // 2. Fetch real customer financial state directly from SQLite views via /api/bank/state
-    fetch(`/api/bank/state?user_id=${selectedUserId}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => {
-        if (data.client_name) {
-          setClientName(data.client_name);
-        }
-        const accLast4 = data.primary_account?.account_last4 || (data.accounts?.[0]?.account_last4 ?? '0000');
-        const cardLast4 = data.primary_card?.pan_last4 || (data.credit_cards?.[0]?.pan_last4 ?? '');
-        setBankAccounts({
-          nominaBalance: data.total_available_balance ?? 0.00,
-          totalDebt: data.total_debt ?? 0.00,
-          accountLast4: accLast4,
-          cardLast4: cardLast4,
-        });
-        if (Array.isArray(data.transactions)) {
-          setTransactions(data.transactions);
-        }
-      })
-      .catch((err) => console.warn('Could not load bank state from SQLite:', err));
+    refreshBankState(selectedUserId);
   }, [selectedUserId]);
+
+  const refreshBankState = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/bank/state?user_id=${userId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.client_name) {
+        setClientName(data.client_name);
+      }
+      const accLast4 = data.primary_account?.account_last4 || (data.accounts?.[0]?.account_last4 ?? '0000');
+      const cardLast4 = data.primary_card?.pan_last4 || (data.credit_cards?.[0]?.pan_last4 ?? '');
+      setBankAccounts({
+        nominaBalance: data.total_available_balance ?? 0.00,
+        totalDebt: data.total_debt ?? 0.00,
+        accountLast4: accLast4,
+        cardLast4: cardLast4,
+      });
+      if (Array.isArray(data.transactions)) {
+        setTransactions(data.transactions);
+      }
+    } catch (err) {
+      console.warn('Could not load bank state from SQLite:', err);
+    }
+  };
 
   const closeInspector = () => {
     setIsInspectorOpen(false);
@@ -257,6 +263,7 @@ export const App: React.FC = () => {
     try {
       const data = await postChat({ message: text, user_id: selectedUserId, history: requestHistory });
       appendResponse(data);
+      refreshBankState(selectedUserId);
     } catch (error) {
       appendConnectionError(error);
     } finally {
@@ -293,6 +300,7 @@ export const App: React.FC = () => {
         history: requestHistory,
       });
       appendResponse(data);
+      refreshBankState(selectedUserId);
       return true;
     } catch (error) {
       appendConnectionError(error);

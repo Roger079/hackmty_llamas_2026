@@ -104,6 +104,13 @@ class GeminiOrchestrator:
    - NUNCA incluyas código JSON crudo en el texto de tu respuesta.
    - NUNCA muestres etiquetas de desarrollo como `[Acción]`, `[Componente]`, ni nombres de funciones en el texto visible para el usuario.
    - Mantén párrafos ejecutivos, concisos y fáciles de leer en dispositivos móviles.
+3. SALTO DE LÍNEA OBLIGATORIO EN LISTAS Y VIÑETAS:
+   - CADA elemento de lista numerada o viñeta DEBE ir en su propia línea independiente con un salto de línea explícito (`\n`).
+   - NUNCA concatenes múltiples viñetas en un solo renglón (ej. NUNCA escribas `1. Operación * Monto: $500 * Destino: BBVA`). Escribe siempre:
+     1. SPEI enviado a Sofia Mendoza:
+        * Monto: $850.00 MXN
+        * Destino: BBVA México (*2019)
+        * Clave de Rastreo: `BNTE202689213817`
 """
         return prompt
 

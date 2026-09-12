@@ -23,23 +23,124 @@ const quickPrompts = [
   'Quiero simular una inversión a plazo fijo',
 ];
 
-const MessageText: React.FC<{ text: string }> = ({ text }) => (
-  <div className="space-y-2">
-    {text.split(/\n{2,}/).map((paragraph, index) => (
-      <p key={index} className="leading-relaxed">
-        {paragraph.split(/(\*\*[^*]+\*\*)/g).map((part, partIndex) =>
-          part.startsWith('**') && part.endsWith('**') ? (
-            <strong key={partIndex} className="font-bold text-slate-900">
-              {part.slice(2, -2)}
-            </strong>
-          ) : (
-            <React.Fragment key={partIndex}>{part}</React.Fragment>
-          )
-        )}
-      </p>
-    ))}
-  </div>
-);
+const renderInlineMarkdown = (raw: string): React.ReactNode => {
+  // Tokenize by code blocks, bold, and italics
+  const tokens = raw.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return tokens.map((token, i) => {
+    if (token.startsWith('`') && token.endsWith('`') && token.length > 1) {
+      return (
+        <code
+          key={i}
+          className="font-mono text-[11px] bg-slate-100/90 text-[#9D0027] font-bold px-1.5 py-0.5 rounded-md border border-slate-200/80 shadow-2xs mx-0.5 inline-block"
+        >
+          {token.slice(1, -1)}
+        </code>
+      );
+    }
+    if (token.startsWith('**') && token.endsWith('**') && token.length > 3) {
+      return (
+        <strong key={i} className="font-bold text-slate-900">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (token.startsWith('*') && token.endsWith('*') && token.length > 2) {
+      return (
+        <em key={i} className="italic text-slate-600">
+          {token.slice(1, -1)}
+        </em>
+      );
+    }
+    return <React.Fragment key={i}>{token}</React.Fragment>;
+  });
+};
+
+const MessageText: React.FC<{ text: string }> = ({ text }) => {
+  if (!text) return null;
+
+  // Pre-process: split concatenated bullets (e.g. "* Monto: ... * Destino: ...") onto separate lines
+  const normalized = text
+    .replace(/:\s*\*\s+/g, ':\n* ')
+    .replace(/([^\n])\s*\*\s+([A-ZÁÉÍÓÚÑa-z])/g, '$1\n* $2')
+    .replace(/([^\n])\s*(\d+\.\s+[A-ZÁÉÍÓÚÑ])/g, '$1\n\n$2');
+
+  const lines = normalized.split('\n');
+
+  return (
+    <div className="space-y-1.5 text-xs text-slate-800 leading-relaxed font-normal">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          return <div key={idx} className="h-1.5" />;
+        }
+
+        // Horizontal divider
+        if (trimmed === '---' || trimmed === '***') {
+          return <hr key={idx} className="border-t border-slate-200 my-2.5" />;
+        }
+
+        // Heading 3 / Section Header (### Title)
+        if (trimmed.startsWith('### ')) {
+          return (
+            <h4
+              key={idx}
+              className="text-[12px] font-extrabold text-[#061D3A] uppercase tracking-wide mt-3 mb-1 flex items-center gap-1.5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#EB0029] inline-block shrink-0" />
+              <span>{renderInlineMarkdown(trimmed.slice(4))}</span>
+            </h4>
+          );
+        }
+
+        // Heading 2 / 1 (## Title or # Title)
+        if (trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
+          const content = trimmed.replace(/^#+\s*/, '');
+          return (
+            <h3
+              key={idx}
+              className="text-xs font-black text-[#061D3A] mt-3 mb-1.5 pb-0.5 border-b border-slate-100"
+            >
+              {renderInlineMarkdown(content)}
+            </h3>
+          );
+        }
+
+        // Numbered list item (1. Item, 2. Item)
+        const numberedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+        if (numberedMatch) {
+          const [, num, itemContent] = numberedMatch;
+          return (
+            <div key={idx} className="flex items-start gap-2 my-1 pl-0.5">
+              <span className="font-bold text-[#EB0029] shrink-0 text-xs tabular-nums">
+                {num}.
+              </span>
+              <div className="flex-1 leading-snug">{renderInlineMarkdown(itemContent)}</div>
+            </div>
+          );
+        }
+
+        // Bullet point item (* Item, - Item, • Item)
+        if (trimmed.startsWith('* ') || trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+          const content = trimmed.slice(2);
+          return (
+            <div key={idx} className="flex items-start gap-2 my-0.5 pl-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#EB0029]/70 mt-1.5 shrink-0" />
+              <div className="flex-1 leading-snug">{renderInlineMarkdown(content)}</div>
+            </div>
+          );
+        }
+
+        // Standard text paragraph
+        return (
+          <p key={idx} className="leading-relaxed">
+            {renderInlineMarkdown(trimmed)}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
 
 export const ChatStream: React.FC<ChatStreamProps> = ({
   messages,
