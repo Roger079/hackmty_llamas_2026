@@ -7,6 +7,7 @@ import { SpeiReceiptCard } from './SpeiReceiptCard';
 import { BanorteBalanceCard } from './BanorteBalanceCard';
 import { InvestmentSimulatorCard } from './InvestmentSimulatorCard';
 import { SpendingDonutCard } from './SpendingDonutCard';
+import { AmortizationScheduleCard } from './AmortizationScheduleCard';
 
 interface DynamicA2UIRegistryProps {
   payload: A2UIPayload;
@@ -26,6 +27,11 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   BanorteBalanceCard,
   InvestmentSimulatorCard,
   SpendingDonutCard,
+  AmortizationScheduleCard,
+  AmortizationCard: AmortizationScheduleCard,
+  AmortizationSchedule: AmortizationScheduleCard,
+  TablaAmortizacionCard: AmortizationScheduleCard,
+  TablaAmortizacion: AmortizationScheduleCard,
   // Common LLM alias mappings
   AccountsSummaryCard: BanorteBalanceCard,
   BanorteAccountSummary: BanorteBalanceCard,

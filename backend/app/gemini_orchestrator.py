@@ -389,7 +389,41 @@ class GeminiOrchestrator:
         # 3. Debt
         elif any(k in combined for k in ["deuda", "reestructur", "tarjeta de crédito", "convenio", "pagar menos"]):
             debt = mcp_client._execute_mock("get_user_debt", {"user_id": user_id})
-            return A2UIPayload(component="DebtRestructureCard", props=debt)
+            if debt.get("total_debt", 0.0) > 0:
+                return A2UIPayload(component="DebtRestructureCard", props=debt)
+            return None
+
+        # 4. Financial Health Score
+        elif any(k in combined for k in ["salud", "score", "diagnóstico", "diagnostico", "semáforo", "salud financiera"]):
+            health = mcp_client._execute_mock("get_financial_health_score", {"user_id": user_id})
+            return A2UIPayload(component="FinancialHealthGauge", props=health)
+
+        # 5. Amortization Schedule
+        elif any(k in combined for k in ["amortiza", "tabla de amortización", "corrida"]):
+            state = mcp_client.get_real_customer_state(user_id)
+            debt_amt = float(state.get("total_debt", 0.0))
+            if debt_amt <= 0:
+                debt_amt = 28000.0
+            amort = mcp_client._execute_mock("simulate_amortization_schedule", {
+                "debt_amount": debt_amt,
+                "term_months": 24,
+                "annual_rate": 22.5
+            })
+            return A2UIPayload(component="AmortizationScheduleCard", props=amort)
+
+        # 6. Investment
+        elif any(k in combined for k in ["invertir", "inversión", "pagaré", "rendimiento"]):
+            inv = mcp_client._execute_mock("simulate_investment", {"amount": 25000.0, "term_days": 91})
+            return A2UIPayload(
+                component="InvestmentSimulatorCard",
+                props={
+                    "initialAmount": inv["amount"],
+                    "initialTermDays": inv["term_days"],
+                    "annualRate": inv["annual_rate"],
+                    "estimatedGain": inv["estimated_gain"],
+                    "totalMaturity": inv["total_maturity"]
+                }
+            )
 
         return None
 
@@ -869,6 +903,15 @@ Diálogo:
             )
             return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
 
+        # Empty message guardrail
+        if not msg and not request.action_context:
+            reply = (
+                f"¡Hola, {first_name}! Soy Maya, tu copiloto financiera de Banorte. "
+                f"¿En qué puedo apoyarte hoy? Puedes pedirme consultar tus saldos, revisar tus consumos del mes, "
+                f"simular una inversión en Pagaré Banorte o revisar opciones para reestructurar tu tarjeta."
+            )
+            return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
+
         # Feedback Loop: User clicked an action inside an A2UI component
         if request.action_context:
             action = request.action_context.action
@@ -938,6 +981,34 @@ Diálogo:
                 )
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
+            elif action in ["simulate_investment", "update_investment"]:
+                amount = float(params.get("amount", 25000.0))
+                term_days = int(params.get("term_days", 91))
+                res, log = await mcp_client.execute_tool("simulate_investment", {"amount": amount, "term_days": term_days})
+                mcp_calls.append(log)
+
+                reply = (
+                    f"He recalculado la proyección de tu inversión en Pagaré Banorte para un monto de **${amount:,.2f} MXN** "
+                    f"a un plazo de **{term_days} días** con una tasa fija garantizada del **{res['annual_rate']}**."
+                )
+                a2ui = A2UIPayload(
+                    component="InvestmentSimulatorCard",
+                    props={
+                        "initialAmount": res["amount"],
+                        "initialTermDays": res["term_days"],
+                        "annualRate": res["annual_rate"],
+                        "estimatedGain": res["estimated_gain"],
+                        "totalMaturity": res["total_maturity"]
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            else:
+                reply = (
+                    f"Acción '{action}' recibida correctamente. Tus preferencias han sido sincronizadas con el sistema Banorte."
+                )
+                return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
+
         # 0. CRITICAL SECURITY GUARDRAIL: Refusal of unauthorized text authorizations
         if not request.action_context and any(k in msg for k in ["autorizo", "autorizas", "autorizar", "confirmo", "confirmar", "acepto el plan", "haz la transferencia"]):
             reply = (
@@ -950,6 +1021,15 @@ Diálogo:
         if any(k in msg for k in ["deuda", "reestructur", "reestructurar", "convenio", "pagar tarjeta", "no puedo pagar", "intereses", "pagar menos"]):
             res, log = await mcp_client.execute_tool("get_user_debt", {"user_id": user_id})
             mcp_calls.append(log)
+
+            if res.get("total_debt", 0.0) <= 0 or not res.get("eligible_for_restructure"):
+                reply = (
+                    f"¡Excelentes noticias, {first_name}! He consultado tus cuentas y actualmente no presentas saldo deudor "
+                    f"ni adeudos vencidos en tarjetas de crédito Banorte. Tus cuentas están totalmente al corriente, "
+                    f"por lo que no requieres un convenio de reestructuración.\n\n"
+                    f"¿Te gustaría conocer nuestras opciones de Pagaré Banorte para hacer crecer tus ahorros o consultar tus saldos?"
+                )
+                return ChatResponse(reply=reply, a2ui=None, mcp_calls=mcp_calls)
 
             reply = (
                 f"Entiendo tu situación, {first_name}. He consultado tu tarjeta **{res['card_name']}** (*{res['card_last4']}). "
@@ -1036,15 +1116,30 @@ Diálogo:
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
         # 4. SPEI TRANSFER INTENT
-        elif any(k in msg for k in ["transfer", "enviar", "mandar", "spei", "pago"]):
+        elif any(k in msg for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"]):
+            # Extract amount robustly
+            import re
+            clean_msg = msg.replace('$', ' ')
+            m = re.search(r'([-–]?\d[\d,]*(?:\.\d+)?)', clean_msg)
+            if m:
+                raw_amt = m.group(1).replace(',', '')
+                try:
+                    amount = float(raw_amt)
+                except ValueError:
+                    amount = 850.00
+            else:
+                amount = 850.00
+
+            if amount <= 0:
+                reply = (
+                    f"Estimado(a) {first_name}, el importe a transferir debe ser mayor a $0.00 MXN. "
+                    f"Por favor indica una cantidad válida para preparar tu transferencia SPEI."
+                )
+                return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
+
             beneficiary = "CARLOS GÓMEZ VEGA" if "carlos" in msg else "SOFÍA MENDOZA RÍOS"
             bank = "Santander México" if "carlos" in msg else "BBVA México"
             clabe = "014 180 65502938471 2" if "carlos" in msg else "012 180 01594839201 9"
-            
-            # Extract amount
-            import re
-            m = re.search(r'\$?\s*(\d+(?:[.,]\d+)?)', msg)
-            amount = float(m.group(1).replace(',', '')) if m else 850.00
 
             # Step 1: validate_clabe
             res_val, log_val = await mcp_client.execute_tool("validate_clabe", {"clabe": clabe})
@@ -1079,7 +1174,7 @@ Diálogo:
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
         # 5. INVESTMENT / PAGARÉ BANORTE
-        elif any(k in msg for k in ["invertir", "inversión", "pagaré", "rendimiento"]):
+        elif any(k in msg for k in ["invertir", "inversión", "inversion", "pagaré", "pagare", "rendimiento", "plazo fijo"]):
             res, log = await mcp_client.execute_tool("simulate_investment", {"amount": 25000.0, "term_days": 91})
             mcp_calls.append(log)
 
@@ -1099,6 +1194,61 @@ Diálogo:
             )
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
+        # 6. FINANCIAL HEALTH SCORE / DIAGNÓSTICO 360
+        elif any(k in msg for k in ["salud", "score", "diagnóstico", "diagnostico", "semáforo", "semaforo", "salud financiera"]):
+            res, log = await mcp_client.execute_tool("get_financial_health_score", {"user_id": user_id})
+            mcp_calls.append(log)
+
+            score = res.get("overall_score", 64)
+            status = res.get("status", "MODERADO")
+            reply = (
+                f"Hola, {first_name}. Aquí tienes tu **Diagnóstico de Salud Financiera 360°** Banorte:\n\n"
+                f"• **Calificación general:** {score}/100 ({status})\n"
+                f"• **Uso de línea de crédito:** {res['metrics']['credit_utilization_pct']}%\n"
+                f"• **Capacidad mensual de ahorro:** ${res['metrics']['savings_capacity_monthly']:,.2f} MXN\n\n"
+            )
+            if res.get("interest_trap_warning", {}).get("is_at_risk"):
+                reply += (
+                    f"⚠️ **Alerta:** {res['interest_trap_warning'].get('recommendation', '')}"
+                )
+            else:
+                reply += (
+                    f"Tu perfil se encuentra en excelente estado y cuentas con liquidez disponible."
+                )
+
+            a2ui = A2UIPayload(
+                component="FinancialHealthGauge",
+                props=res
+            )
+            return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+        # 7. AMORTIZATION SCHEDULE
+        elif any(k in msg for k in ["amortiza", "tabla de amortización", "corrida", "calendario de pago", "abono"]):
+            state = mcp_client.get_real_customer_state(user_id)
+            debt_amt = float(state.get("total_debt", 0.0))
+            if debt_amt <= 0:
+                debt_amt = 28000.0
+
+            res, log = await mcp_client.execute_tool("simulate_amortization_schedule", {
+                "debt_amount": debt_amt,
+                "term_months": 24,
+                "annual_rate": 22.5
+            })
+            mcp_calls.append(log)
+
+            reply = (
+                f"Hola, {first_name}. Aquí tienes la proyección y corrida financiera a **{res['term_months']} meses** "
+                f"con una tasa preferencial congelada del **{res['annual_rate_pct']}% anual**:\n\n"
+                f"• **Pago mensual fijo:** ${res['monthly_payment']:,.2f} MXN\n"
+                f"• **Total intereses a pagar:** ${res['total_interest']:,.2f} MXN\n"
+                f"• **Costo total de liquidación:** ${res['total_cost']:,.2f} MXN"
+            )
+            a2ui = A2UIPayload(
+                component="AmortizationScheduleCard",
+                props=res
+            )
+            return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
         # General friendly fallback
         reply = (
             f"¡Hola, {first_name}! Soy Maya, tu asesora de banca digital Banorte. ¿En qué puedo apoyarte hoy?\n\n"
@@ -1106,6 +1256,8 @@ Diálogo:
             f"• **Analizar tus gastos y consumos del mes** con gráficos interactivos.\n"
             f"• **Consultar tus saldos y cuentas activas** en tiempo real.\n"
             f"• **Reestructurar tu deuda de tarjeta de crédito** con tasas fijas preferenciales.\n"
+            f"• **Diagnóstico de salud financiera 360°** y semáforo de crédito.\n"
+            f"• **Tabla de amortización proyectada** y simulación de pagos.\n"
             f"• **Realizar una transferencia SPEI** en tiempo real."
         )
         return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])

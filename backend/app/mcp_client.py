@@ -715,19 +715,33 @@ class McpClient:
             }
 
         elif tool_name == "get_financial_health_score":
-            oro = user_data["accounts"]["oro"]
-            nomina = user_data["accounts"]["nomina"]
-            debt = oro["debt"]
-            limit = oro["credit_limit"]
+            real_state = self.get_real_customer_state(user_id)
+            client_name = real_state.get("client_name") or user_data.get("client_name", "Cliente Banorte")
+            debt = float(real_state.get("total_debt", 0.0))
+            nomina_bal = float(real_state.get("total_available_balance", 0.0))
+            cards = real_state.get("credit_cards", [])
+            limit = sum(float(c.get("credit_limit", 0.0)) for c in cards) if cards else 0.0
             utilization = round((debt / limit) * 100, 1) if limit > 0 else 0.0
 
-            # Score calculation (100 base, deductions for debt utilization)
-            score = 64 if debt > 20000 else 88
-            status = "MODERADO" if score < 75 else "ÓPTIMO"
-            status_color = "#F59E0B" if score < 75 else "#10B981"
+            if debt > 0:
+                min_payment = sum(float(c.get("minimum_payment") or (float(c.get("current_balance", 0.0)) * 0.08)) for c in cards) if cards else 2500.0
+                score = 58 if debt > 25000 else 68
+                status = "MODERADO"
+                status_color = "#F59E0B"
+                months_liq = 54
+                proj_interest = round(debt * 0.92, 2)
+                recom = f"Reestructurar a 24 meses congelará tu tasa al 22.5% y te ahorrará ${round(debt * 0.45, 2):,.2f} MXN en intereses."
+            else:
+                min_payment = 0.0
+                score = 96 if nomina_bal > 50000 else 92
+                status = "ÓPTIMO"
+                status_color = "#10B981"
+                months_liq = 0
+                proj_interest = 0.0
+                recom = "Excelente disciplina financiera. Tu liquidez está disponible para generar rendimientos en Pagaré Banorte."
 
             return {
-                "client_name": user_data["client_name"],
+                "client_name": client_name,
                 "overall_score": score,
                 "max_score": 100,
                 "status": status,
@@ -736,28 +750,33 @@ class McpClient:
                     "credit_utilization_pct": utilization,
                     "credit_utilization_limit_pct": 30.0,
                     "is_utilization_high": utilization > 30.0,
-                    "available_liquidity": nomina["balance"],
+                    "available_liquidity": nomina_bal,
                     "current_debt": debt,
-                    "savings_capacity_monthly": 4200.00
+                    "savings_capacity_monthly": round(nomina_bal * 0.15, 2)
                 },
                 "radar_scores": [
-                    {"dimension": "Capacidad de Ahorro", "score": 68, "benchmark": 75},
-                    {"dimension": "Nivel de Endeudamiento", "score": 45, "benchmark": 80},
-                    {"dimension": "Puntualidad en Pagos", "score": 92, "benchmark": 85},
-                    {"dimension": "Fondo de Emergencia", "score": 55, "benchmark": 70},
-                    {"dimension": "Inversión & Retiro", "score": 40, "benchmark": 60}
+                    {"dimension": "Capacidad de Ahorro", "score": 85 if debt == 0 else 55, "benchmark": 75},
+                    {"dimension": "Nivel de Endeudamiento", "score": 98 if debt == 0 else 45, "benchmark": 80},
+                    {"dimension": "Puntualidad en Pagos", "score": 95, "benchmark": 85},
+                    {"dimension": "Fondo de Emergencia", "score": 80 if nomina_bal > 20000 else 40, "benchmark": 70},
+                    {"dimension": "Inversión & Retiro", "score": 75 if user_id == "C003" else 45, "benchmark": 60}
                 ],
                 "interest_trap_warning": {
                     "is_at_risk": debt > 0,
-                    "minimum_payment": oro["minimum_payment"],
-                    "months_to_liquidate_minimum": 64 if debt > 0 else 0,
-                    "projected_interest_minimum": 36200.00 if debt > 0 else 0.0,
-                    "recommendation": "Reestructurar a 24 meses te ahorra $21,400 MXN en intereses."
+                    "minimum_payment": min_payment,
+                    "months_to_liquidate_minimum": months_liq,
+                    "projected_interest_minimum": proj_interest,
+                    "recommendation": recom
                 }
             }
 
         elif tool_name == "simulate_amortization_schedule":
-            debt = float(args.get("debt_amount", 38450.0))
+            debt = float(args.get("debt_amount", 0.0))
+            if debt <= 0:
+                real_state = self.get_real_customer_state(user_id)
+                debt = float(real_state.get("total_debt", 0.0))
+                if debt <= 0:
+                    debt = 28000.0
             months = int(args.get("term_months", 24))
             annual_rate = float(args.get("annual_rate", 22.5)) / 100.0
             extra = float(args.get("extra_monthly_payment", 0.0))
