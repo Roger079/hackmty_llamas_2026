@@ -8,10 +8,6 @@ import {
   ShieldCheck,
   Smartphone,
   UserRound,
-  Sparkles,
-  Wallet,
-  CreditCard,
-  TrendingUp,
 } from 'lucide-react';
 import { BanorteLogo } from './BanorteLogo';
 import { MayaLogo } from './MayaLogo';
@@ -20,43 +16,7 @@ interface LoginScreenProps {
   onLogin: (username: string) => void;
 }
 
-const REMEMBERED_USER_KEY = 'banorte-demo-remembered-user';
-
-const DEMO_USERS = [
-  {
-    id: 'C001',
-    firstName: 'Ana',
-    fullName: 'Ana Martínez',
-    product: 'Débito Nómina Banorte',
-    balance: '$27,900.00 MXN',
-    badge: 'Nómina & SPEI',
-    icon: Wallet,
-    color: 'border-red-100 hover:border-[#EB0029] bg-white',
-    avatarBg: 'bg-red-50 text-[#EB0029]',
-  },
-  {
-    id: 'C002',
-    firstName: 'Carlos',
-    fullName: 'Carlos Ramírez',
-    product: 'Tarjeta Banorte Clásica',
-    balance: '$45,200.00 MXN',
-    badge: 'Línea de Crédito',
-    icon: CreditCard,
-    color: 'border-slate-200/80 hover:border-slate-400 bg-white',
-    avatarBg: 'bg-slate-100 text-slate-700',
-  },
-  {
-    id: 'C003',
-    firstName: 'Silvia',
-    fullName: 'Silvia Carrasco Alvarado',
-    product: 'Ahorro Patrimonial & Inversión',
-    balance: '$116,614.10 MXN',
-    badge: 'Patrimonial',
-    icon: TrendingUp,
-    color: 'border-amber-100 hover:border-amber-400 bg-white',
-    avatarBg: 'bg-amber-50 text-amber-700',
-  },
-];
+const REMEMBERED_USER_KEY = 'banorte-remembered-user';
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('Ana');
@@ -64,26 +24,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [rememberUser, setRememberUser] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isEntering, setIsEntering] = useState(false);
-  const [selectedDemoUser, setSelectedDemoUser] = useState<string>('Ana');
 
   useEffect(() => {
     const remembered = window.localStorage.getItem(REMEMBERED_USER_KEY);
     if (remembered) {
       setUsername(remembered);
-      setSelectedDemoUser(remembered);
       setRememberUser(true);
     }
   }, []);
 
-  const handleSelectDemoUser = (name: string) => {
-    setSelectedDemoUser(name);
-    setUsername(name);
-    setPassword('••••••••');
-  };
-
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    const finalUser = username.trim() || selectedDemoUser || 'Ana';
+    const finalUser = username.trim() || 'Ana';
 
     if (rememberUser) {
       window.localStorage.setItem(REMEMBERED_USER_KEY, finalUser);
@@ -122,12 +74,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       </header>
 
       {/* 2. Main Login Canvas */}
-      <main className="flex-1 flex items-center justify-center px-4 py-6 sm:py-10">
+      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-md space-y-4 animate-in fade-in zoom-in-95 duration-200">
           {/* Main Login Card */}
-          <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-5">
+          <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-sm border border-slate-200/80 space-y-6">
             {/* Maya Welcome Badge */}
-            <div className="flex items-center gap-3 pb-1 border-b border-slate-100">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
               <MayaLogo size={42} showStatus label="Maya Copiloto" />
               <div>
                 <div className="flex items-center gap-1.5">
@@ -145,69 +97,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 Iniciar Sesión
               </h1>
               <p className="mt-1 text-xs text-slate-500">
-                Selecciona uno de los 3 usuarios demo o escribe tu primer nombre:
+                Ingresa tus credenciales para acceder a tus cuentas Banorte
               </p>
-            </div>
-
-            {/* 3 Quick Demo User Buttons */}
-            <div className="space-y-2" aria-label="Usuarios Demo de Demostración">
-              <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <span>Perfiles de Demo (1 Toque)</span>
-                <span className="text-[#EB0029] font-semibold flex items-center gap-1">
-                  <Sparkles className="h-3 w-3 text-amber-500" />
-                  Rápido
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {DEMO_USERS.map((user) => {
-                  const isSelected = selectedDemoUser.toLowerCase() === user.firstName.toLowerCase();
-                  const Icon = user.icon;
-                  return (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => handleSelectDemoUser(user.firstName)}
-                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition cursor-pointer relative ${
-                        isSelected
-                          ? 'border-[#EB0029] bg-red-50/50 shadow-2xs ring-1 ring-[#EB0029]'
-                          : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/50'
-                      }`}
-                    >
-                      {isSelected && (
-                        <span className="absolute top-2 right-2 h-4 w-4 rounded-full bg-[#EB0029] text-white flex items-center justify-center">
-                          <Check className="h-2.5 w-2.5 stroke-[3]" />
-                        </span>
-                      )}
-                      <div className={`h-7 w-7 rounded-xl flex items-center justify-center mb-2 ${user.avatarBg}`}>
-                        <Icon className="h-3.5 w-3.5" />
-                      </div>
-                      <span className="text-xs font-bold text-slate-900 leading-none">{user.firstName}</span>
-                      <span className="text-[10px] text-slate-500 mt-1 font-medium truncate w-full">{user.badge}</span>
-                      <span className="text-[10px] font-bold text-slate-700 mt-0.5 tabular-nums truncate w-full">{user.balance}</span>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
 
             {/* Form Inputs */}
             <form onSubmit={handleSubmit} className="space-y-4 pt-1" noValidate>
               <div>
-                <label htmlFor="demo-user" className="mb-1.5 block text-xs font-bold text-slate-700">
-                  Nombre de usuario
+                <label htmlFor="user-input" className="mb-1.5 block text-xs font-bold text-slate-700">
+                  Usuario
                 </label>
                 <div className="flex h-12 items-center rounded-2xl border border-slate-200 bg-slate-50/40 px-3.5 transition focus-within:border-[#EB0029] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#EB0029]/10">
                   <UserRound className="h-4 w-4 shrink-0 text-slate-400" />
                   <input
-                    id="demo-user"
+                    id="user-input"
                     autoComplete="username"
                     value={username}
-                    onChange={(event) => {
-                      setUsername(event.target.value);
-                      setSelectedDemoUser(event.target.value);
-                    }}
-                    placeholder="Ana, Carlos o Silvia"
+                    onChange={(event) => setUsername(event.target.value)}
+                    placeholder="Usuario Banorte"
                     className="h-full min-w-0 flex-1 bg-transparent px-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 placeholder:font-normal"
                   />
                 </div>
@@ -215,20 +122,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label htmlFor="demo-password" className="block text-xs font-bold text-slate-700">
+                  <label htmlFor="password-input" className="block text-xs font-bold text-slate-700">
                     Contraseña
                   </label>
-                  <span className="text-[10px] text-emerald-600 font-semibold">Cualquiera funciona</span>
                 </div>
                 <div className="flex h-12 items-center rounded-2xl border border-slate-200 bg-slate-50/40 px-3.5 transition focus-within:border-[#EB0029] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#EB0029]/10">
                   <LockKeyhole className="h-4 w-4 shrink-0 text-slate-400" />
                   <input
-                    id="demo-password"
+                    id="password-input"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Escribe lo que gustes..."
+                    placeholder="Contraseña"
                     className="h-full min-w-0 flex-1 bg-transparent px-3 text-xs sm:text-sm text-slate-900 outline-none placeholder:text-slate-400"
                   />
                   <button
@@ -253,10 +159,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   <span className="grid h-4 w-4 place-items-center rounded-md border border-slate-300 bg-white text-white peer-checked:border-[#EB0029] peer-checked:bg-[#EB0029]">
                     {rememberUser && <Check className="h-3 w-3 stroke-[3]" />}
                   </span>
-                  Recordar en este equipo
+                  Recordar usuario
                 </label>
 
-                <span className="text-[11px] font-bold text-[#EB0029]">Demo Hackathon</span>
+                <span className="text-[11px] font-medium text-[#EB0029] hover:underline cursor-pointer">
+                  ¿Olvidaste tu contraseña?
+                </span>
               </div>
 
               {/* Submit Button */}
@@ -290,7 +198,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
       {/* 3. Corporate Minimalist Footer */}
       <footer className="py-3 text-center text-[10px] text-slate-400">
-        Grupo Financiero Banorte S.A.B. de C.V. · HackMTY 2026
+        Grupo Financiero Banorte S.A.B. de C.V. Todos los derechos reservados.
       </footer>
     </div>
   );
