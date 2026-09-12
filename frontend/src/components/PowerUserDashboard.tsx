@@ -798,20 +798,20 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
               {/* 1. The 3 Official Banorte Financial Cards */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 {/* 1. Débito Enlace Nómina */}
-                <div className="banorte-card flex min-h-[230px] flex-col justify-between p-5 rounded-2xl bg-white border border-[#CBD9E6] shadow-xs transition hover:-translate-y-0.5 hover:border-slate-300">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] font-bold text-[#203956]">
+                <div className="banorte-card flex min-h-[230px] flex-col overflow-hidden rounded-2xl border border-[#CBD9E6] bg-white p-0 shadow-xs transition hover:-translate-y-0.5 hover:border-[#64748B]">
+                  <div className="flex items-center justify-between bg-[#343B45] px-5 py-3 text-white">
+                      <span className="text-[13px] font-bold">
                         {isSilvia
                           ? 'Cuenta Ahorro Patrimonial'
                           : isCarlos
                           ? 'Cuenta de Ahorro Banorte'
                           : 'Débito Enlace Nómina'}
                       </span>
-                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 font-bold text-emerald-600">
+                      <div className="grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-white/90">
                         <Wallet className="h-4 w-4" />
                       </div>
-                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col justify-between p-5">
                     <p className="mt-1 text-[13px] text-[#6D85A1]">
                       Cuenta: &nbsp;••••&nbsp; {bankAccounts.accountLast4 || '4582'}
                     </p>
@@ -836,10 +836,9 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                 </div>
 
                 {/* 2. Línea de Crédito Banorte */}
-                <div className="banorte-card flex min-h-[230px] flex-col justify-between p-5 rounded-2xl bg-white border border-[#CBD9E6] shadow-xs transition hover:-translate-y-0.5 hover:border-slate-300">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] font-bold text-[#203956]">
+                <div className="banorte-card flex min-h-[230px] flex-col overflow-hidden rounded-2xl border border-[#CBD9E6] bg-white p-0 shadow-xs transition hover:-translate-y-0.5 hover:border-[#64748B]">
+                  <div className="flex items-center justify-between bg-[#343B45] px-5 py-3 text-white">
+                      <span className="text-[13px] font-bold">
                         {bankAccounts.cardLast4
                           ? isCarlos
                             ? 'Tarjeta Banorte Clásica'
@@ -847,13 +846,12 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                           : 'Línea de Crédito Banorte'}
                       </span>
                       <div
-                        className={`grid h-10 w-10 place-items-center rounded-xl font-bold ${
-                          (bankAccounts.totalDebt ?? 0) > 0 ? 'bg-red-50 text-[#EB0029]' : 'bg-emerald-50 text-emerald-600'
-                        }`}
+                        className="grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-white/90"
                       >
                         <CreditCard className="h-4 w-4" />
                       </div>
-                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col justify-between p-5">
                     <p className="mt-1 text-[13px] text-[#6D85A1]">
                       {bankAccounts.cardLast4 ? `Crédito: •••• ${bankAccounts.cardLast4}` : 'Sin tarjetas de crédito activas'}
                     </p>
@@ -886,14 +884,14 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                 </div>
 
                 {/* 3. Pagaré Banorte a Plazo */}
-                <div className="banorte-card flex min-h-[230px] flex-col justify-between p-5 rounded-2xl bg-white border border-[#CBD9E6] shadow-xs transition hover:-translate-y-0.5 hover:border-slate-300">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] font-bold text-[#203956]">
+                <div className="banorte-card flex min-h-[230px] flex-col overflow-hidden rounded-2xl border border-[#CBD9E6] bg-white p-0 shadow-xs transition hover:-translate-y-0.5 hover:border-[#64748B]">
+                  <div className="flex items-center justify-between bg-[#343B45] px-5 py-3 text-white">
+                      <span className="text-[13px] font-bold">
                         {isSilvia ? 'Pagaré Altos Rendimientos' : 'Pagaré Banorte a Plazo'}
                       </span>
-                      <img src={investmentTrend} alt="" className="h-10 w-10 object-contain" />
-                    </div>
+                      <img src={investmentTrend} alt="" className="h-8 w-8 object-contain opacity-90" />
+                  </div>
+                  <div className="flex flex-1 flex-col justify-between p-5">
                     <p className="mt-1 text-[13px] text-[#6D85A1]">
                       {isSilvia ? 'Tasa preferencial 9.8% Anual' : 'Tasa garantizada 9.1% Anual'}
                     </p>
@@ -911,12 +909,12 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSendMessage('Quiero simular una inversión a plazo fijo.')}
-                      className="flex items-center gap-1 text-[13px] font-bold text-blue-700 hover:underline cursor-pointer"
+                      className="flex items-center gap-1 text-[13px] font-bold text-[#8A5B00] hover:underline cursor-pointer"
                     >
                       <span>Simular rendimientos</span>
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </button>
-                    <span className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+                    <span className="rounded-lg bg-[#FFF5DC] px-3 py-1.5 text-xs font-semibold text-[#8A5B00]">
                       {isSilvia ? '+9.8% Rend.' : '+9.1% Rend.'}
                     </span>
                   </div>
