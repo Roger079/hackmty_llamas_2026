@@ -82,11 +82,22 @@ export const FinancialHealthGauge: React.FC<FinancialHealthGaugeProps> = (props)
   ];
 
   const handleAskMayaAdvice = () => {
-    const prompt = `Maya, mi puntaje de salud financiera es ${score}/100 (${status}). ¿Cuáles son los 3 pasos más rápidos para subirlo a 80+ puntos este mes?`;
+    let prompt = `Maya, mi puntaje de salud financiera es ${score}/100 (${status}). ¿Cuáles son los 3 pasos más rápidos para elevar mi calificación este trimestre?`;
+
+    if (selectedFactor === 'utilization') {
+      prompt = `Maya, mi uso de línea de crédito está en ${utilization}%. ¿Cómo me recomiendas amortizar o reestructurar para reducirlo por debajo del 30% antes de mi fecha límite?`;
+    } else if (selectedFactor === 'liquidity') {
+      prompt = `Maya, mi respaldo de liquidez es de $${liquidity.toLocaleString('es-MX')} MXN. ¿Qué estrategia me recomiendas para optimizar mis cuentas a la vista e invertir en Pagaré Banorte?`;
+    } else if (selectedFactor === 'savings') {
+      prompt = `Maya, mi capacidad de ahorro actual es de $${savings.toLocaleString('es-MX')}/mes. ¿Cómo configurar metas y apartados automáticos quincenales para maximizar mi patrimonio?`;
+    } else if (selectedFactor === 'punctuality') {
+      prompt = `Maya, tengo 98 pts en puntualidad de pagos con 12 meses cumplidos. ¿Qué beneficios, tasas preferenciales o incremento de línea puedo solicitar en Banorte?`;
+    }
+
     try {
       window.dispatchEvent(
         new CustomEvent('banorte:ask-maya', {
-          detail: { prompt, score, status },
+          detail: { prompt, score, status, selectedFactor },
         })
       );
     } catch {
@@ -228,11 +239,16 @@ export const FinancialHealthGauge: React.FC<FinancialHealthGaugeProps> = (props)
 
                 {/* Maya Advice Button */}
                 <button
+                  type="button"
                   onClick={handleAskMayaAdvice}
-                  className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 text-[#EB0029] border border-red-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-2xs"
+                  className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 text-[#EB0029] border border-red-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-2xs cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Pide a Maya un plan para elevar tu score</span>
+                  <span>
+                    {selectedFactor
+                      ? `Consultar plan para ${factors.find((f) => f.id === selectedFactor)?.name || 'este indicador'}`
+                      : 'Pide a Maya un plan para elevar tu score'}
+                  </span>
                 </button>
               </div>
             )}

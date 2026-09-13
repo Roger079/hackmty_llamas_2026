@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import { ActionContext } from '../types/a2ui';
 import { InteractiveDrilldownModal } from './InteractiveDrilldownModal';
 
@@ -21,6 +22,7 @@ interface SpendingDonutCardProps {
   top_merchants?: Array<{ merchant: string; amount: number; category: string }>;
   summary?: string;
   onAction?: (ctx: ActionContext) => void;
+  onAskMaya?: (prompt: string) => void;
   disabled?: boolean;
 }
 
@@ -235,6 +237,26 @@ export const SpendingDonutCard: React.FC<SpendingDonutCardProps> = (props) => {
               <span className="text-[10px] font-bold text-slate-500">MXN</span>
             </span>
           </div>
+
+          {/* Quick Maya Audit Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const prompt = `Maya, analiza mi distribución de gastos de ${props.period || 'Septiembre 2026'} ($${totalCalculated.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN en ${cats.length} categorías). ¿Cuáles son las 2 categorías con mayor oportunidad de reducción y cómo optimizarlas?`;
+              if (props.onAskMaya) {
+                props.onAskMaya(prompt);
+              }
+              window.dispatchEvent(
+                new CustomEvent('banorte:ask-maya', {
+                  detail: { prompt, period: props.period, total: totalCalculated },
+                })
+              );
+            }}
+            className="w-full mt-2.5 py-2 px-3 bg-red-50 hover:bg-red-100 text-[#EB0029] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition border border-red-200/80 cursor-pointer shadow-2xs"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Auditar distribución completa con Maya</span>
+          </button>
         </div>
       </article>
 
@@ -249,6 +271,7 @@ export const SpendingDonutCard: React.FC<SpendingDonutCardProps> = (props) => {
           targetAmount={drilldownCategory.amount}
           color={drilldownCategory.color}
           subtitle={`${drilldownCategory.percentage}% del gasto total de ${props.period || 'Septiembre 2026'}`}
+          onAskMaya={props.onAskMaya}
         />
       )}
     </>

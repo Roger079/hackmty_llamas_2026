@@ -842,6 +842,20 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
     }
   };
 
+  // Global listener for interactive widgets dispatching banorte:ask-maya
+  useEffect(() => {
+    const handleAskMayaEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ prompt?: string }>;
+      const prompt = customEvent.detail?.prompt;
+      if (prompt) {
+        setIsDockCollapsed(false);
+        handleSendMessage(prompt);
+      }
+    };
+    window.addEventListener('banorte:ask-maya', handleAskMayaEvent);
+    return () => window.removeEventListener('banorte:ask-maya', handleAskMayaEvent);
+  }, [selectedUserId, isLoading]);
+
   // Send message in Maya Studio Dock
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;

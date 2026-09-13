@@ -122,6 +122,20 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
     return unsubscribe;
   }, [userId]);
 
+  // Global listener for interactive widgets dispatching banorte:ask-maya
+  useEffect(() => {
+    const handleAskMayaEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ prompt?: string }>;
+      const prompt = customEvent.detail?.prompt;
+      if (prompt) {
+        setActiveTab('maya');
+        onSendMessage(prompt);
+      }
+    };
+    window.addEventListener('banorte:ask-maya', handleAskMayaEvent);
+    return () => window.removeEventListener('banorte:ask-maya', handleAskMayaEvent);
+  }, [onSendMessage]);
+
   const nominaBalance = accounts?.nominaBalance ?? 27900.0;
   const platinoDebt = accounts?.totalDebt ?? 0.0;
   const accountLast4 = accounts?.accountLast4 || (clientName.includes('Carlos') ? '7721' : clientName.includes('Silvia') ? '8359' : '4582');
@@ -487,6 +501,17 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                               ))}
                               <circle cx="284" cy="42" r="5" fill="#C89319" stroke="white" strokeWidth="3" />
                             </svg>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTab('maya');
+                                onSendMessage('Maya, analicemos mi gasto semanal de $4,280 MXN (-10.4% vs semana previa). ¿En qué rubros gasté más y cuál es mi proyección de cierre de mes?');
+                              }}
+                              className="w-full mt-2.5 py-1.5 px-2 bg-red-50 hover:bg-red-100 text-[#EB0029] rounded-xl text-[10px] font-bold flex items-center justify-center gap-1.5 transition border border-red-100 cursor-pointer"
+                            >
+                              <Sparkles className="w-3 h-3" />
+                              <span>Auditar semana con Maya</span>
+                            </button>
                           </div>
                         </article>
                       )}

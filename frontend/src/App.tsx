@@ -482,6 +482,22 @@ export const App: React.FC = () => {
     }
   };
 
+  // Global listener for interactive widgets dispatching banorte:ask-maya
+  useEffect(() => {
+    const handleAskMayaEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ prompt?: string }>;
+      const prompt = customEvent.detail?.prompt;
+      if (prompt) {
+        if (window.innerWidth < 1024) {
+          setActiveTab('maya');
+        }
+        handleSendMessage(prompt);
+      }
+    };
+    window.addEventListener('banorte:ask-maya', handleAskMayaEvent);
+    return () => window.removeEventListener('banorte:ask-maya', handleAskMayaEvent);
+  }, [selectedUserId, isLoading]);
+
   const handleSendMessage = async (text: string) => {
     if (isLoading) return;
     const requestHistory = history();

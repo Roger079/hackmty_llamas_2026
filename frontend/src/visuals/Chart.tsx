@@ -1343,6 +1343,7 @@ export function Chart(p: ChartProps) {
           targetAmount={activeDrilldown.amount}
           color={activeDrilldown.color}
           subtitle={activeDrilldown.subtitle}
+          onAskMaya={p.onAskMaya}
         />
       )}
     </>
