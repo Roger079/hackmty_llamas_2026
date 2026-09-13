@@ -190,7 +190,7 @@ class GeminiOrchestrator:
 4. CONSULTA DE MESES O PERIODOS SIN HISTORIAL (EDGE CASE DE GASTOS):
    - Si el cliente solicita información de sus gastos, consumos o compras de un mes o periodo específico del que NO tenga registros en la base de datos (por ejemplo, meses anteriores como "febrero 2025", "marzo 2024", o fechas sin movimientos):
      * Invoca siempre la herramienta `get_spending_analytics(user_id='{user_id}', period=...)`.
-     * La herramienta detectará la ausencia de datos en ese periodo y te retornará automáticamente el desglose de sus ÚLTIMOS movimientos registrados en SQLite con `is_fallback=True` y la nota aclaratoria.
+     * La herramienta detectará la ausencia de datos en ese periodo y te retornará automáticamente el desglose de sus ÚLTIMOS movimientos registrados en SQLite con `is_fallback=True` y la nota aclaratoria obligatoria.
      * En tu respuesta, sé transparente y empático: indícale que no se encontraron movimientos para el mes solicitado, y preséntale el desglose de sus últimos gastos registrados disponibles (ej. Septiembre 2026).
 """
         return prompt
