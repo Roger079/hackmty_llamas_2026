@@ -77,7 +77,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               </label>
               <a href="#recuperar" onClick={(event) => event.preventDefault()} className="font-semibold text-[#EB0029] hover:underline">¿Olvidaste tu contraseña?</a>
             </div>
-            <button type="submit" disabled={isEntering} className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0066B3] text-sm font-bold text-white shadow-sm shadow-blue-500/15 transition hover:bg-[#00569A] active:scale-[0.99] disabled:cursor-wait disabled:opacity-75">
+            <button type="submit" disabled={isEntering} className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#EB0029] text-sm font-bold text-white shadow-md shadow-red-600/20 transition hover:bg-[#C70023] active:bg-[#A5001C] active:scale-[0.99] disabled:cursor-wait disabled:opacity-75 cursor-pointer">
               {isEntering ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /><span>Iniciando sesión…</span></> : <><span>Entrar a mi Banca</span><ArrowRight className="h-4 w-4" /></>}
             </button>
           </form>
