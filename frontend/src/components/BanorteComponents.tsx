@@ -128,24 +128,22 @@ export const MayaChatWidget: React.FC<{
 
   return (
     <>
-      {/* 1. Scroll-Reactive Maya Floating Action Button (Buttery Smooth Retraction & Expansion) */}
+      {/* 1. Scroll-Reactive Maya Floating Action Button (Positioned comfortably above bottom navigation bar) */}
       <button
         type="button"
         onClick={onToggle}
         aria-label="Abrir Maya, asistente virtual"
-        className={`fixed bottom-24 right-4 z-40 flex items-center rounded-full border-2 border-white bg-[#EB0029] text-white shadow-[0_12px_36px_rgba(235,0,41,0.38)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none sm:bottom-6 sm:right-6 ${
+        className={`fixed bottom-[84px] right-4 z-40 flex items-center rounded-full border-2 border-white bg-[#EB0029] text-white shadow-[0_12px_36px_rgba(235,0,41,0.38)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none sm:bottom-24 sm:right-6 ${
           isOpen
             ? 'opacity-0 scale-75 pointer-events-none'
             : 'opacity-100 scale-100 pointer-events-auto hover:scale-105 active:scale-95'
         } ${
           isCompact
             ? 'w-12 h-12 p-0 justify-center shadow-md'
-            : 'w-[230px] h-12 px-2.5 justify-start gap-2.5'
+            : 'w-[230px] h-12 px-2 justify-start gap-2.5'
         }`}
       >
-        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#EB0029] shrink-0 shadow-xs">
-          <BrandLogo variant="icon" theme="red" className="h-4 w-4" alt="" />
-        </div>
+        <MayaAvatar size="sm" />
         <div
           className={`flex flex-col text-left overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] whitespace-nowrap ${
             isCompact
@@ -160,9 +158,9 @@ export const MayaChatWidget: React.FC<{
         </div>
       </button>
 
-      {/* 2. Maya Interactive Popover Widget (Smooth Slide & Retraction Exit) */}
+      {/* 2. Maya Interactive Popover Widget (Docked strictly ABOVE bottom button bar) */}
       <div
-        className={`fixed bottom-0 right-0 z-50 flex w-full max-w-sm flex-col overflow-hidden rounded-t-[28px] border border-red-900/20 bg-white text-slate-900 shadow-[0_18px_55px_rgba(110,0,24,0.32)] sm:bottom-5 sm:right-6 sm:rounded-[28px] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+        className={`fixed bottom-[76px] right-3 left-3 sm:left-auto z-50 flex w-auto sm:w-full max-w-[430px] sm:max-w-sm flex-col overflow-hidden rounded-[24px] border border-red-900/20 bg-white text-slate-900 shadow-[0_18px_55px_rgba(110,0,24,0.32)] sm:bottom-24 sm:right-6 transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
           isOpen
             ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
             : 'opacity-0 translate-y-8 scale-95 pointer-events-none'

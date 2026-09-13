@@ -153,7 +153,11 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
 
 
   return (
-    <div className="min-h-screen w-full bg-[#F4F6F9] text-slate-900 flex flex-col justify-between antialiased">
+    <div className="min-h-screen w-full bg-[#F4F6F9] text-slate-900 flex flex-col justify-between antialiased relative">
+      {/* Red Canvas Bleed behind & above the banner for native iOS app feel */}
+      <div className="absolute -top-[100vh] inset-x-0 h-[100vh] bg-[#EB0029] pointer-events-none" />
+      <div className="absolute top-0 inset-x-0 h-64 bg-[#EB0029] -z-10 pointer-events-none" />
+
       {/* 1. Mobile Header (Clean, Authentic Banorte Red) */}
       <header className="sticky top-0 z-30 bg-[#EB0029] text-white px-4 pt-3.5 pb-3.5 shadow-sm">
         <div className="max-w-[430px] mx-auto flex items-center justify-between">
@@ -677,69 +681,79 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
           </div>
         )}
 
-        {/* TAB 3: TARJETAS (Interactive Digital Card with CVV Dinámico) */}
+        {/* TAB 3: TARJETAS (All cards that appear on the initial page) */}
         {activeTab === 'cards' && (
-          <div className="space-y-4">
-            <div className="rounded-2xl bg-gradient-to-br from-[#1C1E21] to-[#343B45] p-5 text-white shadow-md space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
-                  {cardLast4 ? (clientName.includes('Carlos') ? 'Tarjeta Digital Clásica' : 'Tarjeta Digital Oro') : 'Tarjeta Digital Enlace Débito'}
-                </span>
-                <span className="text-xs font-mono font-bold">BANORTE</span>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-1">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">Mis Tarjetas Banorte</h2>
+                <p className="text-[11px] text-slate-500">
+                  {mobileCards.length} tarjetas activas asociadas a tu cuenta
+                </p>
               </div>
-
-              <div className="font-mono text-lg tracking-widest text-slate-100">
-                •••• •••• •••• {cardLast4 || accountLast4}
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-white/15 text-xs">
-                <div>
-                  <span className="text-[9px] text-slate-400 block uppercase">Titular</span>
-                  <span className="font-bold">{clientName}</span>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-[9px] text-slate-400 block uppercase">CVV Dinámico</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowCvv(!showCvv)}
-                    className="font-mono font-black text-amber-400 flex items-center gap-1 cursor-pointer"
-                  >
-                    {showCvv ? '842' : '•••'}
-                    {showCvv ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                  </button>
-                </div>
-              </div>
+              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">
+                Todas Activas
+              </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white border border-slate-200 text-xs space-y-2.5 shadow-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Límite de Crédito:</span>
-                <span className="font-bold">$80,000.00 MXN</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Saldo Exigible:</span>
-                <span className="font-bold tabular-nums">
-                  ${platinoDebt.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Fecha de Corte:</span>
-                <span className="font-bold text-[#EB0029]">18 Sep 2026</span>
-              </div>
+            {/* List of All Cards that appear on initial page */}
+            <div className="space-y-5">
+              {mobileCards.map((card, idx) => {
+                const cvvs = ['714', '842', '390'];
+                return (
+                  <div key={`${card.cardType}-${card.last4}`} className="space-y-2">
+                    <BanorteCard
+                      size="large"
+                      holderName={clientName}
+                      last4={card.last4}
+                      balance={card.balance}
+                      cardType={card.cardType}
+                      isGold={card.isGold}
+                      className="shadow-md"
+                    />
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-slate-200 text-xs shadow-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-bold text-slate-800 text-[11px] block">{card.cardType}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">•••• {card.last4}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-500">CVV Dinámico:</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowCvv((prev) => !prev)}
+                            className="font-mono font-black text-[#EB0029] flex items-center gap-1 cursor-pointer bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition"
+                          >
+                            {showCvv ? cvvs[idx] : '•••'}
+                            {showCvv ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1.5 border-t border-slate-100">
+                        <span>Vigencia: 12/28</span>
+                        <span>Límite: ${card.isGold ? '120,000' : '80,000'} MXN</span>
+                        <span className="text-emerald-600 font-bold">Activa</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('maya');
-                onSendMessage('¿Cómo reestructurar mi tarjeta Platino?');
-              }}
-              className="w-full py-3 rounded-xl bg-[#EB0029] hover:bg-[#C70023] text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-            >
-              <Sparkles className="h-4 w-4 text-amber-300" />
-              <span>Ver opciones de reestructuración en Maya</span>
-            </button>
+            {platinoDebt > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('maya');
+                  onSendMessage('¿Cómo reestructurar mi tarjeta de crédito?');
+                }}
+                className="w-full py-3 rounded-xl bg-[#EB0029] hover:bg-[#C70023] text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              >
+                <Sparkles className="h-4 w-4 text-amber-300" />
+                <span>Ver opciones de reestructuración en Maya</span>
+              </button>
+            )}
           </div>
         )}
 
