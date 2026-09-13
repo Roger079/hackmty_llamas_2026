@@ -324,7 +324,16 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
                 },
                 "widget_type": {
                     "type": "STRING",
-                    "description": "Tipo de widget a agregar o remover: 'financial_health', 'spending_donut', 'investment_simulator', 'debt_restructure', 'spei_transfer_form', 'rent_payment', 'weekly_spending', 'investment_quick'"
+                    "description": "Tipo de widget a agregar o remover: 'BanorteChartCard' (para Sankey, Heatmap, BarChart, LineChart), 'spending_donut', 'financial_health', 'investment_simulator', 'debt_restructure', 'spei_transfer_form', 'rent_payment', 'weekly_spending', 'investment_quick'"
+                },
+                "payload": {
+                    "type": "OBJECT",
+                    "description": "Especificación declarativa A2UI completa ({component, props}) del widget o gráfico que se desea fijar en la pantalla de inicio.",
+                    "properties": {}
+                },
+                "title": {
+                    "type": "STRING",
+                    "description": "Título descriptivo del widget para la pantalla de inicio."
                 },
                 "new_order": {
                     "type": "ARRAY",

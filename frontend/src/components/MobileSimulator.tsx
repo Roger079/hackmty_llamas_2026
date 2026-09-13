@@ -566,6 +566,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
               clientName={clientName}
               onResetDemo={onResetDemo}
               userId={userId}
+              onMinimize={() => setActiveTab('home')}
             />
           </div>
         )}

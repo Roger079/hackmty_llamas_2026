@@ -41,6 +41,14 @@ export const DEFAULT_HOME_WIDGETS: MobileWidgetItem[] = [
   },
 ];
 
+const cloneDefaultWidgets = (): MobileWidgetItem[] => DEFAULT_HOME_WIDGETS.map((widget) => ({ ...widget }));
+
+const widgetIdentity = (widget: MobileWidgetItem): string => {
+  if (widget.type === 'built_in') return `builtin:${widget.builtInKey || widget.id}`;
+  const payload = widget.payload;
+  return `a2ui:${payload?.component || widget.id}:${payload?.props?.chartType || payload?.props?.id || ''}`;
+};
+
 export function getHomeWidgetsStorageKey(uid: string): string {
   return `banorte_home_widgets_${uid || 'default'}`;
 }
@@ -163,20 +171,192 @@ export function createWidgetItem(widgetType: string): MobileWidgetItem | null {
       },
     };
   }
+  if (norm.includes('sankey') || norm.includes('flujo') || norm.includes('cashflow') || norm.includes('flujodinero')) {
+    return {
+      id: `sankey-chart-${Date.now()}`,
+      type: 'a2ui',
+      title: 'Flujo de Dinero (Sankey)',
+      subtitle: 'Entradas vs Gastos',
+      category: 'Finanzas',
+      colSpan: 2,
+      payload: {
+        component: 'BanorteChartCard',
+        props: {
+          id: 'widget-sankey-chart',
+          chartType: 'sankey',
+          title: 'Flujo de Dinero Banorte',
+          subtitle: 'Ingresos vs Gastos y Ahorro',
+          height: 280,
+          data: {
+            nodes: [
+              { id: 'Nomina', name: 'Nómina Banorte', color: '#004B87' },
+              { id: 'Otros', name: 'Otros Ingresos', color: '#00A859' },
+              { id: 'TotalIngresos', name: 'Ingresos Totales', color: '#1B365D' },
+              { id: 'Super', name: 'Supermercado', color: '#EB0029' },
+              { id: 'Renta', name: 'Renta / Servicios', color: '#D97706' },
+              { id: 'Restaurantes', name: 'Restaurantes', color: '#8B5CF6' },
+              { id: 'Ahorro', name: 'Ahorro / Pagaré', color: '#10B981' },
+            ],
+            links: [
+              { source: 'Nomina', target: 'TotalIngresos', value: 38500 },
+              { source: 'Otros', target: 'TotalIngresos', value: 6500 },
+              { source: 'TotalIngresos', target: 'Super', value: 12400 },
+              { source: 'TotalIngresos', target: 'Renta', value: 14200 },
+              { source: 'TotalIngresos', target: 'Restaurantes', value: 5800 },
+              { source: 'TotalIngresos', target: 'Ahorro', value: 12600 },
+            ],
+          },
+        },
+      },
+    };
+  }
+  if (norm.includes('heatmap') || norm.includes('calendario') || norm.includes('frecuencia') || norm.includes('calendar')) {
+    return {
+      id: `heatmap-chart-${Date.now()}`,
+      type: 'a2ui',
+      title: 'Frecuencia de Gastos Diarios',
+      subtitle: 'Mapa de calor mensual',
+      category: 'Finanzas',
+      colSpan: 2,
+      payload: {
+        component: 'BanorteChartCard',
+        props: {
+          id: 'widget-heatmap-chart',
+          chartType: 'calendarHeatmap',
+          title: 'Frecuencia de Gastos Diarios',
+          subtitle: 'Intensidad de compras últimos 30 días',
+          height: 240,
+          data: [
+            { date: '2026-09-01', value: 450, count: 2 },
+            { date: '2026-09-02', value: 1200, count: 4 },
+            { date: '2026-09-03', value: 320, count: 1 },
+            { date: '2026-09-04', value: 2800, count: 5 },
+            { date: '2026-09-05', value: 950, count: 3 },
+            { date: '2026-09-06', value: 150, count: 1 },
+            { date: '2026-09-07', value: 4100, count: 6 },
+            { date: '2026-09-08', value: 800, count: 2 },
+            { date: '2026-09-09', value: 1450, count: 3 },
+            { date: '2026-09-10', value: 3100, count: 5 },
+            { date: '2026-09-11', value: 620, count: 2 },
+            { date: '2026-09-12', value: 1890, count: 4 },
+          ],
+        },
+      },
+    };
+  }
+  if (norm.includes('barra') || norm.includes('barchart') || norm.includes('barras')) {
+    return {
+      id: `bar-chart-${Date.now()}`,
+      type: 'a2ui',
+      title: 'Gastos por Categoría (Barras)',
+      subtitle: 'Comparativa mensual',
+      category: 'Finanzas',
+      colSpan: 2,
+      payload: {
+        component: 'BanorteChartCard',
+        props: {
+          id: 'widget-bar-chart',
+          chartType: 'bar',
+          title: 'Gastos por Categoría',
+          subtitle: 'Distribución en MXN',
+          height: 260,
+          data: [
+            { category: 'Supermercado', amount: 5200 },
+            { category: 'Servicios', amount: 3100 },
+            { category: 'Restaurantes', amount: 2800 },
+            { category: 'Transporte', amount: 2250 },
+            { category: 'Farmacia', amount: 1500 },
+          ],
+        },
+      },
+    };
+  }
+  if (norm.includes('linea') || norm.includes('tendencia') || norm.includes('linechart') || norm.includes('evolucion')) {
+    return {
+      id: `line-chart-${Date.now()}`,
+      type: 'a2ui',
+      title: 'Evolución de Saldo y Gastos',
+      subtitle: 'Tendencia mensual',
+      category: 'Finanzas',
+      colSpan: 2,
+      payload: {
+        component: 'BanorteChartCard',
+        props: {
+          id: 'widget-line-chart',
+          chartType: 'line',
+          title: 'Evolución de Saldo y Gastos',
+          subtitle: 'Histórico quincenal',
+          height: 260,
+          data: [
+            { period: '15 Ago', balance: 34500, spending: 12000 },
+            { period: '30 Ago', balance: 39800, spending: 14500 },
+            { period: '15 Sep', balance: 42100, spending: 11200 },
+          ],
+        },
+      },
+    };
+  }
+  if (norm.includes('treemap') || norm.includes('arbol')) {
+    return {
+      id: `treemap-chart-${Date.now()}`,
+      type: 'a2ui',
+      title: 'Mapa de Gastos Banorte',
+      subtitle: 'Distribución proporcional',
+      category: 'Finanzas',
+      colSpan: 2,
+      payload: {
+        component: 'BanorteChartCard',
+        props: {
+          id: 'widget-treemap-chart',
+          chartType: 'treemap',
+          title: 'Mapa de Gastos Banorte',
+          subtitle: 'Distribución de egresos',
+          height: 260,
+          data: [
+            { name: 'Vivienda y Renta', value: 14200, category: 'Fijos' },
+            { name: 'Supermercado', value: 12400, category: 'Fijos' },
+            { name: 'Restaurantes', value: 5800, category: 'Variables' },
+            { name: 'Transporte', value: 3200, category: 'Variables' },
+            { name: 'Suscripciones', value: 1200, category: 'Servicios' },
+          ],
+        },
+      },
+    };
+  }
+  if (norm.includes('waterfall') || norm.includes('cascada')) {
+    return {
+      id: `waterfall-chart-${Date.now()}`,
+      type: 'a2ui',
+      title: 'Conciliación Financiera (Waterfall)',
+      subtitle: 'Ingresos vs Gastos vs Saldo Neto',
+      category: 'Finanzas',
+      colSpan: 2,
+      payload: {
+        component: 'BanorteChartCard',
+        props: {
+          id: 'widget-waterfall-chart',
+          chartType: 'waterfall',
+          title: 'Flujo Neto Mensual',
+          subtitle: 'Conciliación de entradas y salidas',
+          height: 260,
+          data: [
+            { category: 'Ingresos Nómina', amount: 38500, type: 'income' },
+            { category: 'Renta', amount: -14200, type: 'expense' },
+            { category: 'Supermercado', amount: -6200, type: 'expense' },
+            { category: 'Servicios', amount: -3100, type: 'expense' },
+            { category: 'Inversión Ahorro', amount: -5000, type: 'investment' },
+            { category: 'Saldo Neto', amount: 10000, type: 'total' },
+          ],
+        },
+      },
+    };
+  }
   if (
     norm.includes('donut') ||
     norm.includes('dona') ||
-    norm.includes('gasto') ||
-    norm.includes('spending') ||
-    norm.includes('pay') ||
     norm.includes('pie') ||
     norm.includes('pastel') ||
-    norm.includes('grafic') ||
-    norm.includes('grafica') ||
-    norm.includes('grafico') ||
-    norm.includes('chart') ||
-    norm.includes('categoria') ||
-    norm.includes('consumo')
+    norm.includes('spendingdonut')
   ) {
     return {
       id: `spending-donut-${Date.now()}`,
@@ -302,6 +482,47 @@ export function createWidgetItem(widgetType: string): MobileWidgetItem | null {
       colSpan: 1,
     };
   }
+
+  // Generic chart fallback
+  if (norm.includes('chart') || norm.includes('grafic') || norm.includes('banortechartcard')) {
+    return {
+      id: `sankey-chart-${Date.now()}`,
+      type: 'a2ui',
+      title: 'Flujo de Dinero (Sankey)',
+      subtitle: 'Entradas vs Gastos',
+      category: 'Finanzas',
+      colSpan: 2,
+      payload: {
+        component: 'BanorteChartCard',
+        props: {
+          id: 'widget-sankey-chart',
+          chartType: 'sankey',
+          title: 'Flujo de Dinero Banorte',
+          subtitle: 'Ingresos vs Gastos y Ahorro',
+          height: 280,
+          data: {
+            nodes: [
+              { id: 'Nomina', name: 'Nómina Banorte', color: '#004B87' },
+              { id: 'Otros', name: 'Otros Ingresos', color: '#00A859' },
+              { id: 'TotalIngresos', name: 'Ingresos Totales', color: '#1B365D' },
+              { id: 'Super', name: 'Supermercado', color: '#EB0029' },
+              { id: 'Renta', name: 'Renta / Servicios', color: '#D97706' },
+              { id: 'Restaurantes', name: 'Restaurantes', color: '#8B5CF6' },
+              { id: 'Ahorro', name: 'Ahorro / Pagaré', color: '#10B981' },
+            ],
+            links: [
+              { source: 'Nomina', target: 'TotalIngresos', value: 38500 },
+              { source: 'Otros', target: 'TotalIngresos', value: 6500 },
+              { source: 'TotalIngresos', target: 'Super', value: 12400 },
+              { source: 'TotalIngresos', target: 'Renta', value: 14200 },
+              { source: 'TotalIngresos', target: 'Restaurantes', value: 5800 },
+              { source: 'TotalIngresos', target: 'Ahorro', value: 12600 },
+            ],
+          },
+        },
+      },
+    };
+  }
   return null;
 }
 
@@ -314,24 +535,35 @@ export function executeHomeWidgetsAction(
     newOrder?: string[];
     payload?: A2UIPayload;
     title?: string;
+    replace?: boolean;
+    removeCurrentVisual?: boolean;
   }
 ): MobileWidgetItem[] {
   let current = loadHomeWidgets(userId);
 
   if (action === 'reset') {
-    current = DEFAULT_HOME_WIDGETS;
+    current = cloneDefaultWidgets();
     saveHomeWidgets(userId, current);
     return current;
   }
 
   if (action === 'remove') {
+    if (params.removeCurrentVisual) {
+      const visualIndex = current.findIndex(
+        (widget) => widget.type === 'a2ui' || widget.builtInKey === 'weekly_spending'
+      );
+      if (visualIndex >= 0) current = current.filter((_, index) => index !== visualIndex);
+      saveHomeWidgets(userId, current);
+      return current;
+    }
     const target = (params.widgetType || params.widgetId || '').toLowerCase().trim();
     current = current.filter((w) => {
       const idMatch = w.id.toLowerCase().includes(target);
       const keyMatch = (w.builtInKey || '').toLowerCase().includes(target);
       const titleMatch = w.title.toLowerCase().includes(target);
       const compMatch = (w.payload?.component || '').toLowerCase().includes(target);
-      return !(idMatch || keyMatch || titleMatch || compMatch);
+      const chartTypeMatch = String(w.payload?.props?.chartType || '').toLowerCase().includes(target);
+      return !(idMatch || keyMatch || titleMatch || compMatch || chartTypeMatch);
     });
     saveHomeWidgets(userId, current);
     return current;
@@ -341,11 +573,23 @@ export function executeHomeWidgetsAction(
     const target = params.widgetType || params.widgetId || '';
     let item: MobileWidgetItem | null = null;
     if (params.payload) {
+      const chartType = params.payload.props?.chartType;
+      const autoTitle = params.title || params.payload.props?.title || (
+        chartType === 'sankey' ? 'Flujo de Dinero (Sankey)' :
+        chartType === 'calendarHeatmap' ? 'Frecuencia de Gastos Diarios' :
+        chartType === 'bar' ? 'Gastos por Categoría' :
+        chartType === 'line' ? 'Evolución de Saldo y Gastos' :
+        chartType === 'treemap' ? 'Mapa de Gastos Banorte' :
+        chartType === 'waterfall' ? 'Conciliación Financiera (Waterfall)' :
+        (params.payload.component === 'SpendingDonutCard' ? 'Desglose de Gastos' : params.payload.component)
+      );
+
       item = {
         id: `widget-${Date.now()}`,
         type: 'a2ui',
-        title: params.title || params.payload.component,
+        title: autoTitle,
         subtitle: 'Fijado por Maya',
+        category: 'Finanzas',
         colSpan: 2,
         payload: params.payload,
       };
@@ -354,14 +598,33 @@ export function executeHomeWidgetsAction(
     }
 
     if (item) {
+      if (params.replace && params.payload) {
+        // A replacement targets the current visual slot, not merely another
+        // widget of the same component type. Prefer an existing A2UI visual;
+        // otherwise replace the default spending visual on the mobile home.
+        const visualIndex = current.findIndex(
+          (widget) => widget.type === 'a2ui' || widget.builtInKey === 'weekly_spending'
+        );
+        if (visualIndex >= 0) {
+          const replaced = current[visualIndex];
+          current = [
+            { ...item, id: replaced.id, subtitle: 'Actualizado por Maya' },
+            ...current.filter((_, index) => index !== visualIndex),
+          ];
+          saveHomeWidgets(userId, current);
+          return current;
+        }
+      }
+
       const alreadyIndex = current.findIndex(
-        (w) =>
-          (w.builtInKey && item?.builtInKey && w.builtInKey === item.builtInKey) ||
-          (w.payload?.component && item?.payload?.component && w.payload.component === item.payload.component)
+        (widget) => widgetIdentity(widget) === widgetIdentity(item!)
       );
       if (alreadyIndex >= 0) {
         const found = current[alreadyIndex];
-        current = [found, ...current.filter((_, idx) => idx !== alreadyIndex)];
+        const updated = params.payload
+          ? { ...item, id: found.id, subtitle: 'Actualizado por Maya' }
+          : found;
+        current = [updated, ...current.filter((_, idx) => idx !== alreadyIndex)];
       } else {
         current = [item, ...current];
       }
@@ -383,7 +646,8 @@ export function executeHomeWidgetsAction(
             w.id.toLowerCase().includes(t) ||
             (w.builtInKey || '').toLowerCase().includes(t) ||
             w.title.toLowerCase().includes(t) ||
-            (w.payload?.component || '').toLowerCase().includes(t)
+            (w.payload?.component || '').toLowerCase().includes(t) ||
+            String(w.payload?.props?.chartType || '').toLowerCase().includes(t)
           );
         });
         if (foundIdx >= 0) {

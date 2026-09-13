@@ -684,11 +684,19 @@ class McpClient:
             action = args.get("action", "list")
             widget_type = args.get("widget_type", "")
             new_order = args.get("new_order", [])
+            payload = args.get("payload")
+            title = args.get("title")
+            replace = args.get("replace", False)
+            remove_current_visual = args.get("remove_current_visual", False)
             return {
                 "status": "success",
                 "action": action,
                 "widget_type": widget_type,
                 "new_order": new_order,
+                "payload": payload,
+                "title": title,
+                "replace": replace,
+                "remove_current_visual": remove_current_visual,
                 "user_id": user_id,
                 "message": f"Acción de widgets de inicio '{action}' ejecutada por Maya."
             }
