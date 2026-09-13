@@ -1269,7 +1269,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
             className={`grid gap-5 transition-all duration-300 ${
               isDockCollapsed
                 ? 'grid-cols-1'
-                : 'grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]'
+                : 'grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_480px] xl:grid-cols-[minmax(0,1.25fr)_520px]'
             }`}
           >
             {/* LEFT COLUMN: The Modular Power User Command Center */}
@@ -1619,8 +1619,8 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
 
             {/* RIGHT COLUMN: Maya Dock */}
             {!isDockCollapsed && !isDockExpanded && (
-              <div className="space-y-4">
-                <div className="banorte-card rounded-2xl border border-[#CBD9E6] bg-white shadow-sm flex flex-col h-[760px] overflow-hidden">
+              <div className="space-y-4 lg:sticky lg:top-4">
+                <div className="banorte-card rounded-2xl border border-[#CBD9E6] bg-white shadow-md flex flex-col h-[calc(100vh-100px)] min-h-[780px] overflow-hidden">
                   {/* Dock Header */}
                   <div className="flex items-center justify-between border-b border-red-900/20 bg-[#EB0029] p-3.5 text-white">
                     <div className="flex items-center gap-2">

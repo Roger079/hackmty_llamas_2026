@@ -236,7 +236,7 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
 
   return (
     <section
-      className={className || "banorte-card flex h-[calc(100svh-204px)] min-h-[700px] w-full min-w-0 flex-col overflow-hidden bg-white"}
+      className={className || "banorte-card flex min-h-[820px] h-[calc(100vh-140px)] w-full min-w-0 flex-col overflow-hidden bg-white rounded-2xl shadow-md border border-[#CBD9E6]"}
       aria-label="Conversación con Maya"
     >
       {/* Zen Header: Official Banorte Header styling */}
@@ -460,14 +460,14 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
         {/* Form input */}
         <form
           onSubmit={handleSubmit}
-          className="flex items-end gap-2.5 rounded-2xl border border-[#E1EAF2] bg-white p-2 shadow-[inset_0_1px_2px_rgba(39,67,95,0.03)] transition-all focus-within:border-[#E4003B] focus-within:ring-2 focus-within:ring-[#E4003B]/10"
+          className="flex items-center gap-2.5 rounded-2xl border border-[#CBD9E6] bg-white p-2.5 shadow-xs transition-all focus-within:border-[#EB0029] focus-within:ring-2 focus-within:ring-[#EB0029]/15"
         >
           <label htmlFor="maya-message" className="sr-only">
             Escribe tu consulta para Maya
           </label>
           <textarea
             id="maya-message"
-            rows={1}
+            rows={2}
             value={inputText}
             onChange={(event) => setInputText(event.target.value)}
             onKeyDown={(event) => {
@@ -476,17 +476,17 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
                 handleSubmit(event);
               }
             }}
-            placeholder="Pregúntale a Maya sobre tus cuentas o pagos…"
+            placeholder="Pregúntale a Maya sobre tus cuentas, transferencias o gastos..."
             disabled={isLoading}
-            className="max-h-24 min-h-8 min-w-0 flex-1 resize-none bg-transparent px-2.5 py-1 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:opacity-50"
+            className="max-h-36 min-h-[56px] min-w-0 flex-1 resize-none bg-transparent px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:opacity-50 leading-relaxed font-normal"
           />
           <button
             type="submit"
             disabled={isLoading || !inputText.trim()}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E4003B] text-white shadow-sm transition hover:bg-[#C70032] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EB0029] text-white shadow-sm transition hover:bg-[#C70024] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
             aria-label="Enviar mensaje"
           >
-            <Send className="h-3.5 w-3.5" />
+            <Send className="h-4 w-4" />
           </button>
         </form>
 
