@@ -159,11 +159,11 @@ async def serve_index(request: Request):
     """
     Root route '/':
     - Mobile: default experience (serves mobile banking directly at '/')
-    - PC / Desktop: redirects to '/display'
+    - PC / Desktop: redirects to '/dashboard'
     """
     user_agent = request.headers.get("user-agent", "")
     if not is_mobile_user_agent(user_agent):
-        return RedirectResponse(url="/display", status_code=302)
+        return RedirectResponse(url="/dashboard", status_code=302)
 
     # On Mobile, serve index.html directly at '/'
     if frontend_dist.exists():
@@ -179,9 +179,9 @@ async def serve_index(request: Request):
         "chat_endpoint": "POST /api/chat"
     }
 
-@app.get("/display")
-async def serve_display():
-    """Serves the Banorte Desktop / PC Display Portal (React SPA)"""
+@app.get("/dashboard")
+async def serve_dashboard():
+    """Serves the Banorte Desktop Dashboard for PC (React SPA)"""
     if frontend_dist.exists():
         dist_index = frontend_dist / "index.html"
         if dist_index.exists():
@@ -189,26 +189,22 @@ async def serve_display():
     portal_file = static_dir / "portal.html"
     if portal_file.exists():
         return FileResponse(str(portal_file))
-    raise HTTPException(status_code=404, detail="Display screen file not found")
+    raise HTTPException(status_code=404, detail="Dashboard screen file not found")
+
+@app.get("/display")
+async def serve_display():
+    """Alias to /dashboard for PC"""
+    return RedirectResponse(url="/dashboard", status_code=301)
 
 @app.get("/portal")
 async def serve_portal():
-    """Alias to /display for PC"""
-    return RedirectResponse(url="/display", status_code=301)
+    """Alias to /dashboard for PC"""
+    return RedirectResponse(url="/dashboard", status_code=301)
 
 @app.get("/mobile")
 async def serve_mobile():
     """Alias to default root '/' for Mobile"""
     return RedirectResponse(url="/", status_code=301)
-
-@app.get("/dashboard")
-async def serve_dashboard():
-    """Serves the Power User Dashboard (React SPA)"""
-    if frontend_dist.exists():
-        dist_index = frontend_dist / "index.html"
-        if dist_index.exists():
-            return FileResponse(str(dist_index))
-    return RedirectResponse(url="/", status_code=302)
 
 @app.get("/notebook")
 async def serve_notebook():

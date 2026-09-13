@@ -132,10 +132,10 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                 type="button"
                 onClick={onNavigateDisplay}
                 className="inline-flex items-center gap-1 rounded-full bg-black/20 hover:bg-black/30 px-2.5 py-1 text-[10px] font-semibold transition border border-white/20 cursor-pointer text-white"
-                title="Cambiar a pantalla de control para PC (/display)"
+                title="Cambiar al Dashboard para PC (/dashboard)"
               >
                 <Monitor className="h-3 w-3 text-amber-300" />
-                <span>Display PC</span>
+                <span>Dashboard PC</span>
               </button>
             )}
             {onLogout && (

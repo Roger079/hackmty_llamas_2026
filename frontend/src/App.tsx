@@ -68,9 +68,9 @@ export const App: React.FC = () => {
     if (p === '/' || p === '') {
       if (!checkIsMobileDevice()) {
         try {
-          window.history.replaceState({}, '', '/display');
+          window.history.replaceState({}, '', '/dashboard');
         } catch (_) {}
-        return '/display';
+        return '/dashboard';
       }
       return '/';
     }
@@ -80,13 +80,13 @@ export const App: React.FC = () => {
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     const p = window.location.pathname;
-    if (p.startsWith('/display') || p.startsWith('/portal')) return false;
+    if (p.startsWith('/dashboard') || p.startsWith('/display') || p.startsWith('/portal')) return false;
     if (p.startsWith('/mobile')) return true;
     return checkIsMobileDevice();
   });
 
-  const handleNavigateView = (view: 'mobile' | 'display') => {
-    const target = view === 'mobile' ? '/' : '/display';
+  const handleNavigateView = (view: 'mobile' | 'dashboard') => {
+    const target = view === 'mobile' ? '/' : '/dashboard';
     window.history.pushState({}, '', target);
     setCurrentPath(target);
     setIsMobileViewport(view === 'mobile');
@@ -96,14 +96,14 @@ export const App: React.FC = () => {
     const handlePopState = () => {
       const p = window.location.pathname;
       setCurrentPath(p);
-      if (p.startsWith('/display') || p.startsWith('/portal')) {
+      if (p.startsWith('/dashboard') || p.startsWith('/display') || p.startsWith('/portal')) {
         setIsMobileViewport(false);
       } else if (p.startsWith('/mobile')) {
         setIsMobileViewport(true);
       } else {
         if (!checkIsMobileDevice()) {
-          window.history.replaceState({}, '', '/display');
-          setCurrentPath('/display');
+          window.history.replaceState({}, '', '/dashboard');
+          setCurrentPath('/dashboard');
           setIsMobileViewport(false);
         } else {
           setIsMobileViewport(true);
@@ -142,7 +142,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handleResize = () => {
       const p = window.location.pathname;
-      if (p.startsWith('/display') || p.startsWith('/portal')) {
+      if (p.startsWith('/dashboard') || p.startsWith('/display') || p.startsWith('/portal')) {
         setIsMobileViewport(false);
       } else if (p.startsWith('/mobile')) {
         setIsMobileViewport(true);
@@ -737,10 +737,7 @@ export const App: React.FC = () => {
     return (
       <PowerUserDashboard
         initialUserId={selectedUserId}
-        onNavigateHome={() => {
-          window.history.pushState({}, '', '/');
-          setCurrentPath('/');
-        }}
+        onNavigateHome={() => handleNavigateView('mobile')}
         onLogout={handleLogout}
       />
     );
@@ -763,7 +760,7 @@ export const App: React.FC = () => {
           onOpenInspector={() => setIsInspectorOpen(true)}
           userId={selectedUserId}
           onLogout={handleLogout}
-          onNavigateDisplay={() => handleNavigateView('display')}
+          onNavigateDisplay={() => handleNavigateView('dashboard')}
         />
         {isInspectorOpen && renderInspectorDrawer()}
       </div>
