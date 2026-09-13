@@ -1,6 +1,6 @@
-﻿{
+{
   "id": "/",
-  "name": "Banorte Móvil — Copiloto Financiero",
+  "name": "Banorte Móvil - Copiloto Financiero",
   "short_name": "Banorte",
   "description": "Banca Conversacional Inteligente con IA, Generative UI (A2UI) y transferencias SPEI 24/7.",
   "start_url": "/",
@@ -8,7 +8,7 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui", "window-controls-overlay"],
   "orientation": "portrait-primary",
-  "background_color": "#0B192C",
+  "background_color": "#EB0029",
   "theme_color": "#EB0029",
   "lang": "es-MX",
   "dir": "ltr",
