@@ -458,6 +458,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
           message: actionLabel,
           user_id: selectedUserId,
           action_context: actionCtx,
+          surface: 'dashboard',
         }),
       });
 
@@ -630,6 +631,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
         body: JSON.stringify({
           message: text,
           user_id: selectedUserId,
+          surface: 'dashboard',
         }),
       });
 

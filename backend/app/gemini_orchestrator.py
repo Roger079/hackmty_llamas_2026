@@ -126,7 +126,7 @@ def _is_investment_request(message: str) -> bool:
     return any(term in message.lower() for term in ["invertir", "inversión", "inversion", "pagaré", "pagare", "rendimiento", "plazo fijo"])
 
 
-def _is_home_widget_request(message: str) -> bool:
+def _is_dashboard_widget_request(message: str, surface: str = "mobile") -> bool:
     lowered = message.lower()
     normalized = (
         lowered.replace("á", "a")
@@ -135,9 +135,44 @@ def _is_home_widget_request(message: str) -> bool:
         .replace("ó", "o")
         .replace("ú", "u")
     )
+    dashboard_terms = ["dashboard", "command center", "pantalla web", "monitor web", "escritorio web"]
+    action_terms = [
+        "agrega", "agregar", "agregalo", "agregala", "anade", "anadir", "añade", "añadir", "añadelo",
+        "pon", "poner", "ponlo", "ponla", "fija", "fijar", "fijalo", "fijala", "manda", "mandar", "mandalo",
+        "envia", "enviar", "envialo", "guarda", "guardar", "guardalo", "coloca", "colocar", "ver en", "lleva", "proyecta", "proyectar"
+    ]
+    has_dashboard = any(term in normalized for term in dashboard_terms)
+    has_action = any(term in normalized for term in action_terms)
+    explicit_preposition = any(p in normalized for p in ["al dashboard", "en el dashboard", "en mi dashboard", "a mi dashboard", "al command center", "en command center"])
+    if has_dashboard and (has_action or explicit_preposition):
+        return True
+    if surface == "dashboard" and has_action and any(w in normalized for w in ["widget", "grafic", "grafica", "grafico", "visual"]):
+        return True
+    return False
+
+
+def _is_home_widget_request(message: str, surface: str = "mobile") -> bool:
+    # If the request originates from the Web Dashboard, it is NEVER a home widget request
+    if surface == "dashboard":
+        return False
+
+    lowered = message.lower()
+    normalized = (
+        lowered.replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+    )
+
+    # Exclude dashboard requests: if message explicitly targets dashboard/command center, it is NEVER for home widgets
+    dashboard_terms = ["dashboard", "command center", "pantalla web", "monitor web", "escritorio web"]
+    if any(dt in normalized for dt in dashboard_terms):
+        return False
+
     surface_terms = [
         "inicio", "pantalla principal", "home", "para ti", "mi pantalla",
-        "pantalla de inicio", "widget", "widgets", "muro", "dashboard", "pantalla"
+        "pantalla de inicio", "muro"
     ]
     action_terms = [
         "agrega", "agregar", "agregalo", "agregala", "agregame",
@@ -406,6 +441,9 @@ class GeminiOrchestrator:
 
 [GESTIÓN EXCLUSIVA DE WIDGETS EN PANTALLA PRINCIPAL ("Para ti")]:
 - Eres la única responsable de personalizar la pantalla de inicio ("Para ti") del cliente. Los clientes no tienen controles manuales para editar widgets; te lo solicitan a ti por chat.
+- IMPORTANTE (SEPARACIÓN ESTRICTA ENTRE INICIO Y DASHBOARD WEB):
+  * `manage_home_widgets` modifica ÚNICAMENTE la pantalla de inicio móvil ("Para ti").
+  * Si el cliente pide fijar, agregar o enviar algo a su "Dashboard", "Dashboard Web" o "Command Center", NUNCA invoques `manage_home_widgets`. El Dashboard Web es una superficie independiente y no debe modificar la pantalla de inicio del celular.
 - Si el cliente te pide agregar un widget a su inicio (ej. "agrega el widget de salud financiera a mi inicio", "fija mis gastos en la pantalla principal", "pon la inversión en inicio"):
   * Invoca la herramienta `manage_home_widgets` con action="add" y widget_type correspondiente ('financial_health', 'spending_donut', 'investment_simulator', 'debt_restructure', 'rent_payment', 'weekly_spending', 'investment_quick', 'spei_transfer_form').
   * Responde confirmándole de forma ejecutiva y amable que el widget ya está disponible en su sección 'Para ti' de la pantalla de inicio.
@@ -474,8 +512,12 @@ Reglas:
         )
 
         resp = None
-        # If live Gemini client is available, run live GenAI loop
-        if self.client and self.api_key:
+        # Deterministic interceptors: if user explicitly targets dashboard or home widgets, execute directly
+        if _is_dashboard_widget_request(request.message, surface=getattr(request, "surface", "mobile")):
+            resp = await self._run_smart_simulation(request)
+        elif _is_home_widget_request(request.message, surface=getattr(request, "surface", "mobile")):
+            resp = await self._run_smart_simulation(request)
+        elif self.client and self.api_key:
             try:
                 resp = await self._run_gemini_live_loop(request)
             except Exception as e:
@@ -1709,8 +1751,102 @@ Diálogo:
             )
             return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
 
+        # 0.4 EXCLUSIVE WEB DASHBOARD WIDGET INTENT (Projections to Command Center)
+        is_dashboard_widget_intent = _is_dashboard_widget_request(msg, surface=getattr(request, "surface", "mobile"))
+        if is_dashboard_widget_intent:
+            # Check recent conversation history for previous visual
+            last_a2ui_payload = None
+            if request.history:
+                for h_msg in reversed(request.history):
+                    if getattr(h_msg, 'a2ui', None):
+                        last_a2ui_payload = h_msg.a2ui
+                        break
+            if not last_a2ui_payload:
+                chat_hist = mcp_client.get_chat_history(user_id, limit=10)
+                for c_item in reversed(chat_hist):
+                    if c_item.get("a2ui") and isinstance(c_item.get("a2ui"), dict):
+                        last_a2ui_payload = c_item["a2ui"]
+                        break
+
+            w_name = "Visualización Banorte"
+            a2ui_ret = None
+
+            has_demonstrative = any(d in msg for d in [
+                "este", "esta", "esto", "anterior", "previa", "previo", "última", "ultimo",
+                "el gráfico", "la gráfica", "el visual", "el widget", "la tarjeta", "el componente",
+                "agrégalo", "agregalo", "ponlo", "fíjalo", "fijalo", "mándalo", "mandalo", "envíalo", "envialo"
+            ])
+
+            if (has_demonstrative or "al dashboard" in msg) and last_a2ui_payload:
+                a2ui_ret = last_a2ui_payload if isinstance(last_a2ui_payload, A2UIPayload) else A2UIPayload(**last_a2ui_payload)
+                last_props = (a2ui_ret.props if hasattr(a2ui_ret, 'props') else a2ui_ret.get('props')) or {}
+                w_name = last_props.get('title') or "Gráfico Analítico Banorte"
+            elif _is_sankey_request(msg):
+                months = _requested_month_count(msg, default=1)
+                w_name = f"Sankey de flujo · últimos {months} meses"
+                a2ui_ret = _sankey_payload(user_id, months)
+            elif any(k in msg for k in ["heatmap", "mapa de calor", "calendario"]):
+                w_name = "Mapa de Calor de Consumo Diario (Heatmap)"
+                a2ui_ret = _heatmap_payload(user_id)
+            elif any(k in msg for k in ["barras", "barra", "bar chart"]):
+                w_name = "Distribución de Gastos por Categoría"
+                a2ui_ret = _bar_payload(user_id)
+            elif any(k in msg for k in ["líneas", "línea", "lineas", "linea", "evolución", "evolucion", "tendencia", "histórico", "historico"]):
+                w_name = "Evolución Histórica de Gastos"
+                a2ui_ret = _line_payload(user_id)
+            elif any(k in msg for k in ["donut", "dona", "pie", "pastel"]):
+                w_name = "Desglose de Gastos por Categoría"
+                a2ui_ret = _donut_payload(user_id)
+            elif any(k in msg for k in ["salud", "score", "semáforo", "semaforo"]):
+                w_name = "Salud Financiera & Buró"
+                a2ui_ret = _health_payload(user_id)
+            elif any(k in msg for k in ["pagaré", "pagare", "inversión", "inversion"]):
+                w_name = "Simulador de Inversión Pagaré"
+                amount = _requested_investment_amount(msg, default=50000.0)
+                a2ui_ret = _investment_payload(user_id, amount)
+            elif any(k in msg for k in ["deuda", "reestructur"]):
+                w_name = "Plan de Reestructuración de Deuda"
+                a2ui_ret = _debt_payload(user_id)
+            elif last_a2ui_payload:
+                a2ui_ret = last_a2ui_payload if isinstance(last_a2ui_payload, A2UIPayload) else A2UIPayload(**last_a2ui_payload)
+                last_props = (a2ui_ret.props if hasattr(a2ui_ret, 'props') else a2ui_ret.get('props')) or {}
+                w_name = last_props.get('title') or "Visualización Banorte"
+            else:
+                w_name = "Desglose de Gastos por Categoría"
+                a2ui_ret = _donut_payload(user_id)
+
+            from datetime import datetime
+            import time
+            dashboard_item = {
+                "id": f"w-{int(time.time()*1000)}",
+                "title": w_name,
+                "component": a2ui_ret.component,
+                "payload": a2ui_ret.model_dump() if hasattr(a2ui_ret, 'model_dump') else a2ui_ret,
+                "source": "mobile" if getattr(request, "surface", "mobile") != "dashboard" else "studio",
+                "pinnedAt": datetime.now().strftime("%H:%M")
+            }
+            # Save to SQLite cloud
+            mcp_client.save_dashboard_widget(user_id, dashboard_item)
+
+            # Push to real-time SSE queues
+            try:
+                from .main import dashboard_subscribers
+                for q in list(dashboard_subscribers.get(user_id, [])):
+                    try:
+                        q.put_nowait(dashboard_item)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+            reply = (
+                f"¡Listo, {first_name}! He enviado **{w_name}** directamente a tu **Dashboard Web (Command Center)** en tiempo real.\n\n"
+                f"Ya está proyectado en tu pantalla de monitoreo y guardado en la nube."
+            )
+            return ChatResponse(reply=reply, a2ui=a2ui_ret, mcp_calls=[])
+
         # 0.5 HOME SCREEN WIDGET MANAGEMENT INTENT (Chatbot-driven Home Customization)
-        is_home_widget_intent = _is_home_widget_request(msg)
+        is_home_widget_intent = _is_home_widget_request(msg, surface=getattr(request, "surface", "mobile"))
 
         if is_home_widget_intent:
             action = "list"

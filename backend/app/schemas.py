@@ -31,6 +31,7 @@ class ChatRequest(BaseModel):
     history: List[ChatMessage] = Field(default_factory=list, description="Previous conversation turns")
     action_context: Optional[ActionContext] = Field(None, description="Feedback loop action from an A2UI component")
     user_id: Optional[str] = Field("C001", description="Authenticated client ID")
+    surface: Optional[str] = Field("mobile", description="Originating surface: 'mobile' or 'dashboard'")
 
 class McpToolCallLog(BaseModel):
     tool_name: str

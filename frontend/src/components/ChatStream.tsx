@@ -356,45 +356,30 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
                           )}
                         </button>
 
-                        {/* Send to Power User Dashboard: shown when explicitly requested */}
-                        {Boolean(
-                          (typeof message.content === 'string' &&
-                            /(dashboard|command\s*center|fijar.*dashboard|enviar.*dashboard|guardar.*dashboard|power\s*user)/i.test(
-                              message.content
-                            )) ||
-                            messages.some(
-                              (m, idx) =>
-                                idx <= index &&
-                                m.role === 'user' &&
-                                /(dashboard|command\s*center|fijar.*dashboard|enviar.*dashboard|guardar.*dashboard|power\s*user)/i.test(
-                                  m.content
-                                )
-                            )
-                        ) && (
-                          <button
-                            type="button"
-                            onClick={() => handlePinWidget(message.a2ui, message.id)}
-                            disabled={Boolean(pinnedIds[message.id])}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition shadow-2xs cursor-pointer ${
-                              pinnedIds[message.id]
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-red-50 hover:bg-red-100/90 text-[#EB0029] border border-red-200 hover:border-red-300'
-                            }`}
-                            title="Enviar este widget al Command Center de tu Dashboard Web"
-                          >
-                            {pinnedIds[message.id] ? (
-                              <>
-                                <Check className="h-3 w-3 text-emerald-600" />
-                                <span>✓ En tu Dashboard</span>
-                              </>
-                            ) : (
-                              <>
-                                <LayoutDashboard className="h-3 w-3 text-[#EB0029]" />
-                                <span>📌 Enviar a Dashboard</span>
-                              </>
-                            )}
-                          </button>
-                        )}
+                        {/* Send to Power User Dashboard (Always available for instant cross-device projection) */}
+                        <button
+                          type="button"
+                          onClick={() => handlePinWidget(message.a2ui, message.id)}
+                          disabled={Boolean(pinnedIds[message.id])}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition shadow-2xs cursor-pointer ${
+                            pinnedIds[message.id]
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-red-50 hover:bg-red-100/90 text-[#EB0029] border border-red-200 hover:border-red-300'
+                          }`}
+                          title="Enviar este widget al Command Center de tu Dashboard Web"
+                        >
+                          {pinnedIds[message.id] ? (
+                            <>
+                              <Check className="h-3 w-3 text-emerald-600" />
+                              <span>✓ En tu Dashboard</span>
+                            </>
+                          ) : (
+                            <>
+                              <LayoutDashboard className="h-3 w-3 text-[#EB0029]" />
+                              <span>📌 Enviar a Dashboard</span>
+                            </>
+                          )}
+                        </button>
                       </div>
                       <span className="text-[10px] text-slate-400 font-medium">Widget dinámico</span>
                     </div>
