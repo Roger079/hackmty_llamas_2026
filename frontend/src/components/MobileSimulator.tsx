@@ -30,7 +30,6 @@ import {
   subscribeToHomeWidgets,
 } from '../utils/homeWidgetsManager';
 import { MobileTransferModal } from './MobileTransferModal';
-import { MobileBillPayModal } from './MobileBillPayModal';
 
 interface MobileSimulatorProps {
   clientName: string;
@@ -80,7 +79,6 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
   const [isRentConfirmationOpen, setIsRentConfirmationOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [isBillPayModalOpen, setIsBillPayModalOpen] = useState(false);
   const [isScrollingDown, setIsScrollingDown] = useState(false);
 
   const cardRailRef = useRef<HTMLDivElement>(null);
@@ -341,7 +339,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
 
             {/* Action rail, separated from the card products. */}
             <div className="border-t border-slate-200/80 pt-3.5">
-              <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-bold text-slate-700">
+              <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-slate-700">
                 <button
                   type="button"
                   onClick={() => setIsTransferModalOpen(true)}
@@ -368,14 +366,6 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                 >
                   <Landmark className="h-4 w-4 text-[#EB0029] mb-1" />
                   <span>Inversiones</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsBillPayModalOpen(true)}
-                  className="flex flex-col items-center rounded-xl bg-white p-2.5 shadow-xs border border-slate-100 hover:bg-slate-50 transition cursor-pointer active:scale-95"
-                >
-                  <ReceiptText className="h-4 w-4 text-[#EB0029] mb-1" />
-                  <span>Pagar servicio</span>
                 </button>
               </div>
             </div>
@@ -805,22 +795,6 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
           onSendMessage(
             `Transfiere $${transfer.amount} a ${transfer.recipient} por SPEI (${transfer.bank} • ${transfer.clabeOrCard}) con concepto: ${transfer.concept}`
           );
-        }}
-      />
-
-      {/* Bill Pay & Recurring Direct Debit Modal */}
-      <MobileBillPayModal
-        isOpen={isBillPayModalOpen}
-        onClose={() => setIsBillPayModalOpen(false)}
-        availableBalance={nominaBalance}
-        onExecutePayment={(payment) => {
-          onSendMessage(
-            `He pagado mi recibo de ${payment.serviceName} por $${payment.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN (Folio: ${payment.folio})${payment.autoPayEnabled ? ' y activé la domiciliación mensual automática' : ''}.`
-          );
-        }}
-        onOpenMayaChat={(message) => {
-          setActiveTab('maya');
-          onSendMessage(message);
         }}
       />
 

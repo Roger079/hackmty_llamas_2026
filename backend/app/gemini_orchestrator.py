@@ -141,6 +141,10 @@ def _is_dashboard_widget_request(message: str, surface: str = "mobile") -> bool:
         .replace("ó", "o")
         .replace("ú", "u")
     )
+    # Informational questions ABOUT the dashboard are not widget projection requests
+    if any(q in normalized for q in ["hablame sobre", "hablame del", "que es", "explicame", "como funciona", "para que sirve", "cuentame", "dime sobre"]):
+        return False
+
     dashboard_terms = ["dashboard", "command center", "pantalla web", "monitor web", "escritorio web"]
     action_terms = [
         "agrega", "agregar", "agregalo", "agregala", "anade", "anadir", "añade", "añadir", "añadelo",
@@ -518,8 +522,32 @@ Reglas:
         )
 
         resp = None
-        # Deterministic interceptors: if user explicitly targets dashboard or home widgets, execute directly
-        if _is_dashboard_widget_request(request.message, surface=getattr(request, "surface", "mobile")):
+        normalized_msg = (
+            request.message.lower()
+            .replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+        )
+        clean_user_msg = re.sub(r'[^\w\s]', '', normalized_msg).strip()
+        greeting_words = [
+            "hola", "buen dia", "buenos dias",
+            "buenas tardes", "buenas noches", "saludos", "que tal",
+            "como estas", "como te va"
+        ]
+        dashboard_info_queries = [
+            "hablame sobre el dashboard", "hablame del dashboard",
+            "que es el dashboard", "como funciona el dashboard",
+            "para que sirve el dashboard", "ventajas del dashboard",
+            "dashboard info", "explica el dashboard", "explicame el dashboard",
+            "hablame de dashboard", "cuentame del dashboard", "dime del dashboard"
+        ]
+        is_greeting = any(clean_user_msg == g or clean_user_msg.startswith(g + " ") for g in greeting_words)
+        is_dash_info = any(q in clean_user_msg for q in dashboard_info_queries)
+
+        # Deterministic interceptors: if greeting, dashboard info query, dashboard projection, or home widget
+        if is_greeting or is_dash_info or _is_dashboard_widget_request(request.message, surface=getattr(request, "surface", "mobile")):
             resp = await self._run_smart_simulation(request)
         elif _is_home_widget_request(request.message, surface=getattr(request, "surface", "mobile")):
             resp = await self._run_smart_simulation(request)
@@ -875,12 +903,21 @@ Reglas:
             else:
                 return a2ui_payload
 
-        # Do not force A2UI components on out-of-domain refusals or generic clarifications
+        # Do not force A2UI components on out-of-domain refusals, greetings, or generic clarifications
         refusal_phrases = [
             "como asistente virtual", "mi especialidad es", "servicios y productos financieros",
             "en qué tema bancario", "fuera del ámbito", "tema bancario te gustaría", "servicios financieros"
         ]
         if any(phrase in reply_text.lower() for phrase in refusal_phrases):
+            return None
+
+        # Fallback for greetings or informational queries: simply return text without forcing any A2UI component
+        clean_user_msg = re.sub(r'[^\w\s]', '', request.message.lower()).strip()
+        greeting_tokens = ["hola", "buen dia", "buenos dias", "buen día", "buenos días", "buenas tardes", "buenas noches", "saludos", "que tal", "qué tal", "como estas", "cómo estás"]
+        if any(clean_user_msg == g or clean_user_msg.startswith(g + " ") for g in greeting_tokens):
+            return None
+
+        if "dashboard" in request.message.lower() and not _is_dashboard_widget_request(request.message):
             return None
 
         user_id = request.user_id or "C001"
@@ -952,7 +989,6 @@ Reglas:
             state = mcp_client.get_real_customer_state(user_id)
             avail_bal = state.get("total_available_balance", 27900.0)
 
-            import re
             clean_msg = user_msg.replace('$', ' ')
             m = re.search(r'([-–]?\d[\d,]*(?:\.\d+)?)', clean_msg)
             detected_amt = float(m.group(1).replace(',', '')) if m and float(m.group(1).replace(',', '')) > 0 else 850.0
@@ -1556,11 +1592,18 @@ Reglas:
 
         is_invest = _is_investment_request(request.message)
         has_invest_card = any(p.component == "InvestmentSimulatorCard" for p in a2ui_payloads)
-        is_spei = any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])
+        clean_req_msg = re.sub(r'[^\w\s]', '', request.message.lower()).strip()
+        is_greeting = any(clean_req_msg == g or clean_req_msg.startswith(g + " ") for g in ["hola", "buen dia", "buenos dias", "buen día", "buenos días", "buenas tardes", "buenas noches", "saludos", "que tal", "qué tal", "como estas", "cómo estás"])
+        is_dashboard_info = "dashboard" in request.message.lower() and not _is_dashboard_widget_request(request.message)
+
         should_ensure = (
-            not a2ui_payloads or
-            (len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard" and (is_spei or is_invest)) or
-            (is_invest and not has_invest_card)
+            not is_greeting and
+            not is_dashboard_info and
+            (
+                not a2ui_payloads or
+                (len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard" and (is_spei or is_invest)) or
+                (is_invest and not has_invest_card)
+            )
         )
         if should_ensure:
             if is_invest and not has_invest_card and len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard":
@@ -1852,6 +1895,48 @@ Diálogo:
                     f"Acción '{action}' recibida correctamente. Tus preferencias han sido sincronizadas con el sistema Banorte."
                 )
                 return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
+
+        # 0.1 PURE GREETING HANDLER (Pure text, no A2UI fallback)
+        normalized_sim_msg = (
+            msg.lower()
+            .replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+        )
+        clean_msg = re.sub(r'[^\w\s]', '', normalized_sim_msg).strip()
+        greeting_words = [
+            "hola", "buen dia", "buenos dias",
+            "buenas tardes", "buenas noches", "saludos", "que tal",
+            "como estas", "como te va"
+        ]
+        if any(clean_msg == g or clean_msg.startswith(g + " ") for g in greeting_words):
+            reply = (
+                f"¡Hola, {first_name}! Soy Maya, tu copiloto financiera de Banorte. "
+                f"¿En qué puedo apoyarte hoy? Puedes consultarme sobre tus saldos, transferencias SPEI, "
+                f"análisis de tus gastos del mes, simular una inversión en Pagaré Banorte o pedirme *'Háblame sobre el dashboard'*."
+            )
+            return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
+
+        # 0.2 DASHBOARD INFORMATIONAL REQUEST (Power user explanation, pure text)
+        dashboard_info_queries = [
+            "hablame sobre el dashboard", "hablame del dashboard",
+            "que es el dashboard", "como funciona el dashboard",
+            "para que sirve el dashboard", "ventajas del dashboard",
+            "dashboard info", "explica el dashboard", "explicame el dashboard",
+            "hablame de dashboard", "cuentame del dashboard", "dime del dashboard"
+        ]
+        if any(q in clean_msg for q in dashboard_info_queries):
+            reply = (
+                f"¡Hola, {first_name}! El **Dashboard Web (Command Center)** de Banorte es una interfaz de pantalla completa "
+                f"diseñada para **Power Users**, profesionistas y clientes que necesitan monitoreo financiero avanzado desde su laptop o computadora:\n\n"
+                f"• **¿Para quién es?** Para usuarios con múltiples cuentas, inversiones o créditos que requieren una visión panorámica y simultánea de sus finanzas sin las limitaciones de espacio del celular.\n"
+                f"• **Ventajas clave:** Permite tener abiertos al mismo tiempo tus gráficos de gastos (Dona, Barras, Históricos), simuladores de Pagaré, mapas de sucursales y tablas detalladas de movimientos.\n"
+                f"• **¿Cómo funciona?** Cuenta con **sincronización en tiempo real multidispositivo**. Cuando conversas conmigo en el móvil, puedes decirme *'Manda este gráfico a mi dashboard'* (o presionar el botón **Enviar a Dashboard**) y el widget se proyectará al instante en la pantalla de tu computadora vía nube.\n\n"
+                f"¿Te gustaría que generemos una gráfica de tus gastos o una simulación de inversión para probar enviarla a tu Dashboard?"
+            )
+            return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
 
         # 0. CRITICAL SECURITY GUARDRAIL: Refusal of unauthorized text authorizations
         if not request.action_context and any(k in msg for k in ["autorizo", "autorizas", "autorizar", "confirmo", "confirmar", "acepto el plan", "haz la transferencia"]):
@@ -2620,8 +2705,6 @@ Diálogo:
                 state = mcp_client.get_real_customer_state(user_id)
                 avail_bal = state.get("total_available_balance", 27900.0)
 
-                # Extract amount if mentioned in text
-                import re
                 clean_msg = msg.replace('$', ' ')
                 m = re.search(r'([-–]?\d[\d,]*(?:\.\d+)?)', clean_msg)
                 detected_amt = float(m.group(1).replace(',', '')) if m and float(m.group(1).replace(',', '')) > 0 else 850.0
@@ -2660,34 +2743,7 @@ Diálogo:
                 )
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-        # 4.5 BILL PAY & RECURRING SERVICES (CFE, Telmex, Agua, Gas, Domiciliación)
-        elif any(k in msg for k in [
-            "servicio", "servicios", "pagar servicio", "pago de servicio", "cfe", "luz",
-            "telmex", "infinitum", "agua", "gas", "naturgy", "domiciliar", "domiciliación",
-            "domiciliacion", "recibo", "recibos"
-        ]):
-            reply = (
-                f"Hola, {first_name}. En Banorte Móvil puedes consultar y pagar tus recibos de servicios esenciales "
-                f"o activar la **domiciliación automática recurrente** sin costo:\n\n"
-                f"• **CFE (Luz):** Recibo al corriente · Próximo vencimiento: 18 Sep ($850.00 MXN)\n"
-                f"• **Telmex / Infinitum (Internet):** Domiciliado activo ($649.00 MXN)\n"
-                f"• **Agua y Saneamiento:** Recibo al corriente ($320.00 MXN)\n"
-                f"• **Naturgy México (Gas):** Pendiente de pago ($410.00 MXN)\n\n"
-                f"Puedes liquidar cualquiera de tus recibos de inmediato o programar su cargo automático para evitar recargos o suspensiones de servicio."
-            )
-            a2ui = A2UIPayload(
-                component="SpeiTransferFormCard",
-                props={
-                    "initialBeneficiary": "CFE Suministrador de Servicios Básicos",
-                    "initialBank": "Banorte Recaudación",
-                    "initialClabe": "072 180 000103481928 1",
-                    "initialAmount": 850.0,
-                    "initialConcept": "Pago CFE Luz - 0103481928104",
-                    "availableBalance": 27900.0,
-                    "accountLast4": "7721"
-                }
-            )
-            return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
 
         # 5. INVESTMENT / PAGARÉ BANORTE
         elif _is_investment_request(msg):
@@ -2770,8 +2826,11 @@ Diálogo:
             )
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-        # Keep ambiguous requests concise rather than appending a scripted menu.
-        reply = "No identifiqué una consulta bancaria concreta. ¿Qué necesitas revisar de tu banca?"
+        # Fallback for general queries without widget generation: simply return clean text
+        reply = (
+            f"Hola, {first_name}. ¿En qué te puedo ayudar hoy? Puedes pedirme consultar tu saldo, "
+            f"ver tus gastos del mes, realizar una transferencia SPEI, simular un pagaré o conocer cómo funciona el Dashboard Web."
+        )
         return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
 
 orchestrator = GeminiOrchestrator()

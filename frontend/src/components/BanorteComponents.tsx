@@ -119,10 +119,10 @@ export const MayaChatWidget: React.FC<{
   };
 
   const quickPills = [
+    "Háblame sobre el dashboard",
     "Muéstrame mi gráfica de gastos semanales",
     "Compara mis gastos con el mes pasado",
     "¿Cómo va mi fondo de inversión?",
-    "Consultar un estado de cuenta",
     "Transferencias"
   ];
 

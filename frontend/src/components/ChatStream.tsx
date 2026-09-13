@@ -23,6 +23,7 @@ interface ChatStreamProps {
 }
 
 const quickPrompts = [
+  'Háblame sobre el dashboard',
   'Quiero hacer una transferencia SPEI',
   '¿Cuánto saldo disponible tengo en mis cuentas?',
   '¿Cómo reestructurar mi tarjeta Platino?',
@@ -213,6 +214,19 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
     }
   }, [messages, isLoading]);
 
+  // Automatically mark widgets as pinned in UI if Maya dispatched them directly via chat
+  useEffect(() => {
+    messages.forEach((msg) => {
+      if (
+        msg.a2ui &&
+        typeof msg.content === 'string' &&
+        /(he enviado.*dashboard|proyectado.*dashboard|enviado directamente a tu.*dashboard)/i.test(msg.content)
+      ) {
+        setPinnedIds((prev) => (prev[msg.id] ? prev : { ...prev, [msg.id]: true }));
+      }
+    });
+  }, [messages]);
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!inputText.trim() || isLoading) return;
@@ -349,30 +363,45 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
                             </>
                           )}
                         </button>
-                        {/* Send to Power User Dashboard (Always available for instant cross-device projection) */}
-                        <button
-                          type="button"
-                          onClick={() => handlePinWidget(message.a2ui, message.id)}
-                          disabled={Boolean(pinnedIds[message.id])}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition shadow-2xs cursor-pointer ${
-                            pinnedIds[message.id]
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-red-50 hover:bg-red-100/90 text-[#EB0029] border border-red-200 hover:border-red-300'
-                          }`}
-                          title="Enviar este widget al Command Center de tu Dashboard Web"
-                        >
-                          {pinnedIds[message.id] ? (
-                            <>
-                              <Check className="h-3.5 w-3.5 text-emerald-600" />
-                              <span>En tu Dashboard</span>
-                            </>
-                          ) : (
-                            <>
-                              <LayoutDashboard className="h-3.5 w-3.5 text-[#EB0029]" />
-                              <span>Enviar a Dashboard</span>
-                            </>
-                          )}
-                        </button>
+                        {/* Send to Power User Dashboard: only shown when explicitly requested or asked by the user */}
+                        {Boolean(
+                          (typeof message.content === 'string' &&
+                            /(dashboard|command\s*center|fijar.*dashboard|enviar.*dashboard|guardar.*dashboard|mandar.*dashboard|proyectar.*dashboard|power\s*user|pantalla\s*grande|laptop|hablame.*dashboard)/i.test(
+                              message.content
+                            )) ||
+                          messages.some(
+                            (m, idx) =>
+                              idx <= index &&
+                              m.role === 'user' &&
+                              /(dashboard|command\s*center|fijar.*dashboard|enviar.*dashboard|guardar.*dashboard|mandar.*dashboard|proyectar.*dashboard|power\s*user|pantalla\s*grande|laptop|hablame.*dashboard)/i.test(
+                                m.content
+                              )
+                          )
+                        ) && (
+                          <button
+                            type="button"
+                            onClick={() => handlePinWidget(message.a2ui, message.id)}
+                            disabled={Boolean(pinnedIds[message.id])}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition shadow-2xs cursor-pointer ${
+                              pinnedIds[message.id]
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-red-50 hover:bg-red-100/90 text-[#EB0029] border border-red-200 hover:border-red-300'
+                            }`}
+                            title="Enviar este widget al Command Center de tu Dashboard Web"
+                          >
+                            {pinnedIds[message.id] ? (
+                              <>
+                                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                <span>En tu Dashboard</span>
+                              </>
+                            ) : (
+                              <>
+                                <LayoutDashboard className="h-3.5 w-3.5 text-[#EB0029]" />
+                                <span>Enviar a Dashboard</span>
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                       <span className="text-[10px] text-slate-400 font-medium">Widget dinámico</span>
                     </div>
