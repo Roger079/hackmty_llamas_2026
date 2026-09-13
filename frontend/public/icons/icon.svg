@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="banorte-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EB0029" />
+      <stop offset="100%" stop-color="#C70023" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#banorte-grad)" />
+  <g transform="translate(256, 256) scale(1.15)">
+    <!-- Banorte Logo Symbol in Pure White -->
+    <path d="M-45,-45 C-75,-15 -75,15 -45,45 C-15,75 15,75 45,45 C75,15 75,-15 45,-45 C15,-75 -15,-75 -45,-45 Z" fill="#ffffff" opacity="0.1" />
+    <circle cx="0" cy="0" r="32" fill="#ffffff" />
+    <path d="M-55,-18 C-78,-18 -95,0 -95,22 C-95,44 -78,60 -55,60 C-32,60 -20,44 -18,22 Z" fill="#ffffff" transform="rotate(0)" />
+    <path d="M-55,-18 C-78,-18 -95,0 -95,22 C-95,44 -78,60 -55,60 C-32,60 -20,44 -18,22 Z" fill="#ffffff" transform="rotate(90)" />
+    <path d="M-55,-18 C-78,-18 -95,0 -95,22 C-95,44 -78,60 -55,60 C-32,60 -20,44 -18,22 Z" fill="#ffffff" transform="rotate(180)" />
+    <path d="M-55,-18 C-78,-18 -95,0 -95,22 C-95,44 -78,60 -55,60 C-32,60 -20,44 -18,22 Z" fill="#ffffff" transform="rotate(270)" />
+  </g>
+</svg>

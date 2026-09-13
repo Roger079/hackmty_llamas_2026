@@ -11,3 +11,17 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+
+// Register PWA Service Worker for offline support and installability
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .then((reg) => {
+        console.log('[PWA] Service Worker registrado exitosamente con scope:', reg.scope);
+      })
+      .catch((err) => {
+        console.warn('[PWA] Falló el registro del Service Worker:', err);
+      });
+  });
+}

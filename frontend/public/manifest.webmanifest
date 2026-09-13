@@ -1,0 +1,83 @@
+﻿{
+  "id": "/",
+  "name": "Banorte Móvil — Copiloto Financiero",
+  "short_name": "Banorte",
+  "description": "Banca Conversacional Inteligente con IA, Generative UI (A2UI) y transferencias SPEI 24/7.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "window-controls-overlay"],
+  "orientation": "portrait-primary",
+  "background_color": "#0B192C",
+  "theme_color": "#EB0029",
+  "lang": "es-MX",
+  "dir": "ltr",
+  "categories": ["finance", "banking", "business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Transferencia SPEI",
+      "short_name": "SPEI",
+      "description": "Enviar dinero inmediato por SPEI",
+      "url": "/?action=spei",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Consultar Saldos",
+      "short_name": "Saldos",
+      "description": "Revisar saldo de cuentas y tarjetas",
+      "url": "/?action=balance",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Maya Copiloto",
+      "short_name": "Maya",
+      "description": "Asistente Financiero Inteligente Banorte",
+      "url": "/?action=maya",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

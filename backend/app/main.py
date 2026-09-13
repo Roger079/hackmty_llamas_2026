@@ -97,8 +97,45 @@ static_dir = current_dir / "static"
 
 if frontend_dist.exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="dist-assets")
+    if (frontend_dist / "icons").exists():
+        app.mount("/icons", StaticFiles(directory=str(frontend_dist / "icons")), name="dist-icons")
+elif (current_dir / "frontend" / "public" / "icons").exists():
+    app.mount("/icons", StaticFiles(directory=str(current_dir / "frontend" / "public" / "icons")), name="public-icons")
+
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+@app.get("/manifest.webmanifest")
+@app.get("/manifest.json")
+async def serve_manifest():
+    """Serves PWA Web App Manifest"""
+    for p in [frontend_dist / "manifest.webmanifest", current_dir / "frontend" / "public" / "manifest.webmanifest"]:
+        if p.exists():
+            return FileResponse(str(p), media_type="application/manifest+json")
+    raise HTTPException(status_code=404, detail="Manifest not found")
+
+@app.get("/sw.js")
+async def serve_sw():
+    """Serves PWA Service Worker with Service-Worker-Allowed header"""
+    for p in [frontend_dist / "sw.js", current_dir / "frontend" / "public" / "sw.js"]:
+        if p.exists():
+            return FileResponse(
+                str(p),
+                media_type="application/javascript",
+                headers={
+                    "Service-Worker-Allowed": "/",
+                    "Cache-Control": "no-cache"
+                }
+            )
+    raise HTTPException(status_code=404, detail="Service worker not found")
+
+@app.get("/favicon.svg")
+async def serve_favicon():
+    """Serves SVG Favicon"""
+    for p in [frontend_dist / "favicon.svg", current_dir / "frontend" / "public" / "favicon.svg"]:
+        if p.exists():
+            return FileResponse(str(p), media_type="image/svg+xml")
+    raise HTTPException(status_code=404, detail="Favicon not found")
 
 @app.get("/api/customers")
 async def get_customers():
