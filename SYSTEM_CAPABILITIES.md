@@ -5,19 +5,16 @@
 
 ---
 
-## 🧭 Table of Contents
-1. [Core Architectural Philosophy](#1-core-architectural-philosophy)
-2. [Complete Feature Inventory](#2-complete-feature-inventory)
-   - 2.1. Conversational Copilot (Maya) & Intent Engine
-   - 2.2. Interactive Generative UI (A2UI) Component Catalog
-   - 2.3. End-to-End SPEI Interbank Transfer Pipeline
-   - 2.4. Debt Restructuring & Financial Relief Engine
-   - 2.5. Multi-Surface Architecture & Cross-Device Cloud Projection
-   - 2.6. FastMCP Core Banking Protocol & Dual-Transport Engine
-   - 2.7. Persistent Cognitive Memory & Friction Tracking
-   - 2.8. Regulatory Security, PCI-DSS & 2FA Token Móvil Guardrails
-   - 2.9. High-Fidelity Deterministic Simulator (100% Offline Resilience)
-3. [Competitive Matrix: Why We Outperform Other Implementations](#3-competitive-matrix-why-we-outperform-other-implementations)
+## Complete Capabilities, Technical Architecture & Architectural Differentiators
+
+Maya (mAIa) is an autonomous, multimodal Conversational Banking and Agentic Generative UI (A2UI) platform built specifically for Grupo Financiero Banorte. This document details the end-to-end system capabilities, runtime data flows, architectural contracts, security guardrails, and deterministic resilience mechanisms.
+
+---
+
+## 📑 Document Structure
+1. [Core System Capabilities (What the Platform Does)](#1-core-system-capabilities-what-the-platform-does)
+2. [Deep-Dive Architecture & Data Flows](#2-deep-dive-architecture--data-flows)
+3. [Architectural Differentiators: Traditional Banking vs. Banorte Maya](#3-architectural-differentiators-traditional-banking-vs-banorte-maya)
 4. [Agent Operational Blueprint: How an AI Operates This System](#4-agent-operational-blueprint-how-an-ai-operates-this-system)
 
 ---
@@ -143,17 +140,17 @@ Maya doesn't just reply with markdown text; she dynamically emits declarative **
 
 ---
 
-## 3. Competitive Matrix: Why We Outperform Other Implementations
+## 3. Architectural Differentiators: Traditional Banking vs. Banorte Maya
 
-| Feature / Dimension | Other Hackathon Projects (e.g., ManuelPerezF / API-cultores) | Our Solution (Banorte Maya) | Why It Matters for Banorte |
+| Feature / Dimension | Traditional Banking Chatbots | Banorte Maya (A2UI & FastMCP) | Value for Banorte & Users |
 | :--- | :--- | :--- | :--- |
-| **Real Transactional Core** | Synthetic notes only; no real balance deductions or interbank routing. | Full SQLite banking core (`BEGIN TRANSACTION`, balance deductions, CEP receipts). | Proves real viability for production core integration. |
-| **Multi-Surface & Cloud Sync** | Single responsive web page; no cross-device concept. | **Native Mobile PWA + Command Center Desktop** with real-time SSE widget projection. | Addresses both retail mobile users and Power Users managing complex portfolios. |
-| **Generative UI (A2UI)** | Plain HTML tables, generic forms, or standard Chart.js. | Declarative A2UI catalog: Sankey, Calendar Heatmaps, Donut, Bar, Amortization, Gauges. | Drastically reduces cognitive load and turns financial data into actionable visuals. |
+| **Real Transactional Core** | Static synthetic notes only; no balance deductions or interbank routing. | Full SQLite banking core (`BEGIN TRANSACTION`, balance deductions, CEP receipts). | Proves real viability for production core integration. |
+| **Multi-Surface & Cloud Sync** | Single static web page; no cross-device concept. | **Native Mobile PWA + Command Center Desktop** with real-time SSE widget projection. | Addresses both retail mobile users and Power Users managing complex portfolios. |
+| **Generative UI (A2UI)** | Plain HTML tables, generic forms, or text walls. | Declarative A2UI catalog: Sankey, Calendar Heatmaps, Donut, Bar, Amortization, Gauges. | Drastically reduces cognitive load and turns financial data into actionable visuals. |
 | **Regulatory 2FA Guardrail** | Allows direct text confirmation or bypasses auth entirely. | **Enforces Banxico Circular 14/2017**: blocks chat text authorizations; mandates Token Móvil. | Critical compliance requirement for any regulated financial institution. |
 | **PCI-DSS Data Sanitization** | Raw text saved directly into database or sent to LLM. | Pre-storage regex masking of PANs, CLABEs, and automatic redaction of CVVs and OTPs. | Protects client privacy and prevents credential leakage into LLM training contexts. |
-| **Protocol Visibility** | MCP is either simulated in text or hidden in backend logs. | **Live FastMCP Telemetry Inspector** drawer in the UI displaying latency and tool payloads. | Allows technical judges to verify protocol integrity with a single click. |
-| **Demo Stage Reliability** | Crashes or prints `LLM_QUOTA_EXCEEDED` if API or WiFi fails. | **Smart Deterministic Offline Fallback**: 100% features work without internet or API keys. | Zero risk of stage failure during the final pitch. |
+| **Protocol Visibility** | Tool calls hidden in private logs without inspection. | **Live FastMCP Telemetry Inspector** drawer in the UI displaying latency and tool payloads. | Allows technical auditors to verify protocol integrity with a single click. |
+| **Stage & Offline Reliability** | Crashes if external APIs or network connectivity fail. | **Smart Deterministic Offline Fallback**: 100% features work without internet or API keys. | Zero risk of downtime during critical operations or presentations. |
 
 ---
 
