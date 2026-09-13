@@ -100,11 +100,71 @@ def _is_multi_graph_request(message: str) -> bool:
 
 def _is_sankey_request(message: str) -> bool:
     return any(term in message.lower() for term in [
-        "sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de caja", "flujo de ingresos",
+        "sankey", "dankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de caja", "flujo de ingresos",
     ])
 
 
-def _sankey_payload(user_id: str, months: int) -> A2UIPayload:
+def _requested_investment_amount(message: str, default: float = 25000.0) -> float:
+    """Extract a conversational MXN investment amount without mistaking a term for it."""
+    lowered = message.lower().replace("\u00a0", " ")
+    match = re.search(r"\b(\d+(?:[.,]\d+)?)\s*(?:mil|millares?|k)\b", lowered)
+    if match:
+        return float(match.group(1).replace(",", ".")) * 1000
+
+    patterns = [
+        r"\$\s*(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)",
+        r"\b(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:mxn|pesos?)\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, lowered)
+        if match:
+            return max(1.0, float(match.group(1).replace(",", "")))
+    return default
+
+
+def _is_investment_request(message: str) -> bool:
+    return any(term in message.lower() for term in ["invertir", "inversión", "inversion", "pagaré", "pagare", "rendimiento", "plazo fijo"])
+
+
+def _is_home_widget_request(message: str) -> bool:
+    lowered = message.lower()
+    normalized = (
+        lowered.replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+    )
+    surface_terms = [
+        "inicio", "pantalla principal", "home", "para ti", "mi pantalla",
+        "pantalla de inicio", "widget", "widgets", "muro", "dashboard", "pantalla"
+    ]
+    action_terms = [
+        "agrega", "agregar", "agregalo", "agregala", "agregame",
+        "anade", "anadir", "anadelo", "anadela", "anademe", "añade", "añadir", "añadelo", "añádela", "añadela",
+        "pon", "poner", "ponlo", "ponla", "ponme",
+        "fija", "fijar", "fijalo", "fijala", "fijame",
+        "incluye", "incluir", "incluyelo", "inclúyelo",
+        "guarda", "guardar", "guardalo", "guárdalo",
+        "inserta", "insertar", "insertalo",
+        "coloca", "colocar", "colocalo",
+        "reemplaza", "reemplazar", "reemplazalo", "reemplázalo", "sustituye", "sustituir",
+        "reordena", "reordenar", "reordenalo", "mueve", "mover", "cambia el orden", "orden",
+        "quita", "quitar", "quitalo", "quítalo", "quitala", "quítala",
+        "elimina", "eliminar", "eliminalo", "elimínalo", "eliminala", "elimínala",
+        "borra", "borrar", "borralo", "bórralo",
+        "restablece", "restablecer", "reinicia", "reiniciar", "reset"
+    ]
+    has_surface = any(term in normalized for term in surface_terms)
+    has_action = any(term in normalized for term in action_terms)
+    return has_surface and has_action
+
+
+def _is_widget_replacement_request(message: str) -> bool:
+    return any(term in message.lower() for term in ["reemplaza", "reemplazar", "sustituye", "sustituir", "en lugar", "cambia mi widget", "cambiar mi widget"])
+
+
+def _sankey_payload(user_id: str, months: int = 1) -> A2UIPayload:
     sankey_data = mcp_client.get_sankey_cashflow(user_id, months)
     range_label = f"Últimos {sankey_data['months']} meses" if sankey_data["months"] > 1 else "Último mes"
     return A2UIPayload(
@@ -122,8 +182,148 @@ def _sankey_payload(user_id: str, months: int) -> A2UIPayload:
     )
 
 
+def _heatmap_payload(user_id: str) -> A2UIPayload:
+    heatmap_data = mcp_client.get_spending_heatmap(user_id)
+    return A2UIPayload(
+        component="BanorteChartCard",
+        props={
+            "id": "banorte-calendar-heatmap",
+            "chartType": "calendarHeatmap",
+            "title": "Mapa de Calor de Consumo Diario (Heatmap)",
+            "subtitle": f"Intensidad y frecuencia de compras · {heatmap_data['period']}",
+            "dateKey": "date",
+            "valueKey": "value",
+            "valueFormat": "currency",
+            "currency": "MXN",
+            "height": 270,
+            "data": {"data": heatmap_data["daily_spending"]},
+        },
+    )
+
+
+def _bar_payload(user_id: str) -> A2UIPayload:
+    spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": "last_month"})
+    return A2UIPayload(
+        component="BanorteChartCard",
+        props={
+            "id": "banorte-bar-spending",
+            "chartType": "bar",
+            "title": "Distribución de Gastos por Categoría",
+            "subtitle": f"Consumo auditado · {spending.get('period', 'Septiembre 2026')}",
+            "categoryKey": "name",
+            "valueKey": "amount",
+            "valueFormat": "currency",
+            "currency": "MXN",
+            "height": 290,
+            "data": {"data": spending.get("categories", [])},
+        },
+    )
+
+
+def _line_payload(user_id: str, months: int = 6) -> A2UIPayload:
+    monthly_data = mcp_client._execute_mock("get_historical_spending_trend", {"user_id": user_id, "months": months})
+    return A2UIPayload(
+        component="BanorteChartCard",
+        props={
+            "id": "banorte-line-spending",
+            "chartType": "line",
+            "title": f"Evolución Histórica de Gastos (Últimos {months} Meses)",
+            "subtitle": "Tendencia mensual de consumos con reducción sostenida",
+            "categoryKey": "mes",
+            "valueKey": "monto",
+            "valueFormat": "currency",
+            "currency": "MXN",
+            "height": 290,
+            "data": {"data": monthly_data},
+        },
+    )
+
+
+def _treemap_payload(user_id: str) -> A2UIPayload:
+    res = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id})
+    return A2UIPayload(
+        component="BanorteChartCard",
+        props={
+            "id": "banorte-treemap-spending",
+            "chartType": "treemap",
+            "title": "Mapa Jerárquico de Gastos (Treemap)",
+            "subtitle": f"Proporción de gasto por tamaño de bloque · {res.get('period', 'Septiembre 2026')}",
+            "categoryKey": "name",
+            "valueKey": "amount",
+            "valueFormat": "currency",
+            "currency": "MXN",
+            "height": 290,
+            "data": {"data": res.get("categories", [])},
+        },
+    )
+
+
+def _waterfall_payload(user_id: str) -> A2UIPayload:
+    state = mcp_client.get_real_customer_state(user_id)
+    avail = state.get("total_available_balance", 27900.0)
+    res = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id})
+    cats = res.get("categories", [])
+    data = [{"etapa": "Ingreso Nómina", "monto": 35000.00}]
+    for c in cats[:4]:
+        data.append({"etapa": c["name"].split()[0], "monto": -float(c["amount"])})
+    data.append({"etapa": "Saldo Final", "monto": avail})
+    return A2UIPayload(
+        component="BanorteChartCard",
+        props={
+            "id": "banorte-waterfall-cashflow",
+            "chartType": "waterfall",
+            "title": "Cascada de Flujo de Efectivo Banorte",
+            "subtitle": "Conciliación de ingresos y egresos paso a paso",
+            "categoryKey": "etapa",
+            "valueKey": "monto",
+            "valueFormat": "currency",
+            "currency": "MXN",
+            "height": 290,
+            "data": {"data": data},
+        },
+    )
+
+
+def _donut_payload(user_id: str) -> A2UIPayload:
+    spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": "last_month"})
+    return A2UIPayload(component="SpendingDonutCard", props=spending)
+
+
+def _health_payload(user_id: str) -> A2UIPayload:
+    health = mcp_client._execute_mock("get_financial_health_score", {"user_id": user_id})
+    return A2UIPayload(component="FinancialHealthGauge", props=health)
+
+
+def _investment_payload(user_id: str, amount: float = 50000.0) -> A2UIPayload:
+    inv = mcp_client._execute_mock("simulate_investment", {"amount": amount, "term_days": 91})
+    return A2UIPayload(component="InvestmentSimulatorCard", props={
+        "initialAmount": inv["amount"],
+        "initialTermDays": inv["term_days"],
+        "annualRate": inv["annual_rate"],
+        "estimatedGain": inv["estimated_gain"],
+        "totalMaturity": inv["total_maturity"],
+        "productName": "Pagaré Altos Rendimientos Banorte",
+    })
+
+
+def _debt_payload(user_id: str) -> A2UIPayload:
+    debt = mcp_client._execute_mock("get_user_debt", {"user_id": user_id})
+    return A2UIPayload(component="DebtRestructureCard", props=debt)
+
+
+def _spei_payload(user_id: str) -> A2UIPayload:
+    state = mcp_client.get_real_customer_state(user_id)
+    return A2UIPayload(component="SpeiTransferFormCard", props={
+        "initialBeneficiary": "SOFÍA MENDOZA RÍOS",
+        "initialBank": "BBVA México",
+        "initialClabe": "012 180 01594839201 9",
+        "initialAmount": 850.0,
+        "initialConcept": "Pago por servicios",
+        "availableBalance": state.get("total_available_balance", 27900.0)
+    })
+
+
 def _compact_history(history: List[Any], max_turns: int = 8, max_chars_per_turn: int = 800) -> List[tuple[str, str]]:
-    """Keep recent context useful without repeatedly sending an entire session."""
     compacted: List[tuple[str, str]] = []
     for message in history[-max_turns:]:
         content = (getattr(message, "content", "") or "").strip()
@@ -536,6 +736,17 @@ Reglas:
             # an explicit period in the user's request.
             return _sankey_payload(request.user_id or "C001", _requested_month_count(user_msg, default=1))
 
+        if _is_investment_request(user_msg) and not request.action_context:
+            amount = _requested_investment_amount(user_msg)
+            investment = mcp_client._execute_mock("simulate_investment", {"amount": amount, "term_days": 91})
+            return A2UIPayload(component="InvestmentSimulatorCard", props={
+                "initialAmount": investment["amount"],
+                "initialTermDays": investment["term_days"],
+                "annualRate": investment["annual_rate"],
+                "estimatedGain": investment["estimated_gain"],
+                "totalMaturity": investment["total_maturity"],
+            })
+
         if a2ui_payload:
             # If the user explicitly asks for a SPEI transfer and we got a generic BalanceCard, replace with SpeiTransferFormCard
             is_spei_intent = any(k in request.message.lower() for k in ["transfer", "transfie", "enviar dinero", "mandar dinero", "spei", "hacer transferencia"])
@@ -765,7 +976,8 @@ Reglas:
 
         # 6. Investment
         elif any(k in combined for k in ["invertir", "inversión", "pagaré", "rendimiento"]):
-            inv = mcp_client._execute_mock("simulate_investment", {"amount": 25000.0, "term_days": 91})
+            amount = _requested_investment_amount(user_msg)
+            inv = mcp_client._execute_mock("simulate_investment", {"amount": amount, "term_days": 91})
             return A2UIPayload(
                 component="InvestmentSimulatorCard",
                 props={
@@ -806,7 +1018,9 @@ Reglas:
         await asyncio.sleep(0.06)
 
         # Try live loop with streaming status if client is available
-        if self.client and self.api_key:
+        # Widget placement has a client-side persistence contract. Keep this
+        # path deterministic so a live model cannot omit the required payload.
+        if self.client and self.api_key and not _is_home_widget_request(request.message):
             try:
                 async for event in self._run_gemini_live_stream(request):
                     yield event
@@ -1496,10 +1710,7 @@ Diálogo:
             return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
 
         # 0.5 HOME SCREEN WIDGET MANAGEMENT INTENT (Chatbot-driven Home Customization)
-        is_home_widget_intent = (
-            any(h in msg for h in ["inicio", "pantalla principal", "home", "para ti", "mi pantalla", "pantalla de inicio"]) and
-            any(act in msg for act in ["agrega", "agregar", "pon", "poner", "fija", "fijar", "incluye", "incluir", "reordena", "reordenar", "mueve", "mover", "cambia el orden", "orden", "quita", "quitar", "elimina", "eliminar", "borra", "borrar", "restablece", "restablecer"])
-        ) or any(w in msg for w in ["reordena mis widgets", "reordenar widgets", "reordenar mis widgets", "cambiar orden de widgets", "orden de los widgets"])
+        is_home_widget_intent = _is_home_widget_request(msg)
 
         if is_home_widget_intent:
             action = "list"
@@ -1508,6 +1719,7 @@ Diálogo:
 
             if any(r in msg for r in ["restablece", "restablecer", "por defecto", "original"]):
                 action = "reset"
+
                 res, log = await mcp_client.execute_tool("manage_home_widgets", {"user_id": user_id, "action": "reset"})
                 mcp_calls.append(log)
                 reply = (
@@ -1558,24 +1770,47 @@ Diálogo:
 
             elif any(r in msg for r in ["quita", "quitar", "elimina", "eliminar", "borra", "borrar"]):
                 action = "remove"
-                if any(k in msg for k in ["renta", "pago"]):
+                remove_current_visual = False
+                if _is_sankey_request(msg):
+                    widget_type = "sankey"
+                    w_name = "Diagrama Sankey"
+                elif any(k in msg for k in ["heatmap", "mapa de calor", "calendario"]):
+                    widget_type = "calendarHeatmap"
+                    w_name = "Mapa de Calor"
+                elif any(k in msg for k in ["barras", "barra", "bar chart"]):
+                    widget_type = "bar"
+                    w_name = "Gráfica de Barras"
+                elif any(k in msg for k in ["líneas", "línea", "lineas", "linea", "tendencia"]):
+                    widget_type = "line"
+                    w_name = "Gráfica de Líneas"
+                elif any(k in msg for k in ["treemap", "árbol", "arbol"]):
+                    widget_type = "treemap"
+                    w_name = "Treemap"
+                elif any(k in msg for k in ["cascada", "waterfall"]):
+                    widget_type = "waterfall"
+                    w_name = "Gráfico Cascada"
+                elif any(k in msg for k in ["renta", "pago recurrente", "alquiler"]):
                     widget_type = "rent_payment"
                     w_name = "Pago recurrente (Renta)"
-                elif any(k in msg for k in ["inversion", "inversión", "fondo"]):
+                elif any(k in msg for k in ["inversion", "inversión", "fondo", "pagaré", "pagare"]):
                     widget_type = "investment_quick"
                     w_name = "Fondo de inversión"
-                elif any(k in msg for k in ["gasto", "gastos", "semana"]):
-                    widget_type = "weekly_spending"
-                    w_name = "Gastos de la semana"
                 elif any(k in msg for k in ["salud", "score", "semáforo", "semaforo"]):
                     widget_type = "financial_health"
                     w_name = "Semáforo de Salud Financiera"
-                elif any(k in msg for k in ["donut", "dona", "categorías"]):
+                elif any(k in msg for k in ["donut", "dona", "pie", "pastel"]):
                     widget_type = "spending_donut"
-                    w_name = "Desglose de Gastos"
-                elif any(k in msg for k in ["deuda", "reestructur"]):
+                    w_name = "Desglose de Gastos en Dona"
+                elif any(k in msg for k in ["deuda", "reestructur", "convenio"]):
                     widget_type = "debt_restructure"
                     w_name = "Plan de Reestructuración"
+                elif any(k in msg for k in ["semana", "gastos de la semana"]):
+                    widget_type = "weekly_spending"
+                    w_name = "Gastos de la semana"
+                elif any(k in msg for k in ["widget", "gráfico", "grafico", "gráfica", "grafica", "visual", "este", "esta"]):
+                    widget_type = "current_visual"
+                    w_name = "el visual actual"
+                    remove_current_visual = True
                 else:
                     widget_type = "rent_payment"
                     w_name = "el widget seleccionado"
@@ -1583,7 +1818,8 @@ Diálogo:
                 res, log = await mcp_client.execute_tool("manage_home_widgets", {
                     "user_id": user_id,
                     "action": "remove",
-                    "widget_type": widget_type
+                    "widget_type": widget_type,
+                    "remove_current_visual": remove_current_visual,
                 })
                 mcp_calls.append(log)
                 reply = (
@@ -1595,8 +1831,10 @@ Diálogo:
             else:
                 action = "add"
                 a2ui_ret = None
+                w_name = "Visualización Banorte"
+                widget_type = "BanorteChartCard"
 
-                # Check if there is an active/recent A2UI component in conversation history
+                # 1. Inspect recent conversation history (newest first) for any previously generated A2UI component
                 last_a2ui_comp = None
                 last_a2ui_payload = None
                 if request.history:
@@ -1606,136 +1844,116 @@ Diálogo:
                             last_a2ui_comp = getattr(h_msg.a2ui, 'component', None)
                             break
                 if not last_a2ui_comp:
-                    chat_hist = mcp_client.get_chat_history(user_id, limit=5)
-                    for c_item in chat_hist:
+                    chat_hist = mcp_client.get_chat_history(user_id, limit=10)
+                    for c_item in reversed(chat_hist):
                         if c_item.get("a2ui") and isinstance(c_item.get("a2ui"), dict):
                             last_a2ui_payload = c_item["a2ui"]
                             last_a2ui_comp = c_item["a2ui"].get("component")
                             break
 
-                # Check if user refers to the current/last visible component
-                has_demonstrative = any(d in msg for d in ["este", "esta", "esto", "el gráfico", "la gráfica", "el visual", "el widget", "la tarjeta", "el componente"])
+                # Extract details of previous visual if available
+                last_props = {}
+                last_chart_type = None
+                last_title = None
+                if last_a2ui_payload:
+                    last_props = (last_a2ui_payload.props if hasattr(last_a2ui_payload, 'props') else last_a2ui_payload.get('props')) or {}
+                    last_chart_type = last_props.get('chartType')
+                    last_title = last_props.get('title')
 
-                if (
-                    any(k in msg for k in ["donut", "dona", "pay", "pie", "pastel", "categoría", "categorías", "distribución", "gasto", "gastos", "consumo", "compras"]) or
-                    (has_demonstrative and last_a2ui_comp == "SpendingDonutCard")
-                ):
-                    widget_type = "spending_donut"
-                    w_name = "Desglose de Gastos por Categoría"
-                    if last_a2ui_comp == "SpendingDonutCard" and last_a2ui_payload:
-                        a2ui_ret = last_a2ui_payload if isinstance(last_a2ui_payload, A2UIPayload) else A2UIPayload(**last_a2ui_payload)
-                    else:
-                        spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": "last_month"})
-                        a2ui_ret = A2UIPayload(component="SpendingDonutCard", props=spending)
-                elif any(k in msg for k in ["barras", "barra", "sankey", "flujo", "heatmap", "mapa de calor", "tendencia", "treemap", "cascada"]) or (
-                    has_demonstrative and last_a2ui_comp == "BanorteChartCard"
-                ):
+                # Detect if the user is referring to the current/last visual generated in chat
+                has_demonstrative = any(d in msg for d in [
+                    "este", "esta", "esto", "anterior", "previa", "previo", "última", "ultimo",
+                    "el gráfico", "la gráfica", "el visual", "el widget", "la tarjeta", "el componente",
+                    "agrégalo", "agregalo", "ponlo", "fíjalo", "fijalo", "añádelo", "anadelo",
+                    "guárdalo", "guardalo", "inclúyelo", "incluyelo"
+                ])
+                is_generic_add = last_a2ui_payload is not None and any(g in msg for g in [
+                    "como widget", "a mis widgets", "a los widgets", "en mis widgets",
+                    "a inicio", "al inicio", "en inicio", "en el inicio", "a mi inicio",
+                    "a la pantalla", "en la pantalla", "pantalla principal"
+                ]) and not any(spec in msg for spec in ["renta", "alquiler", "dona", "donut", "pastel", "pie", "salud", "pagaré", "deuda"])
+
+                is_reusing_previous = (has_demonstrative or is_generic_add) and last_a2ui_payload is not None
+
+                # Branch 1: If user requests/refers to the visual previously created in chat, REUSE IT DIRECTLY
+                if is_reusing_previous:
+                    a2ui_ret = last_a2ui_payload if isinstance(last_a2ui_payload, A2UIPayload) else A2UIPayload(**last_a2ui_payload)
+                    widget_type = last_a2ui_comp or "BanorteChartCard"
+                    w_name = last_title or ("Diagrama Sankey de Flujo" if last_chart_type == "sankey" else "Gráfico Analítico Banorte")
+
+                # Branch 2: Explicitly requested visual type in the message
+                elif _is_sankey_request(msg):
                     widget_type = "BanorteChartCard"
-                    w_name = "Gráfico Analítico Banorte"
-                    if last_a2ui_comp == "BanorteChartCard" and last_a2ui_payload:
-                        a2ui_ret = last_a2ui_payload if isinstance(last_a2ui_payload, A2UIPayload) else A2UIPayload(**last_a2ui_payload)
-                    else:
-                        spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": "last_month"})
-                        a2ui_ret = A2UIPayload(
-                            component="BanorteChartCard",
-                            props={
-                                "id": "banorte-home-chart",
-                                "chartType": "bar",
-                                "title": "Distribución de Gastos",
-                                "subtitle": "Consumo auditado",
-                                "categoryKey": "name",
-                                "valueKey": "amount",
-                                "valueFormat": "currency",
-                                "currency": "MXN",
-                                "height": 280,
-                                "data": {"data": spending["categories"]}
-                            }
-                        )
-                elif any(k in msg for k in ["salud", "score", "semáforo", "semaforo", "bienestar", "diagnóstico", "diagnostico"]) or (
-                    has_demonstrative and last_a2ui_comp == "FinancialHealthGauge"
-                ):
+                    months = _requested_month_count(msg, default=1)
+                    w_name = f"Sankey de flujo · últimos {months} meses"
+                    a2ui_ret = _sankey_payload(user_id, months)
+                elif any(k in msg for k in ["heatmap", "mapa de calor", "calendario"]):
+                    widget_type = "BanorteChartCard"
+                    w_name = "Mapa de Calor de Consumo Diario (Heatmap)"
+                    a2ui_ret = _heatmap_payload(user_id)
+                elif any(k in msg for k in ["barras", "barra", "bar chart"]):
+                    widget_type = "BanorteChartCard"
+                    w_name = "Distribución de Gastos por Categoría"
+                    a2ui_ret = _bar_payload(user_id)
+                elif any(k in msg for k in ["líneas", "línea", "lineas", "linea", "evolución", "evolucion", "tendencia", "histórico", "historico", "comparativa"]):
+                    widget_type = "BanorteChartCard"
+                    w_name = "Evolución Histórica de Gastos"
+                    a2ui_ret = _line_payload(user_id)
+                elif any(k in msg for k in ["treemap", "árbol", "arbol"]):
+                    widget_type = "BanorteChartCard"
+                    w_name = "Treemap de Gastos"
+                    a2ui_ret = _treemap_payload(user_id)
+                elif any(k in msg for k in ["cascada", "waterfall"]):
+                    widget_type = "BanorteChartCard"
+                    w_name = "Gráfico Cascada de Flujo"
+                    a2ui_ret = _waterfall_payload(user_id)
+                elif any(k in msg for k in ["donut", "dona", "pie", "pastel"]):
+                    widget_type = "spending_donut"
+                    w_name = "Desglose de Gastos en Dona"
+                    a2ui_ret = _donut_payload(user_id)
+                elif any(k in msg for k in ["salud", "score", "semáforo", "semaforo", "bienestar", "diagnóstico", "diagnostico"]):
                     widget_type = "financial_health"
                     w_name = "Semáforo de Salud Financiera"
-                    health = mcp_client._execute_mock("get_financial_health_score", {"user_id": user_id})
-                    a2ui_ret = A2UIPayload(component="FinancialHealthGauge", props=health)
-                elif any(k in msg for k in ["pagaré", "pagare", "simulador", "calculadora de inversión"]) or (
-                    has_demonstrative and last_a2ui_comp == "InvestmentSimulatorCard"
-                ):
+                    a2ui_ret = _health_payload(user_id)
+                elif any(k in msg for k in ["pagaré", "pagare", "simulador", "calculadora de inversión"]):
                     widget_type = "investment_simulator"
                     w_name = "Simulador de Pagaré Banorte"
-                    inv = mcp_client._execute_mock("simulate_investment", {"amount": 50000.0, "term_days": 91})
-                    a2ui_ret = A2UIPayload(component="InvestmentSimulatorCard", props={
-                        "initialAmount": inv["amount"],
-                        "initialTermDays": inv["term_days"],
-                        "annualRate": inv["annual_rate"],
-                        "estimatedGain": inv["estimated_gain"],
-                        "totalMaturity": inv["total_maturity"]
-                    })
-                elif any(k in msg for k in ["deuda", "reestructur", "convenio", "crédito"]) or (
-                    has_demonstrative and last_a2ui_comp == "DebtRestructureCard"
-                ):
+                    amount = _requested_investment_amount(msg, default=50000.0)
+                    a2ui_ret = _investment_payload(user_id, amount)
+                elif any(k in msg for k in ["deuda", "reestructur", "convenio", "crédito"]):
                     widget_type = "debt_restructure"
                     w_name = "Plan de Reestructuración de Deuda"
-                    debt = mcp_client._execute_mock("get_user_debt", {"user_id": user_id})
-                    a2ui_ret = A2UIPayload(component="DebtRestructureCard", props=debt)
-                elif any(k in msg for k in ["spei", "transferencia", "enviar dinero"]) or (
-                    has_demonstrative and last_a2ui_comp == "SpeiTransferFormCard"
-                ):
+                    a2ui_ret = _debt_payload(user_id)
+                elif any(k in msg for k in ["spei", "transferencia", "enviar dinero"]):
                     widget_type = "spei_transfer_form"
                     w_name = "Transferencia Rápida SPEI"
-                    state = mcp_client.get_real_customer_state(user_id)
-                    a2ui_ret = A2UIPayload(component="SpeiTransferFormCard", props={
-                        "initialBeneficiary": "SOFÍA MENDOZA RÍOS",
-                        "initialBank": "BBVA México",
-                        "initialClabe": "012 180 01594839201 9",
-                        "initialAmount": 850.0,
-                        "initialConcept": "Pago por servicios",
-                        "availableBalance": state.get("total_available_balance", 27900.0)
-                    })
+                    a2ui_ret = _spei_payload(user_id)
                 elif any(k in msg for k in ["renta", "pago recurrente", "alquiler"]):
                     widget_type = "rent_payment"
                     w_name = "Pago recurrente (Renta)"
+                    a2ui_ret = None
                 elif any(k in msg for k in ["inversion", "inversión", "fondo"]):
                     widget_type = "investment_quick"
                     w_name = "Fondo de inversión"
-                elif any(k in msg for k in ["gráfico", "grafico", "gráfica", "grafica", "chart"]):
-                    widget_type = "spending_donut"
-                    w_name = "Desglose de Gastos por Categoría"
-                    spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": "last_month"})
-                    a2ui_ret = A2UIPayload(component="SpendingDonutCard", props=spending)
-                elif last_a2ui_comp:
-                    if last_a2ui_comp == "SpendingDonutCard":
-                        widget_type = "spending_donut"
-                        w_name = "Desglose de Gastos por Categoría"
-                    elif last_a2ui_comp == "FinancialHealthGauge":
-                        widget_type = "financial_health"
-                        w_name = "Semáforo de Salud Financiera"
-                    elif last_a2ui_comp == "DebtRestructureCard":
-                        widget_type = "debt_restructure"
-                        w_name = "Plan de Reestructuración de Deuda"
-                    elif last_a2ui_comp == "BanorteChartCard":
-                        widget_type = "BanorteChartCard"
-                        w_name = "Gráfico Analítico Banorte"
-                    elif last_a2ui_comp == "InvestmentSimulatorCard":
-                        widget_type = "investment_simulator"
-                        w_name = "Simulador de Pagaré Banorte"
-                    elif last_a2ui_comp == "SpeiTransferFormCard":
-                        widget_type = "spei_transfer_form"
-                        w_name = "Transferencia Rápida SPEI"
-                    else:
-                        widget_type = "spending_donut"
-                        w_name = "Desglose de Gastos"
+                    a2ui_ret = None
+                elif last_a2ui_payload:
+                    # If any previous visual existed, use it rather than defaulting to donut
                     a2ui_ret = last_a2ui_payload if isinstance(last_a2ui_payload, A2UIPayload) else A2UIPayload(**last_a2ui_payload)
+                    widget_type = last_a2ui_comp or "BanorteChartCard"
+                    w_name = last_title or "Visualización Banorte"
                 else:
-                    widget_type = "spending_donut"
-                    w_name = "Desglose de Gastos por Categoría"
-                    spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": "last_month"})
-                    a2ui_ret = A2UIPayload(component="SpendingDonutCard", props=spending)
+                    # Final fallback when nothing is in history: provide Sankey cashflow
+                    widget_type = "BanorteChartCard"
+                    w_name = "Diagrama de Flujo de Efectivo (Sankey)"
+                    a2ui_ret = _sankey_payload(user_id, 1)
 
                 res, log = await mcp_client.execute_tool("manage_home_widgets", {
                     "user_id": user_id,
                     "action": "add",
-                    "widget_type": widget_type
+                    "widget_type": widget_type,
+                    "payload": a2ui_ret.model_dump() if a2ui_ret else None,
+                    "title": w_name,
+                    "replace": _is_widget_replacement_request(msg),
                 })
                 mcp_calls.append(log)
 
@@ -2197,8 +2415,9 @@ Diálogo:
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
         # 5. INVESTMENT / PAGARÉ BANORTE
-        elif any(k in msg for k in ["invertir", "inversión", "inversion", "pagaré", "pagare", "rendimiento", "plazo fijo"]):
-            res, log = await mcp_client.execute_tool("simulate_investment", {"amount": 25000.0, "term_days": 91})
+        elif _is_investment_request(msg):
+            amount = _requested_investment_amount(msg)
+            res, log = await mcp_client.execute_tool("simulate_investment", {"amount": amount, "term_days": 91})
             mcp_calls.append(log)
 
             reply = (
