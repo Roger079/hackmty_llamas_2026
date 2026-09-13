@@ -87,8 +87,6 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
   const [lastFolio, setLastFolio] = useState('');
   const [isClosing, setIsClosing] = useState(false);
 
-  if (!isOpen && !isClosing) return null;
-
   const handleSelectContact = (contact: SavedContact) => {
     setRecipientName(contact.name);
     setRecipientBank(contact.bank);

@@ -32,7 +32,6 @@ import {
   subscribeToHomeWidgets,
 } from '../utils/homeWidgetsManager';
 import { MobileTransferModal } from './MobileTransferModal';
-import { MobileBillPayModal } from './MobileBillPayModal';
 
 interface MobileSimulatorProps {
   clientName: string;
@@ -82,7 +81,6 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
   const [isRentConfirmationOpen, setIsRentConfirmationOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [isBillPayModalOpen, setIsBillPayModalOpen] = useState(false);
   const [isScrollingDown, setIsScrollingDown] = useState(false);
 
   const cardRailRef = useRef<HTMLDivElement>(null);
@@ -370,30 +368,22 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
 
             {/* Action rail, separated from the card products. */}
             <div className="border-t border-slate-200/80 pt-3.5">
-              <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] font-bold text-slate-700">
+              <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-slate-700">
                 <button
                   type="button"
                   onClick={() => setIsTransferModalOpen(true)}
-                  className="flex flex-col items-center rounded-xl bg-white p-2 shadow-xs border border-slate-100 hover:bg-slate-50 transition cursor-pointer active:scale-95"
+                  className="flex flex-col items-center rounded-xl bg-white p-2.5 shadow-xs border border-slate-100 hover:bg-slate-50 transition cursor-pointer active:scale-95"
                 >
                   <Send className="h-4 w-4 text-[#EB0029] mb-1" />
-                  <span className="truncate w-full">Transferir</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsBillPayModalOpen(true)}
-                  className="flex flex-col items-center rounded-xl bg-white p-2 shadow-xs border border-slate-100 hover:bg-slate-50 transition cursor-pointer active:scale-95"
-                >
-                  <Zap className="h-4 w-4 text-[#EB0029] mb-1" />
-                  <span className="truncate w-full">Servicios</span>
+                  <span>Transferir</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('cards')}
-                  className="flex flex-col items-center rounded-xl bg-white p-2 shadow-xs border border-slate-100 hover:bg-slate-50 transition cursor-pointer active:scale-95"
+                  className="flex flex-col items-center rounded-xl bg-white p-2.5 shadow-xs border border-slate-100 hover:bg-slate-50 transition cursor-pointer active:scale-95"
                 >
                   <CreditCard className="h-4 w-4 text-[#EB0029] mb-1" />
-                  <span className="truncate w-full">Tarjetas</span>
+                  <span>Mis tarjetas</span>
                 </button>
                 <button
                   type="button"
@@ -401,10 +391,10 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                     setActiveTab('maya');
                     onSendMessage('Muéstrame las opciones de mi fondo de inversión');
                   }}
-                  className="flex flex-col items-center rounded-xl bg-white p-2 shadow-xs border border-slate-100 hover:bg-slate-50 transition cursor-pointer active:scale-95"
+                  className="flex flex-col items-center rounded-xl bg-white p-2.5 shadow-xs border border-slate-100 hover:bg-slate-50 transition cursor-pointer active:scale-95"
                 >
                   <Landmark className="h-4 w-4 text-[#EB0029] mb-1" />
-                  <span className="truncate w-full">Inversión</span>
+                  <span>Inversiones</span>
                 </button>
               </div>
             </div>
@@ -848,22 +838,6 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
         }}
       />
 
-      {/* Services Bill Payment Modal */}
-      <MobileBillPayModal
-        isOpen={isBillPayModalOpen}
-        onClose={() => setIsBillPayModalOpen(false)}
-        availableBalance={nominaBalance}
-        onExecutePayment={(payment) => {
-          onSendMessage(
-            `Pagué el servicio de ${payment.serviceName} por $${payment.amount} MXN (Referencia: ${payment.reference}, Folio: ${payment.folio}).`
-          );
-        }}
-        onOpenMayaChat={(msg) => {
-          setIsBillPayModalOpen(false);
-          setActiveTab('maya');
-          onSendMessage(msg);
-        }}
-      />
 
       {/* Scroll-Reactive Maya Floating Action Button */}
       <MayaChatWidget
