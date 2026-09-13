@@ -28,21 +28,24 @@ export const SpeiConfirmCard: React.FC<SpeiConfirmCardProps> = ({
   const handleAuthorize = async () => {
     if (disabled || isAuthorizing) return;
     setIsAuthorizing(true);
-    if (onAction) {
-      const succeeded = await onAction({
-        action: 'execute_spei',
-        params: {
-          transfer_id: transferId,
-          amount,
-          beneficiary,
-          bank,
-          clabe,
-          concept,
-          auth_token: "OTP-BANORTE-TOKEN-VALID"
-        },
-        source_component: 'SpeiConfirmCard'
-      });
-      if (!succeeded) setIsAuthorizing(false);
+    try {
+      if (onAction) {
+        await onAction({
+          action: 'execute_spei',
+          params: {
+            transfer_id: transferId,
+            amount,
+            beneficiary,
+            bank,
+            clabe,
+            concept,
+            auth_token: "OTP-BANORTE-TOKEN-VALID"
+          },
+          source_component: 'SpeiConfirmCard'
+        });
+      }
+    } finally {
+      setIsAuthorizing(false);
     }
   };
 

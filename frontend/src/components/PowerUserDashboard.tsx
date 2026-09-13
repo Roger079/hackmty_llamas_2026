@@ -123,35 +123,36 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
   // Default widgets are empty until the user specifically adds or pins them
   const getDefaultWidgetsForUser = (): DashboardWidgetItem[] => [];
 
+  const refreshBankState = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/bank/state?user_id=${userId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.client_name) setClientName(data.client_name);
+      const accLast4 = data.primary_account?.account_last4 || (data.accounts?.[0]?.account_last4 ?? '0000');
+      const cardLast4 = data.primary_card?.pan_last4 || (data.credit_cards?.[0]?.pan_last4 ?? '');
+      setBankAccounts({
+        nominaBalance: data.total_available_balance ?? 27900.0,
+        totalDebt: data.total_debt ?? 0.0,
+        accountLast4: accLast4,
+        cardLast4: cardLast4,
+      });
+      if (Array.isArray(data.transactions)) {
+        setTransactions(data.transactions);
+      }
+    } catch (err) {
+      console.warn('Could not load bank state in PowerUserDashboard:', err);
+    }
+  };
+
   // Sync customer state from SQLite
   useEffect(() => {
     // 1. Bank State
-    fetch(`/api/bank/state?user_id=${selectedUserId}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => {
-        if (data.client_name) setClientName(data.client_name);
-        const accLast4 = data.primary_account?.account_last4 || (data.accounts?.[0]?.account_last4 ?? '0000');
-        const cardLast4 = data.primary_card?.pan_last4 || (data.credit_cards?.[0]?.pan_last4 ?? '');
-        const updatedAccounts = {
-          nominaBalance: data.total_available_balance ?? 27900.0,
-          totalDebt: data.total_debt ?? 0.0,
-          accountLast4: accLast4,
-          cardLast4: cardLast4,
-        };
-        setBankAccounts(updatedAccounts);
-        if (Array.isArray(data.transactions)) {
-          setTransactions(data.transactions);
-        }
+    refreshBankState(selectedUserId);
 
-        // 2. Load only widgets explicitly pinned or sent by the user
-        const stored = getPinnedWidgets(selectedUserId);
-        setWidgets(stored);
-      })
-      .catch((err) => {
-        console.warn('Could not load bank state in PowerUserDashboard:', err);
-        const stored = getPinnedWidgets(selectedUserId);
-        setWidgets(stored);
-      });
+    // 2. Load only widgets explicitly pinned or sent by the user
+    const stored = getPinnedWidgets(selectedUserId);
+    setWidgets(stored);
 
 
     // 3. Cognitive Profile
@@ -412,27 +413,214 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
     showToast(`✓ Widget añadido: ${newWidget.title}`);
   };
 
-  // Handle Action Triggered from inside Widgets
+  // Handle Action Triggered from inside Widgets or Maya Studio Dock
   const handleAction = async (actionCtx: ActionContext): Promise<boolean> => {
     setIsLoading(true);
     try {
+      let actionLabel = `Acción: ${actionCtx.action}`;
+      if (actionCtx.source_component === 'SpeiTransferFormCard' || actionCtx.action === 'prepare_spei') {
+        const amt = Number(actionCtx.params?.amount || 850);
+        const ben = actionCtx.params?.beneficiary_name || 'destinatario';
+        actionLabel = `Revisar y autorizar transferencia SPEI de $${amt.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN a ${ben}`;
+      } else if (actionCtx.action.includes('spei')) {
+        actionLabel = 'Autorizar transferencia SPEI con Token Móvil';
+      } else if (actionCtx.action.includes('restructure')) {
+        actionLabel = `Aceptar plan de ${actionCtx.params?.term_months || '24'} meses`.trim();
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `usr-act-${Date.now()}`,
+          role: 'user',
+          content: actionLabel,
+          timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Acción ejecutada desde Command Center: ${actionCtx.action}`,
+          message: actionLabel,
           user_id: selectedUserId,
           action_context: actionCtx,
         }),
       });
 
       if (res.ok) {
-        showToast(`✓ Operación "${actionCtx.action}" registrada con éxito`);
+        const data = await res.json();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `asst-act-${Date.now()}`,
+            role: 'assistant',
+            content: data.reply || 'Operación completada por Maya.',
+            a2ui: data.a2ui,
+            timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+
+        if (data.a2ui) {
+          const newWidgetItem: DashboardWidgetItem = {
+            id: `dock-widget-${Date.now()}`,
+            title: data.a2ui.props?.title || `${data.a2ui.component}`,
+            component: data.a2ui.component,
+            payload: data.a2ui,
+            source: 'studio',
+            pinnedAt: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+          };
+          setWidgets((prev) => {
+            const updated = [newWidgetItem, ...prev];
+            savePinnedWidgets(selectedUserId, updated);
+            return updated;
+          });
+        }
+
+        if (actionCtx.action === 'execute_spei') {
+          const amt = Number(actionCtx.params?.amount || 850);
+          const ben = actionCtx.params?.beneficiary || 'Sofía Mendoza';
+          const newTx: TransactionItem = {
+            id: `tx-spei-${Date.now()}`,
+            date: 'Hoy',
+            description: `SPEI a ${ben}`,
+            account: 'Débito Enlace',
+            amount: -amt,
+            type: 'debit',
+            status: 'Liquidado',
+            category: 'Transferencias',
+          };
+          setTransactions((prev) => [newTx, ...prev]);
+        }
+
+        await refreshBankState(selectedUserId);
+        showToast(`✓ Operación completada con éxito`);
         return true;
       }
       return false;
-    } catch {
+    } catch (err) {
+      console.error('handleAction failed:', err);
       return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 1-Click Direct SPEI Transfer Function
+  const handleQuick1ClickSpei = async (
+    beneficiary = "SOFÍA MENDOZA RÍOS",
+    bank = "BBVA México",
+    clabe = "012 180 01594839201 9",
+    amount = 850.0,
+    concept = "Pago inmediato 1-Clic"
+  ) => {
+    if (isLoading) return;
+    setIsLoading(true);
+    showToast(`⚡ Procesando envío de $${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN en 1 solo clic...`);
+
+    try {
+      // 1. Prepare SPEI order
+      const prepRes = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Preparar transferencia SPEI de $${amount} a ${beneficiary}`,
+          user_id: selectedUserId,
+          action_context: {
+            action: 'prepare_spei',
+            source_component: 'SpeiTransferFormCard',
+            params: {
+              beneficiary_name: beneficiary,
+              recipient_bank: bank,
+              clabe: clabe.replace(/\s/g, ''),
+              amount: amount,
+              concept: concept,
+            },
+          },
+        }),
+      });
+
+      const prepData = await prepRes.json();
+      const transferId = prepData?.a2ui?.props?.transferId || `prep-spei-${Date.now()}`;
+
+      // 2. Direct 1-Click execution with OTP Token
+      const execRes = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Confirmar transferencia SPEI con Token Móvil`,
+          user_id: selectedUserId,
+          action_context: {
+            action: 'execute_spei',
+            source_component: 'SpeiConfirmCard',
+            params: {
+              transfer_id: transferId,
+              amount: amount,
+              beneficiary: beneficiary,
+              bank: bank,
+              clabe: clabe.replace(/\s/g, ''),
+              concept: concept,
+              auth_token: 'OTP-BANORTE-TOKEN-VALID',
+            },
+          },
+        }),
+      });
+
+      if (execRes.ok) {
+        const execData = await execRes.json();
+        const receiptPayload = execData.a2ui;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `usr-${Date.now()}`,
+            role: 'user',
+            content: `⚡ Transferencia 1-Clic enviada: $${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN a ${beneficiary}`,
+            timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+          },
+          {
+            id: `asst-${Date.now()}`,
+            role: 'assistant',
+            content: execData.reply || `Transferencia liquidada exitosamente ante Banco de México en 1 solo clic. Clave de rastreo: ${receiptPayload?.props?.trackingKey || 'BNTE-OK'}.`,
+            a2ui: receiptPayload,
+            timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+
+        if (receiptPayload) {
+          const receiptWidget: DashboardWidgetItem = {
+            id: `dock-widget-${Date.now()}`,
+            title: `Comprobante SPEI · $${amount.toFixed(2)} MXN`,
+            component: 'SpeiReceiptCard',
+            payload: receiptPayload,
+            source: 'studio',
+            pinnedAt: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+          };
+          setWidgets((prev) => {
+            const updated = [receiptWidget, ...prev];
+            savePinnedWidgets(selectedUserId, updated);
+            return updated;
+          });
+        }
+
+        const newTx: TransactionItem = {
+          id: `tx-spei-${Date.now()}`,
+          date: 'Hoy',
+          description: `SPEI 1-Clic a ${beneficiary} (${bank})`,
+          account: 'Débito Enlace',
+          amount: -amount,
+          type: 'debit',
+          status: 'Liquidado',
+          category: 'Transferencias',
+        };
+        setTransactions((prev) => [newTx, ...prev]);
+
+        await refreshBankState(selectedUserId);
+        showToast(`✓ $${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN transferidos en 1 clic a ${beneficiary.split(' ')[0]}`);
+      }
+    } catch (err) {
+      console.error('1-Click SPEI failed:', err);
+      showToast('❌ Error al procesar transferencia 1-Clic');
     } finally {
       setIsLoading(false);
     }
@@ -651,6 +839,18 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
 
             {/* Top Command Actions */}
             <div className="flex items-center gap-2">
+              {/* 1-Click Fast SPEI Action Button */}
+              <button
+                type="button"
+                onClick={() => handleQuick1ClickSpei("SOFÍA MENDOZA RÍOS", "BBVA México", "012 180 01594839201 9", 850.0, "Pago inmediato")}
+                disabled={isLoading}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-3.5 py-1.5 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+                title="Enviar $850.00 MXN a Sofía Mendoza en 1 solo clic sin confirmaciones adicionales"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>⚡ Enviar $850 SPEI (1 Clic)</span>
+              </button>
+
               {/* Add Widget Dropdown */}
               <div className="relative">
                 <button
@@ -668,6 +868,20 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                       Catálogo de Componentes A2UI
                     </div>
                     <div className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddMenuOpen(false);
+                          handleQuick1ClickSpei("SOFÍA MENDOZA RÍOS", "BBVA México", "012 180 01594839201 9", 850.0, "Pago servicios");
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-emerald-50 flex items-center gap-2 cursor-pointer border-b border-slate-100 mb-1"
+                      >
+                        <Send className="h-4 w-4 text-emerald-600" />
+                        <div>
+                          <div className="font-bold text-emerald-700">⚡ SPEI 1-Clic Instantáneo</div>
+                          <div className="text-[10px] text-slate-400">Enviar $850 a Sofía en un toque</div>
+                        </div>
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleAddWidgetFromCatalog('sankey')}
@@ -831,6 +1045,16 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                     >
                       <span>Transferir por SPEI</span>
                       <ArrowUpRight className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuick1ClickSpei("SOFÍA MENDOZA RÍOS", "BBVA México", "012 180 01594839201 9", 850.0, "Cena")}
+                      disabled={isLoading}
+                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                      title="Enviar $850.00 MXN a Sofía en 1 Clic"
+                    >
+                      <Send className="h-3 w-3" />
+                      <span>⚡ $850 a Sofía (1 Clic)</span>
                     </button>
                   </div>
                 </div>
@@ -1168,6 +1392,16 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
 
                   {/* Quick Prompts Bar */}
                   <div className="p-2.5 border-b border-slate-100 bg-slate-50 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => handleQuick1ClickSpei("SOFÍA MENDOZA RÍOS", "BBVA México", "012 180 01594839201 9", 850.0, "Cena")}
+                      disabled={isLoading}
+                      className="shrink-0 rounded-lg bg-emerald-50 border border-emerald-300 px-2.5 py-1 text-emerald-800 hover:bg-emerald-100 transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                      title="Enviar $850 a Sofía en 1 Clic"
+                    >
+                      <Send className="h-3 w-3" />
+                      <span>⚡ SPEI 1-Clic</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleSendMessage('Quiero hacer una transferencia SPEI')}

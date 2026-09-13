@@ -158,19 +158,22 @@ export const SpeiTransferFormCard: React.FC<SpeiTransferFormCardProps> = ({
     if (!canSubmit) return;
 
     setIsSubmitting(true);
-    if (onAction) {
-      const success = await onAction({
-        action: 'prepare_spei',
-        params: {
-          beneficiary_name: beneficiary.trim(),
-          recipient_bank: bank.trim() || 'Banco Receptor',
-          clabe: cleanDigits,
-          amount: Number(numAmount),
-          concept: concept.trim() || 'Transferencia SPEI',
-        },
-        source_component: 'SpeiTransferFormCard',
-      });
-      if (!success) setIsSubmitting(false);
+    try {
+      if (onAction) {
+        await onAction({
+          action: 'prepare_spei',
+          params: {
+            beneficiary_name: beneficiary.trim(),
+            recipient_bank: bank.trim() || 'Banco Receptor',
+            clabe: cleanDigits,
+            amount: Number(numAmount),
+            concept: concept.trim() || 'Transferencia SPEI',
+          },
+          source_component: 'SpeiTransferFormCard',
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
