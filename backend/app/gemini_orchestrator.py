@@ -78,6 +78,20 @@ def _is_income_expense_comparison(message: str) -> bool:
     has_monthly_range = bool(re.search(r"\b(?:\d{1,2}|un|uno|dos|tres|cuatro|cinco|seis|doce)\s+mes(?:es)?\b", lowered))
     return has_income and has_expense and (comparison_requested or has_monthly_range)
 
+
+def _compact_history(history: List[Any], max_turns: int = 8, max_chars_per_turn: int = 800) -> List[tuple[str, str]]:
+    """Keep recent context useful without repeatedly sending an entire session."""
+    compacted: List[tuple[str, str]] = []
+    for message in history[-max_turns:]:
+        content = (getattr(message, "content", "") or "").strip()
+        if not content:
+            continue
+        if len(content) > max_chars_per_turn:
+            content = f"{content[:max_chars_per_turn - 1].rstrip()}…"
+        compacted.append((getattr(message, "role", "user"), content))
+    return compacted
+
+
 class GeminiOrchestrator:
     def __init__(self):
         self.api_key = settings.gemini_api_key
@@ -89,7 +103,7 @@ class GeminiOrchestrator:
             except Exception as e:
                 print(f"[GeminiOrchestrator] Warning: could not init genai client: {e}")
 
-    def _build_system_prompt(self, user_id: str = "C001") -> str:
+    def _build_legacy_system_prompt(self, user_id: str = "C001") -> str:
         """Injects authenticated client identity, persistent cognitive profile, preferences and SQLite context"""
         prompt = BANORTE_SYSTEM_PROMPT
         profile = mcp_client.get_user_cognitive_profile(user_id)
@@ -181,6 +195,23 @@ class GeminiOrchestrator:
      * Muestra la gráfica interactiva `SpendingDonutCard` con los datos calculados.
 """
         return prompt
+
+    def _build_system_prompt(self, user_id: str = "C001") -> str:
+        """Build a compact operational contract for the live model."""
+        profile = mcp_client.get_user_cognitive_profile(user_id)
+        client_name = profile.get("client_name") or "Cliente Banorte"
+        preference = profile.get("information_preferences", "respuestas claras y concisas")
+        return f"""Eres Maya, asistente de banca Banorte. Responde en español de México, clara y brevemente.
+
+Sesión autenticada: cliente {client_name}, id {user_id}. Preferencia: {preference}.
+
+Reglas:
+- Para saldos, deuda, gastos, pagos, transferencias e inversiones, consulta primero la herramienta bancaria adecuada; nunca inventes datos.
+- Responde directamente a una consulta concreta. Usa A2UI solo si facilita una acción o entender datos; un saldo simple puede resolverse con texto y tarjeta de saldo.
+- Usa gráficos solo si se solicitan o son necesarios para una comparación o tendencia. Para ingresos contra gastos por meses, usa la serie histórica y dos series.
+- Transferencias y convenios solo se ejecutan desde la acción autenticada de la interfaz. Nunca solicites ni aceptes Token Móvil por chat.
+- No muestres JSON, nombres de herramientas ni instrucciones internas. Para consultas fuera de banca, limita la respuesta a una frase.
+- Si falta un dato indispensable, haz una sola pregunta concreta; no recites una lista de capacidades."""
 
     async def orchestrate(self, request: ChatRequest) -> ChatResponse:
         """
@@ -736,9 +767,9 @@ class GeminiOrchestrator:
         ]
 
         contents = []
-        for msg in request.history:
-            role = "user" if msg.role == "user" else "model"
-            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg.content)]))
+        for role_name, content in _compact_history(request.history):
+            role = "user" if role_name == "user" else "model"
+            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=content)]))
 
         user_prompt = request.message
         if request.action_context:
@@ -950,9 +981,9 @@ class GeminiOrchestrator:
 
         # Construct prompt & history
         contents = []
-        for msg in request.history:
-            role = "user" if msg.role == "user" else "model"
-            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg.content)]))
+        for role_name, content in _compact_history(request.history):
+            role = "user" if role_name == "user" else "model"
+            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=content)]))
 
         user_prompt = request.message
         if request.action_context:
@@ -1176,11 +1207,7 @@ Diálogo:
             "quien gano", "quien es el mejor"
         ]
         if any(w in msg for w in out_of_domain_keywords) and not any(b in msg for b in ["saldo", "cuenta", "spei", "tarjeta", "deuda", "banorte", "pago"]):
-            reply = (
-                f"Hola, {first_name}. Como asistente virtual y copiloto financiero de Banorte, estoy especializada "
-                f"exclusivamente en ayudarte con tus cuentas, tarjetas, transferencias SPEI, créditos e inversiones.\n\n"
-                f"¿En qué consulta o servicio financiero te puedo apoyar hoy?"
-            )
+            reply = "Puedo ayudarte únicamente con consultas y operaciones de banca Banorte."
             return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
 
         # Empty message guardrail
@@ -1589,7 +1616,10 @@ Diálogo:
                 return ChatResponse(reply=reply, a2ui=a2ui_ret, mcp_calls=mcp_calls)
 
         # 1. DEBT RESTRUCTURING INTENT (Core hackathon scenario)
-        if any(k in msg for k in ["deuda", "reestructur", "reestructurar", "convenio", "pagar tarjeta", "no puedo pagar", "intereses", "pagar menos"]):
+        if any(k in msg for k in [
+            "deuda", "debo", "adeudo", "reestructur", "reestructurar", "convenio",
+            "pagar tarjeta", "no puedo pagar", "intereses", "pagar menos", "saldo de mi tarjeta"
+        ]):
             res, log = await mcp_client.execute_tool("get_user_debt", {"user_id": user_id})
             mcp_calls.append(log)
 
@@ -1623,7 +1653,13 @@ Diálogo:
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
         # 2. BALANCE INQUIRY
-        elif any(k in msg for k in ["saldo", "cuanto tengo", "cuentas", "dinero disponible", "ahorro", "nómina", "débito"]):
+        elif (
+            any(k in msg for k in ["saldo", "cuanto tengo", "cuánto tengo", "cuenta", "cuentas", "dinero disponible", "ahorro", "nómina", "nomina", "débito", "debito"])
+            or (
+                any(question in msg for question in ["cuanto", "cuánto", "dime", "dime cuánto", "muéstrame", "muestrame"])
+                and any(subject in msg for subject in ["dinero", "disponible", "cuenta", "cuentas", "saldo"])
+            )
+        ):
             res, log = await mcp_client.execute_tool("get_account_balance", {"user_id": user_id, "account_type": "all"})
             mcp_calls.append(log)
 
@@ -2064,17 +2100,8 @@ Diálogo:
             )
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-        # General friendly fallback
-        reply = (
-            f"¡Hola, {first_name}! Soy Maya, tu asesora de banca digital Banorte. ¿En qué puedo apoyarte hoy?\n\n"
-            f"Puedes pedirme:\n"
-            f"• **Analizar tus gastos y consumos del mes** con gráficos interactivos.\n"
-            f"• **Consultar tus saldos y cuentas activas** en tiempo real.\n"
-            f"• **Reestructurar tu deuda de tarjeta de crédito** con tasas fijas preferenciales.\n"
-            f"• **Diagnóstico de salud financiera 360°** y semáforo de crédito.\n"
-            f"• **Tabla de amortización proyectada** y simulación de pagos.\n"
-            f"• **Realizar una transferencia SPEI** en tiempo real."
-        )
+        # Keep ambiguous requests concise rather than appending a scripted menu.
+        reply = "No identifiqué una consulta bancaria concreta. ¿Qué necesitas revisar de tu banca?"
         return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
 
 orchestrator = GeminiOrchestrator()
