@@ -11,6 +11,22 @@ import { AmortizationScheduleCard } from './AmortizationScheduleCard';
 import { BanorteChartCard } from './BanorteChartCard';
 import { Chart } from './Chart';
 import { SpeiTransferFormCard } from './SpeiTransferFormCard';
+import { DataTable } from './DataTable';
+import { ComparisonTable } from './ComparisonTable';
+import { KpiCard } from './KpiCard';
+import { ProgressIndicator } from './ProgressIndicator';
+import { Timeline } from './Timeline';
+import { GeoMap } from './GeoMap';
+import { FinancialHealthGauge } from './FinancialHealthGauge';
+import { BarChart } from './BarChart';
+import { BarHorizontalChart } from './BarHorizontalChart';
+import { GroupedBarChart } from './GroupedBarChart';
+import { StackedBarChart } from './StackedBarChart';
+import { LineChart } from './LineChart';
+import { MultiLineChart } from './MultiLineChart';
+import { AreaChart } from './AreaChart';
+import { StackedAreaChart } from './StackedAreaChart';
+import { ProjectionChart } from './ProjectionChart';
 
 interface DynamicA2UIRegistryProps {
   payload: A2UIPayload;
@@ -38,6 +54,22 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   AmortizationScheduleCard,
   BanorteChartCard,
   Chart,
+  DataTable,
+  ComparisonTable,
+  KpiCard,
+  ProgressIndicator,
+  Timeline,
+  GeoMap,
+  FinancialHealthGauge,
+  BarChart,
+  BarHorizontalChart,
+  GroupedBarChart,
+  StackedBarChart,
+  LineChart,
+  MultiLineChart,
+  AreaChart,
+  StackedAreaChart,
+  ProjectionChart,
   SankeyChart: BanorteChartCard,
   HeatmapChart: BanorteChartCard,
   CalendarHeatmap: BanorteChartCard,

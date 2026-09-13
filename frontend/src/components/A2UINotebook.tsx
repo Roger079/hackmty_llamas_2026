@@ -20,6 +20,13 @@ import {
   ShieldCheck,
   Activity,
   FileSpreadsheet,
+  Table,
+  GitCommit,
+  MapPin,
+  BarChart3,
+  Target,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import { BanorteLogo } from './BanorteLogo';
 import { DynamicA2UIRegistry } from './DynamicA2UIRegistry';
@@ -32,7 +39,7 @@ interface A2UINotebookProps {
 interface ComponentEntry {
   id: string;
   name: string;
-  category: 'cuentas' | 'credito' | 'gastos' | 'spei' | 'inversion';
+  category: 'cuentas' | 'credito' | 'gastos' | 'spei' | 'inversion' | 'tablas' | 'kpis' | 'graficos';
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   payload: A2UIPayload;
@@ -317,6 +324,386 @@ const NOTEBOOK_COMPONENTS: ComponentEntry[] = [
       },
     },
   },
+  {
+    id: 'data-table-movimientos',
+    name: 'DataTable (Movimientos y Estados de Cuenta)',
+    category: 'tablas',
+    description: 'Tabla dinámica de movimientos y transacciones bancarias con ordenamiento de columnas, filtro en vivo y badges de estatus.',
+    icon: Table,
+    payload: {
+      component: 'DataTable',
+      props: {
+        title: 'Últimos Movimientos y Transferencias Registradas',
+        sortable: true,
+        filterable: true,
+        pageSize: 5,
+        columns: [
+          { key: 'fecha', label: 'Fecha', type: 'date', sortable: true },
+          { key: 'concepto', label: 'Concepto / Comercio', type: 'text', sortable: true },
+          { key: 'categoria', label: 'Categoría', type: 'text', sortable: true },
+          { key: 'monto', label: 'Monto', type: 'currency', sortable: true },
+          { key: 'estado', label: 'Estado', type: 'status' },
+        ],
+        rows: [
+          { id: '1', fecha: '12 Sep 2026', concepto: 'Superama Valle Oriente', categoria: 'Supermercado', monto: -1850.5, estado: 'good' },
+          { id: '2', fecha: '11 Sep 2026', concepto: 'Depósito Nómina Banorte', categoria: 'Ingresos', monto: 27900.0, estado: 'good' },
+          { id: '3', fecha: '10 Sep 2026', concepto: 'CFE Suministrador Básico', categoria: 'Servicios', monto: -820.0, estado: 'neutral' },
+          { id: '4', fecha: '09 Sep 2026', concepto: 'Gasolinera Oxxo Gas Valle', categoria: 'Transporte', monto: -950.0, estado: 'good' },
+          { id: '5', fecha: '08 Sep 2026', concepto: 'SPEI Enviado - Silvia Carrasco', categoria: 'Transferencias', monto: -3850.0, estado: 'good' },
+          { id: '6', fecha: '05 Sep 2026', concepto: 'Farmacias Benavides San Pedro', categoria: 'Salud', monto: -340.0, estado: 'good' },
+        ],
+      },
+    },
+  },
+  {
+    id: 'comparison-table-tarjetas',
+    name: 'ComparisonTable (Comparativa de Tarjetas)',
+    category: 'tablas',
+    description: 'Matriz comparativa de características, tasas CAT, costos de anualidad y beneficios entre productos Banorte.',
+    icon: FileSpreadsheet,
+    payload: {
+      component: 'ComparisonTable',
+      props: {
+        title: 'Comparativa de Tarjetas de Crédito Banorte',
+        columns: [
+          { key: 'clasica', label: 'Banorte Clásica' },
+          { key: 'oro', label: 'Banorte Oro (Recomendada)', highlight: true },
+          { key: 'platinum', label: 'Banorte Platinum' },
+        ],
+        rows: [
+          { attribute: 'Anualidad titular', values: { clasica: '$690 MXN', oro: '$1,150 MXN (1er año gratis)', platinum: '$2,450 MXN' } },
+          { attribute: 'Tasa de Interés CAT', values: { clasica: '68.5% prom.', oro: '54.2% preferente', platinum: '38.9% exclusiva' } },
+          { attribute: 'Puntos Recompensa', values: { clasica: '1 pt por $10 MXN', oro: '1.5 pts por $10 MXN', platinum: '2.0 pts por $10 MXN' } },
+          { attribute: 'Línea de crédito inicial', values: { clasica: '$15,000 - $35,000', oro: '$35,000 - $90,000', platinum: '$90,000+' } },
+          { attribute: 'Seguro de viajes Visa', values: { clasica: 'Básico', oro: 'Cobertura médica $25k USD', platinum: 'Cobertura médica $150k USD' } },
+        ],
+      },
+    },
+  },
+  {
+    id: 'timeline-aclaracion',
+    name: 'Timeline (Seguimiento de Trámites y Folios)',
+    category: 'tablas',
+    description: 'Visualización de estados secuenciales de un proceso bancario (aclaraciones, solicitudes de crédito o créditos hipotecarios).',
+    icon: Clock,
+    payload: {
+      component: 'Timeline',
+      props: {
+        title: 'Estatus de Aclaración de Cargo No Reconocido',
+        orientation: 'vertical',
+        steps: [
+          { label: 'Reporte Registrado', date: '08 Sep 2026, 14:10 hrs', status: 'completed', description: 'Folio BNTE-AC-2026-8941 generado vía Maya Chat.' },
+          { label: 'Bloqueo Preventivo de Plástico', date: '08 Sep 2026, 14:12 hrs', status: 'completed', description: 'Tarjeta terminación 8812 bloqueada y reexpedición emitida.' },
+          { label: 'Dictamen de Análisis Técnico', date: '11 Sep 2026, 10:30 hrs', status: 'completed', description: 'Comprobación de geolocalización y ausencia de chip físico.' },
+          { label: 'Abono Provisional en Cuenta', date: '12 Sep 2026, 17:00 hrs', status: 'current', description: 'Abono de $3,850.00 MXN en validación de liquidación.' },
+          { label: 'Cierre Definitivo de Aclaración', date: '16 Sep 2026', status: 'pending', description: 'Resolución final y emisión de carta finiquito por correo.' },
+        ],
+      },
+    },
+  },
+  {
+    id: 'geomap-sucursales',
+    name: 'GeoMap (Red de Cajeros y Sucursales Banorte)',
+    category: 'tablas',
+    description: 'Mapa interactivo con coordenadas de sucursales, cajeros inteligentes y módulos de retiro sin tarjeta.',
+    icon: MapPin,
+    payload: {
+      component: 'GeoMap',
+      props: {
+        centerLat: 25.6698,
+        centerLng: -100.3521,
+        zoom: 12,
+        markers: [
+          { lat: 25.6866, lng: -100.3161, label: 'Sucursal Matriz Monterrey (Padre Mier 450 - Abierta hasta 16:00)', value: 1 },
+          { lat: 25.6514, lng: -100.3598, label: 'Cajero Banorte Valle Oriente (24 hrs - Retiro sin tarjeta)', value: 2 },
+          { lat: 25.6698, lng: -100.3621, label: 'Sucursal San Pedro Gómez Morín (Atención Clientes Preferente)', value: 3 },
+          { lat: 25.6489, lng: -100.334, label: 'Cajero Plaza Fiesta San Agustín (Depósito en Efectivo)', value: 4 },
+        ],
+      },
+    },
+  },
+  {
+    id: 'kpi-card-rendimiento',
+    name: 'KpiCard (Rendimiento Ponderado Anual)',
+    category: 'kpis',
+    description: 'Indicador métrico ejecutivo con valor porcentual, variación delta positiva y estado semafórico de salud.',
+    icon: TrendingUp,
+    payload: {
+      component: 'KpiCard',
+      props: {
+        label: 'Rendimiento Ponderado de Inversiones (Anual)',
+        value: 11.45,
+        valueFormat: 'percent',
+        deltaValue: 1.8,
+        deltaDirection: 'up',
+        status: 'good',
+      },
+    },
+  },
+  {
+    id: 'kpi-card-liquidez',
+    name: 'KpiCard (Liquidez Inmediata Disponible)',
+    category: 'kpis',
+    description: 'Tarjeta KPI de liquidez operativa disponible en cuentas a la vista con seguimiento mensual.',
+    icon: CreditCard,
+    payload: {
+      component: 'KpiCard',
+      props: {
+        label: 'Liquidez Disponible en Cuentas a la Vista',
+        value: 32100.0,
+        valueFormat: 'currency',
+        currency: 'MXN',
+        deltaValue: 3400.0,
+        deltaDirection: 'up',
+        status: 'good',
+      },
+    },
+  },
+  {
+    id: 'progress-indicator-ahorro',
+    name: 'ProgressIndicator (Meta Fondo de Emergencia - Barra)',
+    category: 'kpis',
+    description: 'Barra de progreso de meta financiera con objetivo, monto ahorrado y porcentaje de completitud.',
+    icon: Target,
+    payload: {
+      component: 'ProgressIndicator',
+      props: {
+        variant: 'bar',
+        label: 'Meta Fondo de Emergencia (4 Meses de Gastos)',
+        value: 42500,
+        min: 0,
+        max: 60000,
+        target: 60000,
+        valueFormat: 'currency',
+        currency: 'MXN',
+        status: 'good',
+      },
+    },
+  },
+  {
+    id: 'progress-indicator-presupuesto',
+    name: 'ProgressIndicator (Control de Presupuesto - Anillo)',
+    category: 'kpis',
+    description: 'Indicador de anillo circular que muestra la velocidad de consumo del presupuesto mensual asignado.',
+    icon: Activity,
+    payload: {
+      component: 'ProgressIndicator',
+      props: {
+        variant: 'ring',
+        label: 'Ejecución del Presupuesto Mensual',
+        value: 18200,
+        min: 0,
+        max: 25000,
+        target: 25000,
+        valueFormat: 'currency',
+        currency: 'MXN',
+        status: 'warning',
+      },
+    },
+  },
+  {
+    id: 'calendar-heatmap-gastos',
+    name: 'BanorteChartCard (Mapa de Calor de Gastos Diarios)',
+    category: 'graficos',
+    description: 'Matriz de calendario mensual con gradiente de color según la intensidad del gasto efectuado cada día.',
+    icon: Calendar,
+    payload: {
+      component: 'BanorteChartCard',
+      props: {
+        chartType: 'calendarHeatmap',
+        title: 'Mapa de Calor: Intensidad de Gastos por Día (Agosto 2026)',
+        height: 260,
+        daily_spending: [
+          { date: '2026-08-01', value: 1200 }, { date: '2026-08-02', value: 350 }, { date: '2026-08-03', value: 2800 },
+          { date: '2026-08-04', value: 150 }, { date: '2026-08-05', value: 920 }, { date: '2026-08-06', value: 450 },
+          { date: '2026-08-07', value: 3100 }, { date: '2026-08-08', value: 600 }, { date: '2026-08-09', value: 180 },
+          { date: '2026-08-10', value: 1400 }, { date: '2026-08-11', value: 2100 }, { date: '2026-08-12', value: 500 },
+          { date: '2026-08-13', value: 750 }, { date: '2026-08-14', value: 980 }, { date: '2026-08-15', value: 4800 },
+          { date: '2026-08-16', value: 620 }, { date: '2026-08-17', value: 300 }, { date: '2026-08-18', value: 1250 },
+          { date: '2026-08-19', value: 890 }, { date: '2026-08-20', value: 410 }, { date: '2026-08-21', value: 2200 },
+          { date: '2026-08-22', value: 3400 }, { date: '2026-08-23', value: 510 }, { date: '2026-08-24', value: 930 },
+          { date: '2026-08-25', value: 1100 }, { date: '2026-08-26', value: 450 }, { date: '2026-08-27', value: 780 },
+          { date: '2026-08-28', value: 3900 }, { date: '2026-08-29', value: 1650 }, { date: '2026-08-30', value: 2400 },
+          { date: '2026-08-31', value: 5200 },
+        ],
+      },
+    },
+  },
+  {
+    id: 'multi-line-tendencia',
+    name: 'MultiLineChart (Histórico: Ingresos vs Egresos)',
+    category: 'graficos',
+    description: 'Líneas superpuestas que contrastan los ingresos netos de nómina frente a los egresos totales por mes.',
+    icon: TrendingUp,
+    payload: {
+      component: 'MultiLineChart',
+      props: {
+        title: 'Histórico Mensual: Ingresos vs Egresos (Últimos 6 Meses)',
+        height: 260,
+        categoryKey: 'mes',
+        series: [
+          { name: 'Ingresos Nómina', dataPath: '/data', xKey: 'mes', yKey: 'ingresos', color: '#008A5A' },
+          { name: 'Egresos Totales', dataPath: '/data', xKey: 'mes', yKey: 'egresos', color: '#E4003B' },
+        ],
+        data: {
+          data: [
+            { mes: 'Mar', ingresos: 27900, egresos: 18400 },
+            { mes: 'Abr', ingresos: 29500, egresos: 21100 },
+            { mes: 'May', ingresos: 33400, egresos: 22800 },
+            { mes: 'Jun', ingresos: 27900, egresos: 19500 },
+            { mes: 'Jul', ingresos: 28200, egresos: 24300 },
+            { mes: 'Ago', ingresos: 31000, egresos: 20100 },
+          ],
+        },
+      },
+    },
+  },
+  {
+    id: 'bar-horizontal-comercios',
+    name: 'BarHorizontalChart (Top Comercios con Mayor Gasto)',
+    category: 'graficos',
+    description: 'Barras horizontales con clasificación de los establecimientos comerciales con mayor volumen de facturación.',
+    icon: BarChart3,
+    payload: {
+      component: 'BarHorizontalChart',
+      props: {
+        title: 'Top 5 Comercios con Mayor Gasto Acumulado',
+        height: 250,
+        categoryKey: 'comercio',
+        valueKey: 'total',
+        valueFormat: 'currency',
+        data: {
+          data: [
+            { comercio: 'Walmart Supercenter', total: 6850 },
+            { comercio: 'Costco Wholesale', total: 5400 },
+            { comercio: 'Gasolineras OXXO Gas', total: 3200 },
+            { comercio: 'Amazon México', total: 2950 },
+            { comercio: 'Restaurante Sonora Grill', total: 2100 },
+          ],
+        },
+      },
+    },
+  },
+  {
+    id: 'stacked-bar-presupuesto',
+    name: 'StackedBarChart (Presupuesto Planeado vs Ejercido)',
+    category: 'graficos',
+    description: 'Barras apiladas que visualizan el presupuesto ejercido y el remanente disponible en cada categoría de gasto.',
+    icon: BarChart3,
+    payload: {
+      component: 'StackedBarChart',
+      props: {
+        title: 'Presupuesto Planeado vs Ejercido por Categoría',
+        height: 260,
+        categoryKey: 'categoria',
+        series: [
+          { name: 'Gasto Ejercido', dataPath: '/data', xKey: 'categoria', yKey: 'ejercido', color: '#E4003B' },
+          { name: 'Disponible Presupuestado', dataPath: '/data', xKey: 'categoria', yKey: 'remanente', color: '#0A5CA8' },
+        ],
+        data: {
+          data: [
+            { categoria: 'Supermercado', ejercido: 5200, remanente: 1800 },
+            { categoria: 'Servicios', ejercido: 3100, remanente: 900 },
+            { categoria: 'Restaurantes', ejercido: 2800, remanente: 700 },
+            { categoria: 'Transporte', ejercido: 2250, remanente: 750 },
+            { categoria: 'Salud', ejercido: 1500, remanente: 1500 },
+          ],
+        },
+      },
+    },
+  },
+  {
+    id: 'stacked-area-portafolio',
+    name: 'StackedAreaChart (Evolución de Portafolio de Inversión)',
+    category: 'inversion',
+    description: 'Evolución de áreas apiladas mostrando el crecimiento del patrimonio diversificado en Pagarés, Fondos y Ahorro.',
+    icon: Layers,
+    payload: {
+      component: 'StackedAreaChart',
+      props: {
+        title: 'Evolución de Portafolio de Ahorro e Inversión (2026)',
+        height: 260,
+        categoryKey: 'mes',
+        series: [
+          { name: 'Pagaré Altos Rendimientos', dataPath: '/data', xKey: 'mes', yKey: 'pagare', color: '#E4003B' },
+          { name: 'Fondos Banorte Renta Fija', dataPath: '/data', xKey: 'mes', yKey: 'fondos', color: '#0A5CA8' },
+          { name: 'Cuenta de Ahorro Enlace', dataPath: '/data', xKey: 'mes', yKey: 'ahorro', color: '#008A5A' },
+        ],
+        data: {
+          data: [
+            { mes: 'Ene', pagare: 30000, fondos: 15000, ahorro: 10000 },
+            { mes: 'Feb', pagare: 32000, fondos: 16200, ahorro: 11500 },
+            { mes: 'Mar', pagare: 35000, fondos: 18000, ahorro: 12000 },
+            { mes: 'Abr', pagare: 40000, fondos: 20500, ahorro: 14000 },
+            { mes: 'May', pagare: 45000, fondos: 23000, ahorro: 15500 },
+            { mes: 'Jun', pagare: 50000, fondos: 26500, ahorro: 18000 },
+          ],
+        },
+      },
+    },
+  },
+  {
+    id: 'projection-chart-ahorro',
+    name: 'ProjectionChart (Proyección de Crecimiento a 5 Años)',
+    category: 'inversion',
+    description: 'Proyección futura con modelo de interés compuesto y bandas de certidumbre (escenarios optimista y conservador).',
+    icon: TrendingUp,
+    payload: {
+      component: 'ProjectionChart',
+      props: {
+        title: 'Proyección de Rendimiento con Interés Compuesto (5 Años)',
+        height: 270,
+        categoryKey: 'año',
+        valueKey: 'estimado',
+        series: [
+          { name: 'Rendimiento Esperado (11.25% anual)', dataPath: '/data', xKey: 'año', yKey: 'estimado', color: '#008A5A' },
+        ],
+        scenarios: [
+          { name: 'Banda de Certidumbre (Conservador vs Agresivo)', dataPath: '/data', xKey: 'año', yKey: 'estimado', confidenceLowKey: 'bajo', confidenceHighKey: 'alto' },
+        ],
+        data: {
+          data: [
+            { año: '2026 (Actual)', estimado: 50000, bajo: 50000, alto: 50000 },
+            { año: '2027 (+1 Año)', estimado: 55625, bajo: 54000, alto: 57200 },
+            { año: '2028 (+2 Años)', estimado: 61882, bajo: 58500, alto: 65400 },
+            { año: '2029 (+3 Años)', estimado: 68844, bajo: 63200, alto: 74800 },
+            { año: '2030 (+4 Años)', estimado: 76589, bajo: 68400, alto: 85500 },
+            { año: '2031 (+5 Años)', estimado: 85205, bajo: 74000, alto: 98000 },
+          ],
+        },
+      },
+    },
+  },
+  {
+    id: 'waterfall-conciliacion',
+    name: 'BanorteChartCard (Conciliación de Flujo Waterfall)',
+    category: 'gastos',
+    description: 'Gráfica de cascada para conciliar el balance inicial, entradas de efectivo, deducciones y saldo neto de cierre.',
+    icon: Layers,
+    payload: {
+      component: 'BanorteChartCard',
+      props: {
+        chartType: 'waterfall',
+        title: 'Conciliación Mensual de Flujo de Efectivo',
+        height: 260,
+        categoryKey: 'concepto',
+        valueKey: 'monto',
+        waterfallStartLabel: 'Saldo Inicial',
+        waterfallEndLabel: 'Saldo Final',
+        data: {
+          data: [
+            { concepto: 'Saldo Inicial', monto: 12500 },
+            { concepto: '+ Nómina', monto: 27900 },
+            { concepto: '- Tarjeta Crédito', monto: -6400 },
+            { concepto: '- Transferencias', monto: -3850 },
+            { concepto: '- Servicios / Retiros', monto: -4250 },
+            { concepto: '+ Rendimientos', monto: 850 },
+            { concepto: 'Saldo Final', monto: 26750 },
+          ],
+        },
+      },
+    },
+  },
 ];
 
 export const A2UINotebook: React.FC<A2UINotebookProps> = ({ onNavigateHome }) => {
@@ -470,26 +857,34 @@ export const A2UINotebook: React.FC<A2UINotebookProps> = ({ onNavigateHome }) =>
           {/* Category Filter Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
             {[
-              { id: 'all', label: 'Todos', count: NOTEBOOK_COMPONENTS.length },
-              { id: 'cuentas', label: 'Cuentas & Saldos', count: 2 },
-              { id: 'credito', label: 'Crédito & Deuda', count: 3 },
-              { id: 'gastos', label: 'Analítica & Gastos', count: 3 },
-              { id: 'spei', label: 'Transferencias SPEI', count: 3 },
-              { id: 'inversion', label: 'Inversiones', count: 1 },
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
-                  selectedCategory === cat.id
-                    ? 'bg-[#EB0029] text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {cat.label} ({cat.count})
-              </button>
-            ))}
+              { id: 'all', label: 'Todos' },
+              { id: 'cuentas', label: 'Cuentas & Saldos' },
+              { id: 'credito', label: 'Crédito & Deuda' },
+              { id: 'gastos', label: 'Analítica & Gastos' },
+              { id: 'spei', label: 'Transferencias SPEI' },
+              { id: 'inversion', label: 'Inversiones' },
+              { id: 'tablas', label: 'Tablas & Procesos' },
+              { id: 'kpis', label: 'KPIs & Metas' },
+              { id: 'graficos', label: 'Gráficos Avanzados' },
+            ].map((cat) => {
+              const count = cat.id === 'all'
+                ? NOTEBOOK_COMPONENTS.length
+                : NOTEBOOK_COMPONENTS.filter((c) => c.category === cat.id).length;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
+                    selectedCategory === cat.id
+                      ? 'bg-[#EB0029] text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {cat.label} ({count})
+                </button>
+              );
+            })}
           </div>
 
           {/* Search Box */}
