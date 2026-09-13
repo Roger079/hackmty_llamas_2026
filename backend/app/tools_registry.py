@@ -311,7 +311,7 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
     # --- HERRAMIENTA DE PERSONA 2: MOTOR A2UI (AGENT-TO-USER INTERFACE) ---
     {
         "name": "render_a2ui",
-        "description": "Emite una especificación JSON declarativa para renderizar uno o más componentes interactivos o gráficos en el frontend de Banorte (A2UI). Si el usuario solicita más de una gráfica o visual (ej. dona de gastos Y gráfica de barras/líneas de tendencia histórica), puedes invocar esta herramienta múltiples veces en el mismo turno o enviar la lista completa en 'visuals'. Cumple con el Catálogo A2UI Banca Visuals v1.",
+        "description": "Emite una especificación JSON declarativa para renderizar uno o más componentes interactivos o gráficos en el frontend de Banorte (A2UI). REGLA ESTRICTA DE DOMINIO: Esta herramienta es EXCLUSIVA para datos financieros y bancarios del cliente (gastos, presupuestos, inversiones, deudas, flujo de efectivo). NUNCA generes componentes ni gráficos para temas ajenos a la banca (ej. anime, deportes, clima, videojuegos, datos ficticios fuera de finanzas). Si el usuario solicita más de una gráfica o visual financiero (ej. dona de gastos Y gráfica de barras/líneas de tendencia histórica), puedes invocar esta herramienta múltiples veces en el mismo turno o enviar la lista completa en 'visuals'. Cumple con el Catálogo A2UI Banca Visuals v1.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
