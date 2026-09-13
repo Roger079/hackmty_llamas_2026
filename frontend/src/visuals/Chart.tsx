@@ -34,16 +34,19 @@ function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:Rec
   const main = source[0]?.length ? source[0] : rawData;
   const count = Math.max(main.length, 1);
   const isStacked = p.chartType === 'stackedBar' || p.chartType === 'stackedArea';
-  const isGrouped = p.chartType === 'groupedBar';
+  const isGrouped = p.chartType === 'groupedBar' || (p.chartType === 'bar' && series.length > 1);
+  const isBarFamily = ['bar', 'groupedBar', 'stackedBar', 'waterfall', 'histogram'].includes(p.chartType);
 
-  const singleValues: number[] = source.flatMap((d, i) => d.map(r => num(r[series[i].yKey || p.valueKey || 'value'])));
-  const stackedSums: number[] = main.map((_, i) => series.reduce((sum, s, k) => sum + Math.max(0, num((source[k][i] || main[i])?.[s.yKey || p.valueKey || 'value'])), 0));
+  const singleValues: number[] = source.flatMap((d, i) => d.map(r => num(r[series[i]?.yKey || p.valueKey || 'value'])));
+  const stackedSums: number[] = main.map((_, i) => series.reduce((sum, s, k) => sum + Math.max(0, num((source[k]?.[i] || main[i])?.[s.yKey || p.valueKey || 'value'])), 0));
   const allValues = isStacked ? [...singleValues, ...stackedSums] : singleValues;
   const [lo, hi] = extent(allValues.length ? allValues : [0, 100]);
 
   const y = (v: number) => scale(v, [Math.min(0, lo), Math.max(hi, 1)], [h - margin.bottom, margin.top]);
   const x = (i: number) => scale(i, [0, Math.max(count - 1, 1)], [margin.left, w - margin.right]);
-  const bw = (w - margin.left - margin.right) / count * 0.62;
+  const slotW = (w - margin.left - margin.right) / count;
+  const barCenterX = (i: number) => margin.left + (i + 0.5) * slotW;
+  const bw = slotW * 0.62;
 
   const marks = p.chartType === 'barHorizontal' ? main.map((d, i) => {
     const v = num(d[p.valueKey || series[0]?.yKey || 'value']);
@@ -63,27 +66,35 @@ function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:Rec
         />
       </g>
     );
-  }) : ['bar', 'groupedBar', 'stackedBar', 'waterfall', 'histogram'].includes(p.chartType) ? main.flatMap((d, i) => {
+  }) : isBarFamily ? main.flatMap((d, i) => {
     const vals = (isGrouped || isStacked)
       ? series.map((s, k) => num((source[k]?.[i] || d)?.[s.yKey || p.valueKey || 'value']))
       : [num(d[p.valueKey || series[0]?.yKey || 'value'])];
     let base = 0;
+    const centerX = barCenterX(i);
     return vals.map((v, k) => {
-      const xx = isGrouped ? (x(i) - bw / 2 + (bw / vals.length) * k) : (x(i) - bw / 2);
+      const barW = isGrouped ? Math.max(bw / vals.length - 2, 4) : bw;
+      const xx = isGrouped ? (centerX - bw / 2 + (bw / vals.length) * k) : (centerX - bw / 2);
       const yy = isStacked ? y(base + Math.max(v, 0)) : y(Math.max(v, 0));
       const hh = isStacked ? Math.abs(y(base) - y(base + v)) : Math.abs(y(0) - y(v));
       if (isStacked) base += Math.max(0, v);
+      const barColor = String(
+        (isGrouped || isStacked)
+          ? (series[k]?.color || palette[k % palette.length])
+          : (d.color || series[0]?.color || palette[i % palette.length])
+      );
+
       return (
         <rect
           key={`${i}-${k}`}
           x={xx}
           y={yy}
-          width={isGrouped ? Math.max(bw / vals.length - 2, 4) : bw}
+          width={barW}
           height={Math.max(hh, 2)}
           rx="3"
-          fill={series[k]?.color || palette[k % palette.length]}
+          fill={barColor}
         >
-          <title>{`${series[k]?.name || 'Valor'}: ${format(v, p.valueFormat, p.currency)}`}</title>
+          <title>{`${series[k]?.name || String(d[catKey] || 'Valor')}: ${format(v, p.valueFormat, p.currency)}`}</title>
         </rect>
       );
     });
@@ -109,7 +120,7 @@ function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:Rec
       {marks}
       <g>
         {main.map((d, i) => (
-          <text key={i} x={x(i)} y={h - 15} textAnchor="middle" fontSize="10" fill="#6D85A1" fontWeight="600">
+          <text key={i} x={isBarFamily ? barCenterX(i) : x(i)} y={h - 15} textAnchor="middle" fontSize="10" fill="#6D85A1" fontWeight="600">
             {String(d[catKey] ?? '').slice(0, 12)}
           </text>
         ))}
@@ -459,10 +470,21 @@ function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: 
   const maxVal = Math.max(...values, 100);
 
   const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  const startX = margin.left + 16;
-  const startY = margin.top + 16;
-  const cellSize = Math.min(26, Math.max(16, (w - startX - margin.right) / 7 - 5));
+  const padX = 8;
+  const availW = Math.max(w - padX * 2, 200);
   const cellGap = 5;
+  const numRows = Math.max(1, Math.ceil(items.length / 7));
+  const startY = 24;
+  const availGridH = Math.max(h - startY - 36, 120);
+
+  // Compute maximum cell size that fits both horizontally and vertically
+  const maxCellW = Math.floor((availW - 6 * cellGap) / 7);
+  const maxCellH = Math.floor((availGridH - (numRows - 1) * cellGap) / numRows);
+  const cellSize = Math.max(18, Math.min(maxCellW, maxCellH, 44));
+
+  const gridWidth = 7 * cellSize + 6 * cellGap;
+  const startX = Math.max(padX, Math.floor((w - gridWidth) / 2));
+  const legendY = startY + numRows * (cellSize + cellGap) + 12;
 
   return (
     <g>
@@ -470,10 +492,10 @@ function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: 
         <text
           key={day}
           x={startX + idx * (cellSize + cellGap) + cellSize / 2}
-          y={startY - 6}
+          y={startY - 8}
           textAnchor="middle"
-          fontSize="10"
-          fontWeight="600"
+          fontSize="11"
+          fontWeight="700"
           fill="#6D85A1"
         >
           {day}
@@ -498,7 +520,7 @@ function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: 
               y={y}
               width={cellSize}
               height={cellSize}
-              rx="4"
+              rx={Math.max(3, Math.min(6, Math.floor(cellSize / 5)))}
               fill={fillColor}
               fillOpacity={fillOpacity}
               stroke={val > 0 ? '#EB0029' : '#E2E8F0'}
@@ -512,7 +534,7 @@ function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: 
               x={x + cellSize / 2}
               y={y + cellSize / 2 + 3.5}
               textAnchor="middle"
-              fontSize="9"
+              fontSize={cellSize >= 28 ? '11' : '9'}
               fontWeight="600"
               fill={val > maxVal * 0.5 ? '#FFFFFF' : '#475569'}
               pointerEvents="none"
@@ -523,7 +545,7 @@ function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: 
         );
       })}
 
-      <g transform={`translate(${startX}, ${startY + Math.ceil(items.length / 7) * (cellSize + cellGap) + 12})`}>
+      <g transform={`translate(${startX}, ${Math.min(legendY, h - 14)})`}>
         <text x="0" y="9" fontSize="10" fill="#6D85A1" fontWeight="600">Menor gasto</text>
         <rect x="68" y="1" width="10" height="10" rx="2" fill="#F1F5F9" stroke="#CBD5E1" strokeWidth="1" />
         <rect x="82" y="1" width="10" height="10" rx="2" fill="#EB0029" fillOpacity="0.25" />
@@ -567,20 +589,42 @@ function WaterfallChart({ p, w, h, data }: { p: ChartProps; w: number; h: number
 
   const allVals = bars.flatMap(b => [b.base, b.top, 0]);
   const [lo, hi] = extent(allVals);
+  // Add 15% headroom above top values so bars and labels never hit the SVG top edge
+  const maxRange = Math.max(hi * 1.15, 1);
+  const minRange = Math.min(lo < 0 ? lo * 1.15 : 0, 0);
+
   const count = bars.length;
   const bw = (w - margin.left - margin.right) / count * 0.65;
   const x = (i: number) => margin.left + (i + 0.5) * ((w - margin.left - margin.right) / count);
-  const y = (v: number) => scale(v, [Math.min(0, lo), Math.max(hi, 1)], [h - margin.bottom, margin.top]);
+  const y = (v: number) => scale(v, [minRange, maxRange], [h - margin.bottom, margin.top]);
 
   return (
     <g>
-      <g>{axis(w, h, allVals, v => format(v, p.valueFormat, p.currency))}</g>
+      <g>{axis(w, h, [minRange, maxRange], v => format(v, p.valueFormat, p.currency))}</g>
       {bars.map((b, i) => {
         const xx = x(i) - bw / 2;
         const yTop = y(b.top);
         const yBase = y(b.base);
         const hh = Math.max(Math.abs(yBase - yTop), 3);
         const color = b.isTotal ? '#0A5CA8' : b.isPositive ? '#008A5A' : '#EB0029';
+
+        // Keep labels from clipping top border or colliding inside the bar
+        const isNearTop = yTop - 6 < margin.top + 2;
+        const labelY = (isNearTop && hh >= 18) ? yTop + 13 : Math.max(margin.top + 8, yTop - 6);
+        const labelFill = (isNearTop && hh >= 18) ? '#FFFFFF' : color;
+
+        // Smart horizontal alignment so edge labels do not clip outside margins
+        const isFirst = i === 0;
+        const isLast = i === count - 1;
+        let labelX = x(i);
+        let anchor: 'start' | 'middle' | 'end' = 'middle';
+        if (isFirst && labelX - 25 < margin.left) {
+          labelX = Math.max(xx, margin.left + 2);
+          anchor = 'start';
+        } else if (isLast && labelX + 25 > w - margin.right) {
+          labelX = Math.min(xx + bw, w - margin.right - 2);
+          anchor = 'end';
+        }
 
         return (
           <g key={i}>
@@ -595,12 +639,12 @@ function WaterfallChart({ p, w, h, data }: { p: ChartProps; w: number; h: number
               <title>{`${b.label}: ${format(b.val, p.valueFormat || 'currency', p.currency || 'MXN')}`}</title>
             </rect>
             <text
-              x={x(i)}
-              y={yTop - 6}
-              textAnchor="middle"
+              x={labelX}
+              y={labelY}
+              textAnchor={anchor}
               fontSize="10"
               fontWeight="700"
-              fill={color}
+              fill={labelFill}
             >
               {format(b.val, p.valueFormat || 'currency', p.currency || 'MXN')}
             </text>

@@ -123,7 +123,13 @@ def _requested_investment_amount(message: str, default: float = 25000.0) -> floa
 
 
 def _is_investment_request(message: str) -> bool:
-    return any(term in message.lower() for term in ["invertir", "inversión", "inversion", "pagaré", "pagare", "rendimiento", "plazo fijo"])
+    lowered = message.lower()
+    return any(term in lowered for term in [
+        "invertir", "inversión", "inversion", "inversiones", "pagaré", "pagare", "pagares", "pagarés",
+        "rendimiento", "rendimientos", "plazo fijo", "simular inversión", "simular inversion",
+        "simular pagaré", "simular pagare", "simulador", "fondo de inversión", "fondo de inversion",
+        "instrumento de inversión", "instrumento de inversion"
+    ])
 
 
 def _is_dashboard_widget_request(message: str, surface: str = "mobile") -> bool:
@@ -701,29 +707,99 @@ Reglas:
             if "date" not in props and "execution_timestamp" in props:
                 props["date"] = props["execution_timestamp"]
 
-        elif comp in ["SpendingDonutCard", "BanorteChartCard", "Chart"]:
-            if not props.get("categories") or "totalSpent" not in props:
-                analytics = mcp_client._execute_mock("get_spending_analytics", {"user_id": uid, "period": props.get("period", "")})
-                props.setdefault("categories", analytics.get("categories", []))
-                props.setdefault("totalSpent", analytics.get("total_spent", 0.0))
-                props.setdefault("total_spent", analytics.get("total_spent", 0.0))
-                props.setdefault("period", analytics.get("period", "Septiembre 2026"))
-                props.setdefault("trend_pct", analytics.get("trend_pct", -7.4))
-                props.setdefault("summary", analytics.get("summary", ""))
-            if "totalSpent" not in props and "total_spent" in props:
-                props["totalSpent"] = props["total_spent"]
-            if "previousPeriodSpent" not in props and "previous_period_spent" in props:
-                props["previousPeriodSpent"] = props["previous_period_spent"]
-            if "chart_type" in props and "chartType" not in props:
-                props["chartType"] = props["chart_type"]
-            if comp in ["BanorteChartCard", "Chart"] and "chartType" not in props:
-                props["chartType"] = "bar"
+        elif comp in ["SpendingDonutCard", "BanorteChartCard", "Chart", "BarChart", "BarChartCard", "GraficaBarrasCard", "GraficaBarras", "GroupedBarChart"]:
+            # Check for ApexCharts format (categories as string array + series as list of objects with data)
+            cats = props.get("categories")
+            series_list = props.get("series")
+            if isinstance(cats, list) and cats and isinstance(cats[0], str) and isinstance(series_list, list) and series_list and isinstance(series_list[0], dict) and "data" in series_list[0]:
+                rows = []
+                for idx, cat_name in enumerate(cats):
+                    row = {"category": cat_name, "mes": cat_name, "name": cat_name, "x": cat_name}
+                    for s in series_list:
+                        m_key = str(s.get("name", "valor")).lower().replace(" ", "_")
+                        s_data = s.get("data", [])
+                        row[m_key] = s_data[idx] if idx < len(s_data) else 0.0
+                    rows.append(row)
+                props["data"] = {"data": rows}
+                props["dataPath"] = "/data"
+                props["categoryKey"] = "category"
+                if len(series_list) > 1:
+                    props["chartType"] = "groupedBar"
+                else:
+                    props["chartType"] = "bar"
+                props["series"] = [
+                    {
+                        "name": s.get("name", "Serie"),
+                        "dataPath": "/data",
+                        "xKey": "category",
+                        "yKey": str(s.get("name", "valor")).lower().replace(" ", "_"),
+                        "color": s.get("color") or ("#008744" if "ingreso" in str(s.get("name", "")).lower() else "#EB0029")
+                    }
+                    for s in series_list
+                ]
+            else:
+                if not props.get("categories") or "totalSpent" not in props:
+                    analytics = mcp_client._execute_mock("get_spending_analytics", {"user_id": uid, "period": props.get("period", "")})
+                    props.setdefault("categories", analytics.get("categories", []))
+                    props.setdefault("totalSpent", analytics.get("total_spent", 0.0))
+                    props.setdefault("total_spent", analytics.get("total_spent", 0.0))
+                    props.setdefault("period", analytics.get("period", "Septiembre 2026"))
+                    props.setdefault("trend_pct", analytics.get("trend_pct", -7.4))
+                    props.setdefault("summary", analytics.get("summary", ""))
+                if "totalSpent" not in props and "total_spent" in props:
+                    props["totalSpent"] = props["total_spent"]
+                if "previousPeriodSpent" not in props and "previous_period_spent" in props:
+                    props["previousPeriodSpent"] = props["previous_period_spent"]
+                if "chart_type" in props and "chartType" not in props:
+                    props["chartType"] = props["chart_type"]
+                if comp in ["BanorteChartCard", "Chart", "BarChart", "BarChartCard", "GraficaBarrasCard"] and "chartType" not in props:
+                    props["chartType"] = "bar"
 
-        elif comp in ["FinancialHealthGauge", "FinancialHealthCard"]:
-            if "overallScore" not in props and "overall_score" in props:
-                props["overallScore"] = props["overall_score"]
+        elif comp in [
+            "FinancialHealthGauge", "FinancialHealthCard", "SaludFinancieraGauge",
+            "SaludFinancieraCard", "DiagnosticoFinancieroCard"
+        ]:
+            comp = "FinancialHealthGauge"
+            raw_score = props.get("overallScore") or props.get("overall_score") or props.get("score") or props.get("gaugeValue") or props.get("value")
+            if raw_score is not None:
+                props["overallScore"] = int(raw_score)
+                props["overall_score"] = int(raw_score)
+                props["score"] = int(raw_score)
+                props["gaugeValue"] = int(raw_score)
+            else:
+                health = mcp_client._execute_mock("get_financial_health_score", {"user_id": user_id})
+                s = health.get("overall_score", 58)
+                props["overallScore"] = s
+                props["overall_score"] = s
+                props["score"] = s
+                props["gaugeValue"] = s
+                props.setdefault("metrics", health.get("metrics", {}))
+                props.setdefault("status", health.get("status", "MODERADO"))
+                props.setdefault("interest_trap_warning", health.get("interest_trap_warning", {}))
             if "creditUtilizationPct" not in props and "credit_utilization_pct" in props:
                 props["creditUtilizationPct"] = props["credit_utilization_pct"]
+
+        elif comp in [
+            "InvestmentSimulatorCard", "InvestmentSimulator", "InvestmentCard",
+            "PagareBanorteCard", "PagareBanorte", "PagareCard",
+            "SimuladorInversionCard", "SimuladorInversion", "SimuladorPagareCard", "SimuladorPagare"
+        ]:
+            comp = "InvestmentSimulatorCard"
+            amount = float(props.get("initialAmount") or props.get("initial_amount") or props.get("amount") or 25000.0)
+            term_days = int(props.get("initialTermDays") or props.get("initial_term_days") or props.get("term_days") or props.get("term") or 91)
+            props["initialAmount"] = amount
+            props["initialTermDays"] = term_days
+            if "annualRate" not in props and "annual_rate" in props:
+                props["annualRate"] = props["annual_rate"]
+            if "estimatedGain" not in props and "estimated_gain" in props:
+                props["estimatedGain"] = props["estimated_gain"]
+            if "totalMaturity" not in props and "total_maturity" in props:
+                props["totalMaturity"] = props["total_maturity"]
+            if not props.get("annualRate") or not props.get("estimatedGain"):
+                inv = mcp_client._execute_mock("simulate_investment", {"amount": amount, "term_days": term_days})
+                props.setdefault("annualRate", inv.get("annual_rate", "11.25%"))
+                props.setdefault("estimatedGain", inv.get("estimated_gain", round(amount * 0.1125 * (term_days / 360), 2)))
+                props.setdefault("totalMaturity", inv.get("total_maturity", round(amount + props["estimatedGain"], 2)))
 
         elif comp == "AmortizationScheduleCard":
             if "initialDebt" not in props and "initial_debt" in props:
@@ -999,8 +1075,22 @@ Reglas:
             return None
 
         # 4. Financial Health Score
-        elif any(k in combined for k in ["salud", "score", "diagnóstico", "diagnostico", "semáforo", "salud financiera"]):
+        elif any(k in combined for k in ["salud", "score", "diagnóstico", "diagnostico", "semáforo", "semaforo", "salud financiera"]):
             health = mcp_client._execute_mock("get_financial_health_score", {"user_id": user_id})
+            score_match = re.search(r'(?:calificaci[oó]n|score|diagn[oó]stico|puntuaci[oó]n|salud)[^\d\n]{0,25}?(\d{1,3})\s*(?:/\s*100|puntos)?', reply_text, re.IGNORECASE)
+            if not score_match:
+                score_match = re.search(r'\b(\d{1,3})\s*/\s*100\b', reply_text)
+            if score_match:
+                s = int(score_match.group(1))
+                health["overall_score"] = s
+                health["overallScore"] = s
+                health["score"] = s
+                health["gaugeValue"] = s
+            else:
+                s = health.get("overall_score", 58)
+                health["overallScore"] = s
+                health["score"] = s
+                health["gaugeValue"] = s
             return A2UIPayload(component="FinancialHealthGauge", props=health)
 
         # 5. Amortization Schedule
@@ -1017,7 +1107,7 @@ Reglas:
             return A2UIPayload(component="AmortizationScheduleCard", props=amort)
 
         # 6. Investment
-        elif any(k in combined for k in ["invertir", "inversión", "pagaré", "rendimiento"]):
+        elif _is_investment_request(combined):
             amount = _requested_investment_amount(user_msg)
             inv = mcp_client._execute_mock("simulate_investment", {"amount": amount, "term_days": 91})
             return A2UIPayload(
@@ -1228,7 +1318,17 @@ Reglas:
                 final_reply = response.text or ""
                 break
 
-        if not a2ui_payloads or (len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard" and any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])):
+        is_invest = _is_investment_request(request.message)
+        has_invest_card = any(p.component == "InvestmentSimulatorCard" for p in a2ui_payloads)
+        is_spei = any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])
+        should_ensure = (
+            not a2ui_payloads or
+            (len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard" and (is_spei or is_invest)) or
+            (is_invest and not has_invest_card)
+        )
+        if should_ensure:
+            if is_invest and not has_invest_card and len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard":
+                a2ui_payloads.clear()
             ensured_list = self._ensure_a2ui_components(request, final_reply)
             for p in ensured_list:
                 a2ui_payloads.append(p)
@@ -1454,7 +1554,17 @@ Reglas:
             final_reply = response.text or ""
             break
 
-        if not a2ui_payloads or (len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard" and any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])):
+        is_invest = _is_investment_request(request.message)
+        has_invest_card = any(p.component == "InvestmentSimulatorCard" for p in a2ui_payloads)
+        is_spei = any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])
+        should_ensure = (
+            not a2ui_payloads or
+            (len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard" and (is_spei or is_invest)) or
+            (is_invest and not has_invest_card)
+        )
+        if should_ensure:
+            if is_invest and not has_invest_card and len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard":
+                a2ui_payloads.clear()
             ensured_list = self._ensure_a2ui_components(request, final_reply)
             a2ui_payloads.extend(ensured_list)
 
@@ -2550,6 +2660,35 @@ Diálogo:
                 )
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
+        # 4.5 BILL PAY & RECURRING SERVICES (CFE, Telmex, Agua, Gas, Domiciliación)
+        elif any(k in msg for k in [
+            "servicio", "servicios", "pagar servicio", "pago de servicio", "cfe", "luz",
+            "telmex", "infinitum", "agua", "gas", "naturgy", "domiciliar", "domiciliación",
+            "domiciliacion", "recibo", "recibos"
+        ]):
+            reply = (
+                f"Hola, {first_name}. En Banorte Móvil puedes consultar y pagar tus recibos de servicios esenciales "
+                f"o activar la **domiciliación automática recurrente** sin costo:\n\n"
+                f"• **CFE (Luz):** Recibo al corriente · Próximo vencimiento: 18 Sep ($850.00 MXN)\n"
+                f"• **Telmex / Infinitum (Internet):** Domiciliado activo ($649.00 MXN)\n"
+                f"• **Agua y Saneamiento:** Recibo al corriente ($320.00 MXN)\n"
+                f"• **Naturgy México (Gas):** Pendiente de pago ($410.00 MXN)\n\n"
+                f"Puedes liquidar cualquiera de tus recibos de inmediato o programar su cargo automático para evitar recargos o suspensiones de servicio."
+            )
+            a2ui = A2UIPayload(
+                component="SpeiTransferFormCard",
+                props={
+                    "initialBeneficiary": "CFE Suministrador de Servicios Básicos",
+                    "initialBank": "Banorte Recaudación",
+                    "initialClabe": "072 180 000103481928 1",
+                    "initialAmount": 850.0,
+                    "initialConcept": "Pago CFE Luz - 0103481928104",
+                    "availableBalance": 27900.0,
+                    "accountLast4": "7721"
+                }
+            )
+            return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
         # 5. INVESTMENT / PAGARÉ BANORTE
         elif _is_investment_request(msg):
             amount = _requested_investment_amount(msg)
@@ -2579,6 +2718,10 @@ Diálogo:
 
             score = res.get("overall_score", 64)
             status = res.get("status", "MODERADO")
+            res["overallScore"] = score
+            res["overall_score"] = score
+            res["score"] = score
+            res["gaugeValue"] = score
             reply = (
                 f"Hola, {first_name}. Aquí tienes tu **Diagnóstico de Salud Financiera 360°** Banorte:\n\n"
                 f"• **Calificación general:** {score}/100 ({status})\n"

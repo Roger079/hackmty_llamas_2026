@@ -3,8 +3,11 @@ import { Chart } from '../visuals/Chart';
 import { ActionContext } from '../types/a2ui';
 
 interface FinancialHealthGaugeProps {
+  score?: number;
   overallScore?: number;
   overall_score?: number;
+  gaugeValue?: number;
+  value?: number;
   maxScore?: number;
   status?: string;
   statusColor?: string;
@@ -28,9 +31,13 @@ interface FinancialHealthGaugeProps {
 }
 
 export const FinancialHealthGauge: React.FC<FinancialHealthGaugeProps> = (props) => {
-  const score = props.overallScore ?? props.overall_score ?? 64;
-  const status = props.status ?? (score < 70 ? 'MODERADO' : 'ÓPTIMO');
-  const color = props.statusColor ?? props.status_color ?? (score < 70 ? '#C89319' : '#008A5A');
+  const score = props.overallScore ?? props.overall_score ?? props.score ?? props.gaugeValue ?? props.value ?? 64;
+  const status = props.status ?? (score >= 80 ? 'ÓPTIMO' : score >= 60 ? 'MODERADO' : 'RIESGO');
+  const badgeStyle = score >= 80
+    ? { backgroundColor: '#10B981', color: '#FFFFFF', borderColor: '#059669' }
+    : score >= 60
+    ? { backgroundColor: '#C89319', color: '#3C2800', borderColor: '#E5B442' }
+    : { backgroundColor: '#EB0029', color: '#FFFFFF', borderColor: '#B91C1C' };
   const utilization = props.metrics?.credit_utilization_pct ?? 48.1;
 
   return (
@@ -42,12 +49,8 @@ export const FinancialHealthGauge: React.FC<FinancialHealthGaugeProps> = (props)
             <p className="text-[11px] text-red-100">Evaluación integral Banorte</p>
           </div>
           <span
-            className="text-[11px] font-bold px-3 py-1 rounded-full font-mono uppercase tracking-wide border"
-            style={{
-              backgroundColor: '#C89319',
-              color: '#3C2800',
-              borderColor: '#E5B442'
-            }}
+            className="text-[11px] font-bold px-3 py-1 rounded-full font-mono uppercase tracking-wide border shadow-2xs"
+            style={badgeStyle}
           >
             {status}
           </span>

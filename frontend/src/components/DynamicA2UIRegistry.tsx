@@ -11,22 +11,7 @@ import { AmortizationScheduleCard } from './AmortizationScheduleCard';
 import { BanorteChartCard } from './BanorteChartCard';
 import { Chart } from './Chart';
 import { SpeiTransferFormCard } from './SpeiTransferFormCard';
-import { DataTable } from './DataTable';
-import { ComparisonTable } from './ComparisonTable';
-import { KpiCard } from './KpiCard';
-import { ProgressIndicator } from './ProgressIndicator';
-import { Timeline } from './Timeline';
-import { GeoMap } from './GeoMap';
 import { FinancialHealthGauge } from './FinancialHealthGauge';
-import { BarChart } from './BarChart';
-import { BarHorizontalChart } from './BarHorizontalChart';
-import { GroupedBarChart } from './GroupedBarChart';
-import { StackedBarChart } from './StackedBarChart';
-import { LineChart } from './LineChart';
-import { MultiLineChart } from './MultiLineChart';
-import { AreaChart } from './AreaChart';
-import { StackedAreaChart } from './StackedAreaChart';
-import { ProjectionChart } from './ProjectionChart';
 
 interface DynamicA2UIRegistryProps {
   payload: A2UIPayload;
@@ -50,26 +35,24 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   TransferenciaSpeiCard: SpeiTransferFormCard,
   BanorteBalanceCard,
   InvestmentSimulatorCard,
+  InvestmentSimulator: InvestmentSimulatorCard,
+  InvestmentCard: InvestmentSimulatorCard,
+  PagareBanorteCard: InvestmentSimulatorCard,
+  PagareBanorte: InvestmentSimulatorCard,
+  PagareCard: InvestmentSimulatorCard,
+  SimuladorInversionCard: InvestmentSimulatorCard,
+  SimuladorInversion: InvestmentSimulatorCard,
+  SimuladorPagareCard: InvestmentSimulatorCard,
+  SimuladorPagare: InvestmentSimulatorCard,
+  FinancialHealthGauge,
+  FinancialHealthCard: FinancialHealthGauge,
+  SaludFinancieraGauge: FinancialHealthGauge,
+  SaludFinancieraCard: FinancialHealthGauge,
+  DiagnosticoFinancieroCard: FinancialHealthGauge,
   SpendingDonutCard,
   AmortizationScheduleCard,
   BanorteChartCard,
   Chart,
-  DataTable,
-  ComparisonTable,
-  KpiCard,
-  ProgressIndicator,
-  Timeline,
-  GeoMap,
-  FinancialHealthGauge,
-  BarChart,
-  BarHorizontalChart,
-  GroupedBarChart,
-  StackedBarChart,
-  LineChart,
-  MultiLineChart,
-  AreaChart,
-  StackedAreaChart,
-  ProjectionChart,
   SankeyChart: BanorteChartCard,
   HeatmapChart: BanorteChartCard,
   CalendarHeatmap: BanorteChartCard,
@@ -77,6 +60,11 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   AmortizationSchedule: AmortizationScheduleCard,
   TablaAmortizacionCard: AmortizationScheduleCard,
   TablaAmortizacion: AmortizationScheduleCard,
+  BarChartCard: BanorteChartCard,
+  GraficaBarrasCard: BanorteChartCard,
+  GraficaBarras: BanorteChartCard,
+  GroupedBarChart: BanorteChartCard,
+  StackedBarChart: BanorteChartCard,
   // Common LLM alias mappings
   AccountsSummaryCard: BanorteBalanceCard,
   BanorteAccountSummary: BanorteBalanceCard,
@@ -176,10 +164,18 @@ function normalizeProps(component?: string, rawProps?: Record<string, any>): Rec
   } else if (comp === 'SpeiReceiptCard') {
     p.trackingKey = p.trackingKey || p.tracking_key || 'BNTE202609118492019';
     p.date = p.date || p.execution_timestamp || '11 Sep 2026, 23:45 hrs';
-  } else if (comp === 'InvestmentSimulatorCard') {
-    p.initialAmount = p.initialAmount ?? p.initial_amount ?? 25000;
-    p.initialTermDays = p.initialTermDays ?? p.initial_term_days ?? 91;
-    p.annualRate = p.annualRate ?? p.annual_rate ?? '9.1%';
+  } else if (comp === 'FinancialHealthGauge' || comp.includes('Health') || comp.includes('Salud') || comp.includes('Diagnostico')) {
+    const rawScore = p.overallScore ?? p.overall_score ?? p.score ?? p.gaugeValue ?? p.value;
+    if (rawScore != null) {
+      p.overallScore = Number(rawScore);
+      p.overall_score = Number(rawScore);
+      p.score = Number(rawScore);
+      p.gaugeValue = Number(rawScore);
+    }
+  } else if (comp === 'InvestmentSimulatorCard' || comp.includes('Investment') || comp.includes('Pagare') || comp.includes('Inversion')) {
+    p.initialAmount = p.initialAmount ?? p.initial_amount ?? p.amount ?? 25000;
+    p.initialTermDays = p.initialTermDays ?? p.initial_term_days ?? p.term_days ?? p.term ?? 91;
+    p.annualRate = p.annualRate ?? p.annual_rate ?? '11.25%';
     p.estimatedGain = p.estimatedGain ?? p.estimated_gain;
     p.totalMaturity = p.totalMaturity ?? p.total_maturity;
   } else if (
@@ -204,6 +200,44 @@ function normalizeProps(component?: string, rawProps?: Record<string, any>): Rec
         p.valueKey = p.valueKey || 'value';
         return p;
       }
+    }
+
+    const chartPalette = ['#EB0029', '#0A5CA8', '#008A5A', '#C89319', '#617A96', '#9AAABD'];
+
+    // CASE 1: ApexCharts / Highcharts format: categories: ["Abr", "May", ...], series: [{ name: "Ingresos", data: [...] }, ...]
+    if (
+      Array.isArray(p.categories) &&
+      typeof p.categories[0] === 'string' &&
+      Array.isArray(p.series) &&
+      p.series.length > 0 &&
+      Array.isArray(p.series[0]?.data)
+    ) {
+      const catNames: string[] = p.categories;
+      const rows = catNames.map((catName, idx) => {
+        const row: Record<string, any> = { name: catName, mes: catName, label: catName, x: catName };
+        p.series.forEach((s: any) => {
+          const metricKey = (s.name || 'valor').toLowerCase().replace(/\s+/g, '_');
+          row[metricKey] = s.data?.[idx] ?? 0;
+        });
+        return row;
+      });
+
+      p.data = { data: rows };
+      p.dataPath = '/data';
+      p.categoryKey = 'name';
+      if (p.series.length > 1) {
+        p.chartType = p.chartType === 'line' ? 'line' : 'groupedBar';
+      } else {
+        p.chartType = p.chartType || 'bar';
+      }
+      p.series = p.series.map((s: any, idx: number) => ({
+        name: s.name,
+        dataPath: '/data',
+        xKey: 'name',
+        yKey: (s.name || 'valor').toLowerCase().replace(/\s+/g, '_'),
+        color: s.color || chartPalette[idx % chartPalette.length],
+      }));
+      return p;
     }
 
     let rawList: any[] = [];
@@ -236,10 +270,20 @@ function normalizeProps(component?: string, rawProps?: Record<string, any>): Rec
       }
 
       const numericKeys = keys.filter(k => k !== p.categoryKey && (typeof firstRow[k] === 'number' || (!isNaN(Number(firstRow[k])) && firstRow[k] !== '')));
-      const chartPalette = ['#E4003B', '#0A5CA8', '#008A5A', '#C89319', '#617A96', '#9AAABD'];
 
       if (!p.series || !p.series.length) {
-        if (numericKeys.length > 1) {
+        // If single bar chart of categorical spending, prefer 'amount' or 'monto' over percentage
+        const preferredKey = numericKeys.find(k => ['amount', 'monto', 'total', 'saldo', 'value'].includes(k.toLowerCase())) || numericKeys[0];
+        if (p.chartType === 'bar' && preferredKey) {
+          p.valueKey = preferredKey;
+          p.series = [{
+            name: p.title || 'Monto',
+            dataPath: '/data',
+            xKey: p.categoryKey,
+            yKey: preferredKey,
+            color: '#EB0029'
+          }];
+        } else if (numericKeys.length > 1) {
           p.series = numericKeys.map((k, i) => ({
             name: k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
             dataPath: '/data',

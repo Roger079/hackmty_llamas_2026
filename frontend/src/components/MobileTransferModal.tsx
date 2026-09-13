@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { X, ArrowLeft, Send, CheckCircle2, Building2, User, CreditCard, ShieldCheck } from 'lucide-react';
 
 export interface SavedContact {
@@ -84,8 +84,9 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
   const [amountStr, setAmountStr] = useState('');
   const [concept, setConcept] = useState('Transferencia');
   const [lastFolio, setLastFolio] = useState('');
+  const [isClosing, setIsClosing] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen && !isClosing) return null;
 
   const handleSelectContact = (contact: SavedContact) => {
     setRecipientName(contact.name);
@@ -116,21 +117,34 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
     setStep('success');
   };
 
-  const resetAndClose = () => {
-    setStep('select');
-    setTab('saved');
-    setRecipientName('');
-    setRecipientBank('');
-    setRecipientAccount('');
-    setAmountStr('');
-    setConcept('Transferencia');
-    onClose();
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      setStep('select');
+      setTab('saved');
+      setRecipientName('');
+      setRecipientBank('');
+      setRecipientAccount('');
+      setAmountStr('');
+      setConcept('Transferencia');
+      onClose();
+    }, 240);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
+    <div
+      onClick={handleClose}
+      className={`fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm transition-opacity ${
+        isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'
+      }`}
+    >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-t-[32px] bg-white shadow-2xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom duration-300"
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-lg overflow-hidden rounded-t-[32px] bg-white shadow-2xl flex flex-col max-h-[90vh] ${
+          isClosing ? 'animate-modal-sheet-down' : 'animate-modal-sheet'
+        }`}
         role="dialog"
         aria-modal="true"
       >
@@ -157,8 +171,8 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
           </div>
           <button
             type="button"
-            onClick={resetAndClose}
-            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+            onClick={handleClose}
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
             aria-label="Cerrar ventana"
           >
             <X className="h-5 w-5" />
@@ -169,13 +183,13 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
         <div className="flex-1 overflow-y-auto p-5">
           {/* STEP 1: SELECT CONTACT (Saved vs New) */}
           {step === 'select' && (
-            <div className="space-y-4">
+            <div key="step-select" className="space-y-4 animate-tab-inner">
               {/* Tab Switcher */}
               <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-xs font-bold text-slate-600">
                 <button
                   type="button"
                   onClick={() => setTab('saved')}
-                  className={`rounded-lg py-2 transition ${
+                  className={`rounded-lg py-2 transition-all duration-200 cursor-pointer ${
                     tab === 'saved' ? 'bg-white text-[#EB0029] shadow-xs' : 'hover:text-slate-900'
                   }`}
                 >
@@ -184,7 +198,7 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setTab('new')}
-                  className={`rounded-lg py-2 transition ${
+                  className={`rounded-lg py-2 transition-all duration-200 cursor-pointer ${
                     tab === 'new' ? 'bg-white text-[#EB0029] shadow-xs' : 'hover:text-slate-900'
                   }`}
                 >
@@ -193,7 +207,7 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
               </div>
 
               {tab === 'saved' ? (
-                <div className="space-y-2">
+                <div key="tab-saved" className="space-y-2 animate-tab-inner">
                   <p className="text-xs font-semibold text-slate-500">
                     Cuentas frecuentes registradas en testing:
                   </p>
@@ -222,7 +236,7 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleNewContactNext} className="space-y-3.5">
+                <form key="tab-new" onSubmit={handleNewContactNext} className="space-y-3.5 animate-tab-inner">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Nombre del Beneficiario
@@ -304,7 +318,7 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
 
           {/* STEP 2: ENTER AMOUNT & CONCEPT */}
           {step === 'amount' && (
-            <div className="space-y-4">
+            <div key="step-amount" className="space-y-4 animate-tab-inner">
               <div className="rounded-2xl bg-slate-50 p-3.5 border border-slate-200 flex items-center justify-between">
                 <div>
                   <p className="text-[11px] text-slate-500 font-medium">Destinatario:</p>
@@ -314,7 +328,7 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setStep('select')}
-                  className="text-xs font-bold text-[#EB0029] hover:underline"
+                  className="text-xs font-bold text-[#EB0029] hover:underline cursor-pointer"
                 >
                   Cambiar
                 </button>
@@ -348,7 +362,7 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
                     key={quick}
                     type="button"
                     onClick={() => setAmountStr(quick.toString())}
-                    className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-[#EB0029] transition cursor-pointer"
+                    className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-[#EB0029] transition cursor-pointer active:scale-95"
                   >
                     +${quick}
                   </button>
@@ -385,7 +399,7 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
 
           {/* STEP 3: CONFIRMATION SUMMARY */}
           {step === 'confirm' && (
-            <div className="space-y-4">
+            <div key="step-confirm" className="space-y-4 animate-tab-inner">
               <div className="rounded-2xl border border-red-100 bg-red-50/40 p-4 space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-500 font-medium">Beneficiario:</span>
@@ -417,7 +431,7 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmTransfer}
-                className="w-full rounded-xl bg-[#EB0029] py-3.5 text-xs font-bold text-white hover:bg-[#A5002C] transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+                className="w-full rounded-xl bg-[#EB0029] py-3.5 text-xs font-bold text-white hover:bg-[#A5002C] transition shadow-md cursor-pointer flex items-center justify-center gap-2 active:scale-98"
               >
                 <Send className="h-4 w-4" />
                 <span>Confirmar y Enviar Transferencia</span>
@@ -427,7 +441,7 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
 
           {/* STEP 4: SUCCESS RECEIPT */}
           {step === 'success' && (
-            <div className="text-center py-4 space-y-4">
+            <div key="step-success" className="text-center py-4 space-y-4 animate-tab-inner">
               <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/50">
                 <CheckCircle2 className="h-10 w-10" />
               </div>
@@ -459,7 +473,7 @@ export const MobileTransferModal: React.FC<MobileTransferModalProps> = ({
 
               <button
                 type="button"
-                onClick={resetAndClose}
+                onClick={handleClose}
                 className="w-full rounded-xl bg-slate-900 py-3 text-xs font-bold text-white hover:bg-slate-800 transition cursor-pointer"
               >
                 Cerrar comprobante

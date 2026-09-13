@@ -30,6 +30,7 @@ import {
   subscribeToHomeWidgets,
 } from '../utils/homeWidgetsManager';
 import { MobileTransferModal } from './MobileTransferModal';
+import { MobileBillPayModal } from './MobileBillPayModal';
 
 interface MobileSimulatorProps {
   clientName: string;
@@ -79,6 +80,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
   const [isRentConfirmationOpen, setIsRentConfirmationOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [isBillPayModalOpen, setIsBillPayModalOpen] = useState(false);
   const [isScrollingDown, setIsScrollingDown] = useState(false);
 
   const cardRailRef = useRef<HTMLDivElement>(null);
@@ -274,7 +276,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
       <main className="flex-1 px-4 py-4 max-w-[430px] mx-auto w-full pb-28">
         {/* TAB 1: HOME (Accounts, Quick Actions, Debt Alert, Movements) */}
         {activeTab === 'home' && (
-          <div className="space-y-4">
+          <div key="tab-home" className="space-y-4 animate-tab-view">
             {/* Card-first banking area: Perfectly centered swipeable products with NO right-side barrier */}
             <section aria-label="Tus tarjetas" className="relative -mx-4 overflow-hidden py-1">
               <div
@@ -369,10 +371,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setActiveTab('maya');
-                    onSendMessage('Quiero simular una inversión en Pagaré Banorte');
-                  }}
+                  onClick={() => setIsBillPayModalOpen(true)}
                   className="flex flex-col items-center rounded-xl bg-white p-2.5 shadow-xs border border-slate-100 hover:bg-slate-50 transition cursor-pointer active:scale-95"
                 >
                   <ReceiptText className="h-4 w-4 text-[#EB0029] mb-1" />
@@ -683,7 +682,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
 
         {/* TAB 3: TARJETAS (All cards that appear on the initial page) */}
         {activeTab === 'cards' && (
-          <div className="space-y-6">
+          <div key="tab-cards" className="space-y-6 animate-tab-view">
             <div className="flex items-center justify-between px-1">
               <div>
                 <h2 className="text-base font-extrabold text-slate-900">Mis Tarjetas Banorte</h2>
@@ -759,7 +758,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
 
         {/* TAB 4: MOVIMIENTOS */}
         {activeTab === 'activity' && (
-          <div className="rounded-2xl bg-white p-4 shadow-xs border border-slate-200 space-y-3">
+          <div key="tab-activity" className="rounded-2xl bg-white p-4 shadow-xs border border-slate-200 space-y-3 animate-tab-view">
             <h2 className="text-xs font-extrabold text-slate-900 uppercase tracking-wide">
               Historial Completo de Movimientos
             </h2>
@@ -769,21 +768,21 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                   <p className="font-bold text-slate-800">Depósito Nómina Banorte</p>
                   <p className="text-[10px] text-slate-400">Hoy, 08:30 hrs • SPEI</p>
                 </div>
-                <span className="font-bold text-emerald-600">+$14,250.00 MXN</span>
-              </div>
-              <div className="pt-2 flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-slate-800">Transferencia SPEI a Sofía</p>
-                  <p className="text-[10px] text-slate-400">Ayer, 20:15 hrs • BBVA</p>
-                </div>
-                <span className="font-bold text-slate-900">-$850.00 MXN</span>
+                <span className="font-bold text-emerald-600">+${nominaBalance.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</span>
               </div>
               <div className="pt-2 flex justify-between items-center">
                 <div>
                   <p className="font-bold text-slate-800">Walmart Supercenter</p>
-                  <p className="text-[10px] text-slate-400">10 Sep, 17:42 hrs • Platino *4892</p>
+                  <p className="text-[10px] text-slate-400">Ayer, 18:45 hrs • Compra T. Débito</p>
                 </div>
-                <span className="font-bold text-slate-900">-$1,840.50 MXN</span>
+                <span className="font-bold text-slate-900">-$2,500.00 MXN</span>
+              </div>
+              <div className="pt-2 flex justify-between items-center">
+                <div>
+                  <p className="font-bold text-slate-800">Starbucks Galerías</p>
+                  <p className="text-[10px] text-slate-400">10 Sep, 11:20 hrs • Compra T. Crédito</p>
+                </div>
+                <span className="font-bold text-slate-900">-$145.00 MXN</span>
               </div>
               <div className="pt-2 flex justify-between items-center">
                 <div>
@@ -806,6 +805,22 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
           onSendMessage(
             `Transfiere $${transfer.amount} a ${transfer.recipient} por SPEI (${transfer.bank} • ${transfer.clabeOrCard}) con concepto: ${transfer.concept}`
           );
+        }}
+      />
+
+      {/* Bill Pay & Recurring Direct Debit Modal */}
+      <MobileBillPayModal
+        isOpen={isBillPayModalOpen}
+        onClose={() => setIsBillPayModalOpen(false)}
+        availableBalance={nominaBalance}
+        onExecutePayment={(payment) => {
+          onSendMessage(
+            `He pagado mi recibo de ${payment.serviceName} por $${payment.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN (Folio: ${payment.folio})${payment.autoPayEnabled ? ' y activé la domiciliación mensual automática' : ''}.`
+          );
+        }}
+        onOpenMayaChat={(message) => {
+          setActiveTab('maya');
+          onSendMessage(message);
         }}
       />
 

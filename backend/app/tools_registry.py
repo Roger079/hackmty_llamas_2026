@@ -122,7 +122,7 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
     },
     {
         "name": "simulate_investment",
-        "description": "Calcula el rendimiento y ganancia estimada para Pagaré Banorte a plazo fijo.",
+        "description": "Calcula el rendimiento y ganancia estimada para Pagaré Banorte a plazo fijo. Tras calcular el rendimiento, invoca siempre render_a2ui con component='InvestmentSimulatorCard' para mostrar el simulador interactivo al usuario.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
@@ -285,7 +285,7 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
             "properties": {
                 "component": {
                     "type": "STRING",
-                    "description": "Nombre exacto del componente Banorte a renderizar: 'SpeiTransferFormCard' (formulario interactivo para capturar/editar transferencias SPEI antes de autorizar), 'SpeiConfirmCard' (autorización final con Token Móvil), 'SpeiReceiptCard' (comprobante digital con folio CEP), 'Chart', 'KpiCard', 'ProgressIndicator', 'DataTable', 'ComparisonTable', 'Timeline', 'GeoMap', 'SpendingDonutCard', 'FinancialHealthGauge', 'DebtRestructureCard', 'ConfirmationReceipt', 'BanorteBalanceCard', 'BarChart', 'LineChart', 'AreaChart', 'StackedBarChart', 'BanorteChartCard'"
+                    "description": "Nombre exacto del componente Banorte a renderizar: 'InvestmentSimulatorCard' (simulador interactivo de Pagaré Banorte con slider de monto, plazo y rendimientos), 'SpeiTransferFormCard' (formulario interactivo para capturar/editar transferencias SPEI antes de autorizar), 'SpeiConfirmCard' (autorización final con Token Móvil), 'SpeiReceiptCard' (comprobante digital con folio CEP), 'Chart', 'KpiCard', 'ProgressIndicator', 'DataTable', 'ComparisonTable', 'Timeline', 'GeoMap', 'SpendingDonutCard', 'FinancialHealthGauge', 'DebtRestructureCard', 'ConfirmationReceipt', 'BanorteBalanceCard', 'BarChart', 'LineChart', 'AreaChart', 'StackedBarChart', 'BanorteChartCard'"
                 },
                 "props": {
                     "type": "OBJECT",

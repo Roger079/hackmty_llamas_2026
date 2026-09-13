@@ -157,3 +157,95 @@ button {
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+/* Fluid UI Animations for Mobile & Modal Transitions */
+@keyframes modalBackdropFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes modalBackdropFadeOut {
+  from {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+}
+
+@keyframes modalSheetSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes modalSheetSlideDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0.8;
+  }
+}
+
+@keyframes tabViewFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tabInnerCrossfade {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-modal-backdrop {
+  animation: modalBackdropFadeIn 0.22s ease-out both;
+}
+
+.animate-modal-backdrop-out {
+  animation: modalBackdropFadeOut 0.22s ease-in forwards;
+}
+
+.animate-modal-sheet {
+  animation: modalSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-modal-sheet-down {
+  animation: modalSheetSlideDown 0.26s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.animate-tab-view {
+  animation: tabViewFadeSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-tab-inner {
+  animation: tabInnerCrossfade 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+

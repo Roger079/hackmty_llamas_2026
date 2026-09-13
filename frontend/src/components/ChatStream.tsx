@@ -64,11 +64,11 @@ const renderInlineMarkdown = (raw: string): React.ReactNode => {
 const MessageText: React.FC<{ text: string }> = ({ text }) => {
   if (!text) return null;
 
-  // Pre-process: split concatenated bullets (e.g. "* Monto: ... * Destino: ...") onto separate lines
+  // Safe pre-process: only split concatenated bullets when preceded by sentence-ending punctuation (. or ;)
+  // Never split on colons (: *), inline italics (*word*), or bold (**text**)
   const normalized = text
-    .replace(/:\s*\*\s+/g, ':\n* ')
-    .replace(/([^\n])\s*\*\s+([A-ZÁÉÍÓÚÑa-z])/g, '$1\n* $2')
-    .replace(/([^\n])\s*(\d+\.\s+[A-ZÁÉÍÓÚÑ])/g, '$1\n\n$2');
+    .replace(/\r\n/g, '\n')
+    .replace(/([.;!?])\s+([*•-]|\d+\.)\s+/g, '$1\n$2 ');
 
   const lines = normalized.split('\n');
 
@@ -298,14 +298,9 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
           return (
             <div
               key={message.id}
-              className={`flex transition-all duration-150 ${isUser ? 'justify-end' : 'items-start gap-2.5'}`}
+              className={`flex transition-all duration-150 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
-              {!isUser && (
-                <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#EB0029] ring-2 ring-red-100">
-                  <BanorteLogo variant="icon" theme="red" className="h-5 w-5" alt="" />
-                </div>
-              )}
-              <div className={`space-y-2.5 ${isUser ? 'max-w-[85%] sm:max-w-[78%]' : 'min-w-0 max-w-2xl flex-1'}`}>
+              <div className={`space-y-2.5 ${isUser ? 'max-w-[85%] sm:max-w-[78%]' : 'w-full max-w-2xl'}`}>
                 {(message.content || (!message.a2ui && isLoading)) && (
                   <div
                     className={`break-words text-xs sm:text-sm leading-relaxed ${
