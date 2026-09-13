@@ -175,6 +175,38 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
         }
     },
     {
+        "name": "get_sankey_cashflow",
+        "description": "Obtiene la estructura completa de nodos (nodes) y enlaces de flujo (links) para diagramas de flujo de efectivo Sankey. Conecta Nómina Banorte con Gastos Fijos, Gastos Variables, Ahorro/Inversión y sus categorías hijas detalladas en pesos MXN. Invocar cuando el cliente solicite diagramas de Sankey, flujo de efectivo, o el origen y destino de sus ingresos y gastos de 1 o más meses.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "user_id": {
+                    "type": "STRING",
+                    "description": "Identificador del cliente (ej. 'C001', 'C002')"
+                },
+                "months": {
+                    "type": "INTEGER",
+                    "description": "Número de meses anteriores a consolidar en el diagrama de flujo (ej. 1, 3, 6)"
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "get_historical_rates_trend",
+        "description": "Obtiene la serie histórica de tasas de interés ordinarias (%), Costo Anual Total (CAT %) de la tarjeta de crédito Banorte y rendimiento garantizado de Pagaré Banorte a través del tiempo (últimos 6 meses). Usar cuando el usuario pida ver sus tasas a través del tiempo, historial de tasas, evolución de CAT o costo financiero.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "user_id": {
+                    "type": "STRING",
+                    "description": "Identificador del cliente"
+                }
+            },
+            "required": []
+        }
+    },
+    {
         "name": "get_financial_health_score",
         "description": "Calcula un diagnóstico 360° de salud financiera: score de 0 a 100, semáforo, ratio de uso de crédito (deuda vs límite), riesgo de trampa de intereses en pago mínimo y radar de dimensiones financieras.",
         "parameters": {
@@ -319,8 +351,8 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
                 },
                 "action": {
                     "type": "STRING",
-                    "enum": ["add", "remove", "reorder", "reset", "list"],
-                    "description": "Acción sobre los widgets de inicio: 'add' (agregar), 'remove' (quitar), 'reorder' (reordenar), 'reset' (restablecer predeterminados), 'list' (consultar)"
+                    "enum": ["add", "remove", "reorder", "reset", "clear", "list"],
+                    "description": "Acción sobre los widgets de inicio: 'add' (agregar), 'remove' (quitar uno), 'clear' (eliminar o borrar todos los widgets de la pantalla de inicio móvil), 'reorder' (reordenar), 'reset' (restablecer predeterminados), 'list' (consultar)"
                 },
                 "widget_type": {
                     "type": "STRING",

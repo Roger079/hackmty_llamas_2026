@@ -31,16 +31,18 @@ export const DebtRestructureCard: React.FC<DebtRestructureCardProps> = ({
   onAction,
   disabled = false,
 }) => {
-  const effectiveOptions = options.length > 0 ? options : defaultOptions;
+  const safeOptions = Array.isArray(options) && options.length > 0 ? options : defaultOptions;
+  const effectiveOptions = safeOptions;
   const initialPlan =
     effectiveOptions.find((o) => o.months === 24)?.plan_id ||
     effectiveOptions[1]?.plan_id ||
-    effectiveOptions[0]?.plan_id;
+    effectiveOptions[0]?.plan_id ||
+    'plan_24m';
 
   const [selectedPlanId, setSelectedPlanId] = useState<string>(initialPlan);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const selectedOption = effectiveOptions.find((opt) => opt.plan_id === selectedPlanId);
+  const selectedOption = effectiveOptions.find((opt) => opt.plan_id === selectedPlanId) || effectiveOptions[0];
 
   const handleApply = async () => {
     if (!selectedOption || disabled || isSubmitting) return;
@@ -86,7 +88,7 @@ export const DebtRestructureCard: React.FC<DebtRestructureCardProps> = ({
               Deuda total actual
             </span>
             <span className="text-xl sm:text-2xl font-black tracking-tight tabular-nums">
-              ${totalDebt.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
+              ${Number(totalDebt || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
               <span className="text-xs font-semibold">MXN</span>
             </span>
           </div>
@@ -160,17 +162,17 @@ export const DebtRestructureCard: React.FC<DebtRestructureCardProps> = ({
 
                   <div className="text-right">
                     <div className="text-sm sm:text-base font-black tabular-nums text-slate-900">
-                      ${opt.monthly_payment.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      ${Number(opt.monthly_payment || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </div>
                     <div className="text-[10px] text-slate-500">al mes</div>
                   </div>
                 </div>
 
-                {opt.total_savings > 0 && (
+                {Number(opt.total_savings || 0) > 0 && (
                   <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
                     <span>Ahorro estimado en intereses:</span>
                     <span className="font-semibold text-emerald-600">
-                      ~${opt.total_savings.toLocaleString('es-MX')} MXN
+                      ~${Number(opt.total_savings || 0).toLocaleString('es-MX')} MXN
                     </span>
                   </div>
                 )}

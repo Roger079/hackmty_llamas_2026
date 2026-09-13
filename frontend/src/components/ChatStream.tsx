@@ -66,10 +66,11 @@ const MessageText: React.FC<{ text: string }> = ({ text }) => {
   if (!text) return null;
 
   // Safe pre-process: only split concatenated bullets when preceded by sentence-ending punctuation (. or ;)
-  // Never split on colons (: *), inline italics (*word*), or bold (**text**)
+  // and followed by an explicit bullet marker (* or • or \d+.) starting a new capitalized phrase.
+  // Never split on inline hyphens (-), colons, or mid-sentence continuations.
   const normalized = text
     .replace(/\r\n/g, '\n')
-    .replace(/([.;!?])\s+([*•-]|\d+\.)\s+/g, '$1\n$2 ');
+    .replace(/([.;!?])\s+([*•]|\d+\.)\s+([A-ZÁÉÍÓÚÑ¿¡*])/g, '$1\n$2 $3');
 
   const lines = normalized.split('\n');
 

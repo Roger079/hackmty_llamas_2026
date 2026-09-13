@@ -12,6 +12,7 @@ import { BanorteChartCard } from './BanorteChartCard';
 import { Chart } from './Chart';
 import { SpeiTransferFormCard } from './SpeiTransferFormCard';
 import { FinancialHealthGauge } from './FinancialHealthGauge';
+import { Timeline } from './Timeline';
 
 interface DynamicA2UIRegistryProps {
   payload: A2UIPayload;
@@ -77,6 +78,12 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   DesgloseDetalladoCard: SpendingDonutCard,
   DesgloseDetallado: SpendingDonutCard,
   ExpensesBreakdownCard: SpendingDonutCard,
+  Timeline,
+  TransactionTimeline: Timeline,
+  SpeiTimeline: Timeline,
+  TimelineCard: Timeline,
+  RastreoTimeline: Timeline,
+  LineaTiempo: Timeline,
 };
 
 // Register any other discovered components
@@ -134,19 +141,55 @@ function normalizeProps(component?: string, rawProps?: Record<string, any>): Rec
       p.categories = p.items;
     }
   } else if (comp === 'DebtRestructureCard') {
-    p.totalDebt = p.totalDebt ?? p.total_debt ?? 28000.00;
+    p.totalDebt = Number(p.totalDebt ?? p.total_debt ?? 28000.00);
     p.cardName = p.cardName ?? p.card_name ?? 'Tarjeta Banorte Mastercard';
     p.cardLast4 = p.cardLast4 ?? p.card_last4 ?? '8812';
-    p.minimumPayment = p.minimumPayment ?? p.minimum_payment ?? 2500.00;
+    p.minimumPayment = Number(p.minimumPayment ?? p.minimum_payment ?? 2500.00);
     p.dueDate = p.dueDate ?? p.payment_due_date ?? p.due_date ?? '27 Sep 2026';
     p.currentRate = p.currentRate ?? p.interest_rate_annual ?? p.rate ?? '64.8% CAT';
-    p.options = (p.options || []).map((opt: any, index: number) => ({
-      plan_id: opt.plan_id ?? `plan_${opt.months ?? opt.term_months ?? index}`,
-      months: opt.months ?? opt.term_months,
-      monthly_payment: opt.monthly_payment,
-      annual_rate: opt.annual_rate ?? opt.rate,
-      total_savings: opt.total_savings ?? 0,
-      label: opt.label,
+
+    let rawOpts = p.options;
+    if (rawOpts && typeof rawOpts === 'object' && !Array.isArray(rawOpts)) {
+      rawOpts = Object.values(rawOpts);
+    }
+    if (!Array.isArray(rawOpts) || rawOpts.length === 0) {
+      rawOpts = [
+        { plan_id: 'plan_12m', months: 12, monthly_payment: 3450.0, annual_rate: '16.5%', total_savings: 8200 },
+        { plan_id: 'plan_24m', months: 24, monthly_payment: 2480.0, annual_rate: '17.0%', total_savings: 14600, label: 'Recomendado por Maya' },
+        { plan_id: 'plan_36m', months: 36, monthly_payment: 1810.0, annual_rate: '17.5%', total_savings: 18900 },
+      ];
+    }
+    p.options = rawOpts.map((opt: any, index: number) => {
+      const m = Number(opt.months ?? opt.term_months ?? opt.meses ?? (12 * (index + 1)));
+      const mp = Number(opt.monthly_payment ?? opt.pago_mensual ?? Math.round(Number(p.totalDebt || 28000) / m * 1.15));
+      return {
+        plan_id: String(opt.plan_id ?? `plan_${m}m`),
+        months: m,
+        monthly_payment: mp,
+        annual_rate: String(opt.annual_rate ?? opt.tasa ?? opt.rate ?? '16.5%'),
+        total_savings: Number(opt.total_savings ?? opt.ahorro_total ?? 0),
+        label: opt.label ? String(opt.label) : undefined,
+      };
+    });
+  } else if (comp === 'Timeline' || comp.includes('Timeline') || comp.includes('Rastreo')) {
+    p.title = p.title || p.titulo || 'Rastreo y Estatus de Movimiento';
+    let rawSteps = p.steps || p.items || p.stages || p.movimientos || p.pasos;
+    if (rawSteps && typeof rawSteps === 'object' && !Array.isArray(rawSteps)) {
+      rawSteps = Object.values(rawSteps);
+    }
+    if (!Array.isArray(rawSteps) || rawSteps.length === 0) {
+      rawSteps = [
+        { label: '1. Solicitud Autorizada', date: '11 Sep 2026 14:20:00', status: 'completed', description: 'Autorización exitosa con Token Digital Banorte Móvil.' },
+        { label: '2. Validación de Fondos Banorte', date: '11 Sep 2026 14:20:02', status: 'completed', description: 'Fondos verificados y firma digital criptográfica SHA-256 generada.' },
+        { label: '3. Transmisión a Red Banxico (SPEI)', date: '11 Sep 2026 14:20:05', status: 'completed', description: 'Mensaje procesado por Banco de México con clave de rastreo 202609118812BNTE.' },
+        { label: '4. Liquidado en Banco Receptor', date: '11 Sep 2026 14:20:08', status: 'completed', description: 'Abono exitoso reflejado en la cuenta del destinatario con comprobante CEP.' },
+      ];
+    }
+    p.steps = rawSteps.map((s: any, idx: number) => ({
+      label: String(s.label ?? s.title ?? s.name ?? `Paso ${idx + 1}`),
+      date: s.date ?? s.fecha ?? s.timestamp ?? '',
+      status: s.status ?? s.estatus ?? 'completed',
+      description: s.description ?? s.detalle ?? s.desc ?? '',
     }));
   } else if (comp === 'ConfirmationReceipt') {
     p.folio = p.folio || p.folio_convenio || 'FOL-BNTE-2026-R8812';
@@ -184,12 +227,77 @@ function normalizeProps(component?: string, rawProps?: Record<string, any>): Rec
   ) {
     if (p.chartType === 'sankey' || comp === 'SankeyChart') {
       p.chartType = 'sankey';
-      const nodes = p.nodes || (p.data && typeof p.data === 'object' ? (p.data as any).nodes : undefined);
-      const links = p.links || (p.data && typeof p.data === 'object' ? (p.data as any).links : undefined);
-      if (nodes || links) {
-        p.data = { ...(p.data || {}), nodes: nodes || [], links: links || [] };
-        return p;
+      let nodes = p.nodes || (p.data && typeof p.data === 'object' ? ((p.data as any).nodes || (p.data as any).data?.nodes) : undefined);
+      let links = p.links || (p.data && typeof p.data === 'object' ? ((p.data as any).links || (p.data as any).data?.links) : undefined);
+
+      if (!Array.isArray(nodes) || nodes.length === 0 || !Array.isArray(links) || links.length === 0) {
+        const rawCats = p.categories || (p.data && typeof p.data === 'object' ? ((p.data as any).categories || (p.data as any).data) : undefined);
+        if (Array.isArray(rawCats) && rawCats.length > 0) {
+          const totalSpent = rawCats.reduce((s: number, c: any) => s + (Number(c.amount || c.value || 0)), 0);
+          const fijosAmt = rawCats.filter((c: any) => /super|servicios|tarjeta|renta/i.test(c.name || '')).reduce((s: number, c: any) => s + (Number(c.amount || c.value || 0)), 0) || Math.round(totalSpent * 0.55);
+          const varAmt = Math.max(totalSpent - fijosAmt, 0);
+          const ahorroAmt = Math.round(Math.max(totalSpent * 0.18, 15500));
+
+          nodes = [
+            { id: 'nomina', label: 'Ingresos / Nómina Banorte', color: '#0A5CA8' },
+            { id: 'fijos', label: 'Gastos Fijos', color: '#EB0029' },
+            { id: 'variables', label: 'Gastos Variables', color: '#C89319' },
+            { id: 'ahorro', label: 'Remanente / Ahorro', color: '#008A5A' },
+            ...rawCats.map((c: any, i: number) => ({
+              id: `cat_${i}`,
+              label: c.name || `Categoría ${i + 1}`,
+              color: c.color || '#EB0029'
+            })),
+            { id: 'inversion', label: 'Pagaré / Inversión Banorte', color: '#008A5A' }
+          ];
+
+          links = [
+            { source: 'nomina', target: 'fijos', value: fijosAmt },
+            { source: 'nomina', target: 'variables', value: varAmt },
+            { source: 'nomina', target: 'ahorro', value: ahorroAmt },
+            ...rawCats.map((c: any, i: number) => {
+              const isFijo = /super|servicios|tarjeta|renta/i.test(c.name || '');
+              return {
+                source: isFijo ? 'fijos' : 'variables',
+                target: `cat_${i}`,
+                value: Number(c.amount || c.value || 1000)
+              };
+            }),
+            { source: 'ahorro', target: 'inversion', value: ahorroAmt }
+          ];
+        } else {
+          nodes = [
+            { id: 'nomina', label: 'Ingresos / Nómina Banorte', color: '#0A5CA8' },
+            { id: 'fijos', label: 'Gastos Fijos', color: '#EB0029' },
+            { id: 'variables', label: 'Gastos Variables', color: '#C89319' },
+            { id: 'ahorro', label: 'Remanente / Ahorro', color: '#008A5A' },
+            { id: 'cat_0', label: 'Supermercado & Despensa', color: '#EB0029' },
+            { id: 'cat_1', label: 'Compras & Tiendas', color: '#4A5568' },
+            { id: 'cat_2', label: 'Servicios & Pagos', color: '#FF5A70' },
+            { id: 'cat_3', label: 'Renta & Vivienda', color: '#718096' },
+            { id: 'cat_4', label: 'Transporte & Movilidad', color: '#C89319' },
+            { id: 'cat_5', label: 'Restaurantes & Cafés', color: '#008A5A' },
+            { id: 'inversion', label: 'Pagaré Banorte (11.25%)', color: '#008A5A' },
+          ];
+          links = [
+            { source: 'nomina', target: 'fijos', value: 43610.63 },
+            { source: 'nomina', target: 'variables', value: 59964.38 },
+            { source: 'nomina', target: 'ahorro', value: 15536.25 },
+            { source: 'fijos', target: 'cat_0', value: 31965.14 },
+            { source: 'fijos', target: 'cat_2', value: 11645.49 },
+            { source: 'variables', target: 'cat_1', value: 28974.62 },
+            { source: 'variables', target: 'cat_3', value: 15244.84 },
+            { source: 'variables', target: 'cat_4', value: 12820.02 },
+            { source: 'variables', target: 'cat_5', value: 2924.90 },
+            { source: 'ahorro', target: 'inversion', value: 15536.25 },
+          ];
+        }
       }
+
+      p.nodes = nodes;
+      p.links = links;
+      p.data = { ...(p.data || {}), nodes, links };
+      return p;
     } else if (p.chartType === 'calendarHeatmap' || p.chartType === 'heatmap' || comp === 'CalendarHeatmap' || comp === 'HeatmapChart') {
       p.chartType = 'calendarHeatmap';
       const daily = p.daily_spending || p.days || (p.data && typeof p.data === 'object' ? ((p.data as any).daily_spending || (p.data as any).days || (p.data as any).data) : undefined);
@@ -284,13 +392,28 @@ function normalizeProps(component?: string, rawProps?: Record<string, any>): Rec
             color: '#EB0029'
           }];
         } else if (numericKeys.length > 1) {
-          p.series = numericKeys.map((k, i) => ({
-            name: k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-            dataPath: '/data',
-            xKey: p.categoryKey,
-            yKey: k,
-            color: chartPalette[i % chartPalette.length],
-          }));
+          p.series = numericKeys.map((k, i) => {
+            let labelName = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            const lowKey = k.toLowerCase();
+            if (lowKey === 'percentage' || lowKey === 'porcentaje') {
+              labelName = 'Porcentaje (%)';
+            } else if (lowKey === 'tasa_interes' || lowKey === 'tasa') {
+              labelName = 'Tasa Interés (%)';
+            } else if (lowKey === 'cat_promedio' || lowKey === 'cat') {
+              labelName = 'CAT Promedio (%)';
+            } else if (lowKey === 'tasa_pagare') {
+              labelName = 'Rendimiento Pagaré (%)';
+            } else if (lowKey === 'amount' || lowKey === 'monto') {
+              labelName = 'Monto (MXN)';
+            }
+            return {
+              name: labelName,
+              dataPath: '/data',
+              xKey: p.categoryKey,
+              yKey: k,
+              color: chartPalette[i % chartPalette.length],
+            };
+          });
         } else if (numericKeys.length === 1) {
           p.valueKey = numericKeys[0];
           p.series = [{
@@ -301,6 +424,13 @@ function normalizeProps(component?: string, rawProps?: Record<string, any>): Rec
             color: '#EB0029'
           }];
         }
+      }
+
+      if (Array.isArray(p.series)) {
+        p.series = p.series.map((s: any) => ({
+          ...s,
+          xKey: s.xKey || p.categoryKey || 'mes'
+        }));
       }
     }
   }

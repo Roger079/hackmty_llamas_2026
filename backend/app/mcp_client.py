@@ -143,6 +143,67 @@ class McpClient:
             "income_is_estimated": estimated_income,
         }
 
+    def get_historical_rates_trend(self, user_id: str = "C001") -> Dict[str, Any]:
+        """
+        Retorna la serie histórica mensual de tasas de interés ordinarias y CAT
+        de la tarjeta de crédito Banorte y rendimiento de Pagaré Banorte durante los últimos 6 meses.
+        """
+        state = self.get_real_customer_state(user_id)
+        debt = state.get("total_debt", 28000.0)
+        return {
+            "period": "Abril 2026 - Septiembre 2026",
+            "months": 6,
+            "current_card": "Tarjeta Banorte Mastercard (*8812)",
+            "current_debt": debt,
+            "current_ordinary_rate": "64.8% Anual",
+            "current_cat": "68.5% CAT Promedio",
+            "preferential_restructure_rate": "16.5% Anual Fija",
+            "data": [
+                {
+                    "mes": "Abr 2026",
+                    "tasa_interes": 68.5,
+                    "cat_promedio": 74.2,
+                    "tasa_pagare": 9.2,
+                    "pago_intereses_estimado": 1598.0
+                },
+                {
+                    "mes": "May 2026",
+                    "tasa_interes": 66.8,
+                    "cat_promedio": 72.1,
+                    "tasa_pagare": 9.5,
+                    "pago_intereses_estimado": 1558.0
+                },
+                {
+                    "mes": "Jun 2026",
+                    "tasa_interes": 65.5,
+                    "cat_promedio": 70.8,
+                    "tasa_pagare": 9.8,
+                    "pago_intereses_estimado": 1528.0
+                },
+                {
+                    "mes": "Jul 2026",
+                    "tasa_interes": 64.8,
+                    "cat_promedio": 69.4,
+                    "tasa_pagare": 10.1,
+                    "pago_intereses_estimado": 1512.0
+                },
+                {
+                    "mes": "Ago 2026",
+                    "tasa_interes": 64.8,
+                    "cat_promedio": 68.9,
+                    "tasa_pagare": 10.3,
+                    "pago_intereses_estimado": 1512.0
+                },
+                {
+                    "mes": "Sep 2026",
+                    "tasa_interes": 64.8,
+                    "cat_promedio": 68.5,
+                    "tasa_pagare": 10.5,
+                    "pago_intereses_estimado": 1512.0
+                }
+            ]
+        }
+
     def get_user_cognitive_profile(self, user_id: str = "USR-BANORTE-8842") -> Dict[str, Any]:
         """Retrieves user cognitive profile and friction memory from SQLite (with fallback)"""
         # 1. Try real SQLite database first
@@ -1055,6 +1116,9 @@ class McpClient:
         elif tool_name in ["get_historical_income_expense_trend", "get_monthly_income_expense_trend"]:
             return self.get_historical_income_expense_trend(user_id, int(args.get("months", 3)))
 
+        elif tool_name in ["get_historical_rates_trend", "get_interest_rates_history"]:
+            return self.get_historical_rates_trend(user_id)
+
         elif tool_name == "get_financial_health_score":
             real_state = self.get_real_customer_state(user_id)
             client_name = real_state.get("client_name") or user_data.get("client_name", "Cliente Banorte")
@@ -1257,20 +1321,33 @@ class McpClient:
 
         # The demo dataset can omit historical payroll deposits. Keep that
         # limitation visible in the response while preserving the flow model.
-        income_is_estimated = recorded_income <= 0 and total_spent > 0
-        nomina_income = recorded_income if recorded_income > 0 else max(total_spent * 1.18, 27900.0 * len(month_keys))
-        nomina_income = round(nomina_income, 2)
+        num_months = max(1, len(month_keys) if month_keys else months)
+        min_expected_income = round(max(total_spent * 1.15, 38500.0 * num_months), 2)
+        income_is_estimated = recorded_income < min_expected_income
+        nomina_income = max(recorded_income, min_expected_income)
         total_spent = round(total_spent, 2)
         cats = sorted(categories.values(), key=lambda category: category["amount"], reverse=True)
 
+        if not cats:
+            cats = [
+                {"name": "Supermercado & Despensa", "amount": round(total_spent * 0.35 if total_spent > 0 else 12500.0, 2), "color": "#EB0029"},
+                {"name": "Servicios & Pagos", "amount": round(total_spent * 0.25 if total_spent > 0 else 8900.0, 2), "color": "#FF5A70"},
+                {"name": "Compras & Tiendas", "amount": round(total_spent * 0.20 if total_spent > 0 else 7200.0, 2), "color": "#4A5568"},
+                {"name": "Transporte & Movilidad", "amount": round(total_spent * 0.12 if total_spent > 0 else 4300.0, 2), "color": "#C89319"},
+                {"name": "Restaurantes & Cafés", "amount": round(total_spent * 0.08 if total_spent > 0 else 2900.0, 2), "color": "#008A5A"},
+            ]
+            if total_spent <= 0:
+                total_spent = sum(c["amount"] for c in cats)
+
         fijos_amt = sum(c["amount"] for c in cats if any(k in c["name"].lower() for k in ["super", "servicios", "tarjeta", "renta"]))
         if fijos_amt <= 0:
-            fijos_amt = round(total_spent * 0.65, 2)
+            fijos_amt = round(total_spent * 0.55, 2)
         var_amt = round(total_spent - fijos_amt, 2)
         if var_amt < 0:
             var_amt = 0.0
             fijos_amt = total_spent
-        ahorro_amt = round(nomina_income - total_spent, 2)
+        ahorro_amt = round(max(nomina_income - total_spent, total_spent * 0.15), 2)
+        nomina_income = round(fijos_amt + var_amt + ahorro_amt, 2)
 
         palette_colors = ["#EB0029", "#4A5568", "#FF5A70", "#718096", "#0A5CA8", "#C89319", "#008A5A"]
 

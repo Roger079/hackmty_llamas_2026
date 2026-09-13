@@ -21,6 +21,10 @@ Tu propósito es asesorar y acompañar a los clientes en sus operaciones bancari
 5. Si el cliente solicita explícitamente uno o varios tipos de gráfico (dona de gastos, diagrama de Sankey/flujo, mapa de calor/heatmap, gráfica de barras, gráfica de líneas/tendencia histórica, treemap o cascada), o si pide comparar perspectivas con más de una gráfica a la vez:
    - Puedes y debes enviar más de un gráfico en la misma respuesta cuando el cliente lo solicite (invocando `render_a2ui` para cada gráfico o usando el parámetro `visuals`).
    - Por ejemplo, puedes incluir la distribución de gastos por categoría en dona Y la tendencia mensual de ingresos vs gastos en barras o líneas simultáneamente.
+6. DIAGRAMAS DE FLUJO Y COMPARATIVAS DE INGRESOS VS EGRESOS POR CATEGORÍA (SANKEY):
+   - Cuando el cliente solicite un diagrama de flujo, Sankey, origen y destino de su dinero, o una comparación/relación de sus ingresos y egresos/gastos en categorías (ej. "dame una comparacion de mis ingresos y egresos en categorias"):
+   - DEBES invocar la herramienta `get_sankey_cashflow` (con los meses solicitados o 1 por defecto) y renderizar `BanorteChartCard` con `chartType: "sankey"`.
+   - NUNCA respondas con `SpendingDonutCard` ante peticiones que comparen ingresos con egresos en categorías, porque la dona solo muestra gastos y no contempla ingresos ni flujo ramificado.
 """
 
 TOOL_STATUS_MESSAGES = {
@@ -33,6 +37,7 @@ TOOL_STATUS_MESSAGES = {
     "simulate_investment": "Simulando rendimiento de Pagaré Banorte...",
     "get_spending_analytics": "Analizando categorización de gastos y patrones de consumo...",
     "get_historical_income_expense_trend": "Comparando ingresos y gastos por mes...",
+    "get_sankey_cashflow": "Analizando flujo de efectivo de ingresos y gastos (Sankey)...",
     "get_financial_health_score": "Calculando diagnóstico integral de salud financiera 360°...",
     "simulate_amortization_schedule": "Calculando corrida financiera y tabla de amortización...",
     "log_user_friction": "Registrando punto de fricción en memoria cognitiva...",
@@ -50,11 +55,36 @@ POST_TOOL_STATUS_MESSAGES = {
     "simulate_investment": "Proyección financiera calculada con éxito...",
     "get_spending_analytics": "Generando métricas y gráficos de distribución de gasto...",
     "get_historical_income_expense_trend": "Comparativa mensual de ingresos y gastos lista...",
+    "get_sankey_cashflow": "Diagrama de flujo de efectivo Sankey generado exitosamente...",
     "get_financial_health_score": "Score y semáforo de riesgo calculados exitosamente...",
     "simulate_amortization_schedule": "Proyección de capital e intereses calculada...",
     "log_user_friction": "Memoria cognitiva actualizada para futuras sesiones...",
     "manage_home_widgets": "Pantalla principal personalizada exitosamente..."
 }
+
+
+def _is_sankey_request(message: str) -> bool:
+    lowered = message.lower()
+    direct_terms = [
+        "sankey", "dankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo",
+        "flujo de caja", "flujo de ingresos", "flujo de dinero", "flujo financiero"
+    ]
+    if any(term in lowered for term in direct_terms):
+        return True
+
+    # Check for paired income + expense + category/breakdown
+    has_income = any(term in lowered for term in [
+        "ingreso", "ingresos", "nómina", "nomina", "ganancia", "ganancias", "entradas"
+    ])
+    has_expense = any(term in lowered for term in [
+        "egreso", "egresos", "gasto", "gastos", "salidas", "consumo", "consumos"
+    ])
+    has_breakdown = any(term in lowered for term in [
+        "categoría", "categoria", "categorías", "categorias",
+        "concepto", "conceptos", "desglose", "distribución", "distribucion",
+        "ramific", "a dónde va", "a donde va", "a qué se va", "a que se va"
+    ])
+    return has_income and has_expense and has_breakdown
 
 
 def _requested_month_count(message: str, default: int = 3) -> int:
@@ -72,6 +102,8 @@ def _requested_month_count(message: str, default: int = 3) -> int:
 
 def _is_income_expense_comparison(message: str) -> bool:
     """Recognize income-versus-expense requests before generic spending fallbacks."""
+    if _is_sankey_request(message):
+        return False
     lowered = message.lower()
     has_income = any(term in lowered for term in ["ingreso", "ingresos", "ganancia", "ganancias", "nómina", "nomina"])
     has_expense = any(term in lowered for term in ["gasto", "gastos", "egreso", "egresos", "consumo", "consumos"])
@@ -96,12 +128,6 @@ def _is_multi_graph_request(message: str) -> bool:
     has_bars_or_trend = any(k in lowered for k in ["barra", "barras", "línea", "linea", "líneas", "lineas", "tendencia", "ingresos vs", "ingresos y gastos", "comparativa", "histórica", "historica", "heatmap", "sankey"])
     has_connector = any(k in lowered for k in [" y ", " además", " ademas", " tambien", " también", " junto con", ", "])
     return has_donut and has_bars_or_trend and has_connector
-
-
-def _is_sankey_request(message: str) -> bool:
-    return any(term in message.lower() for term in [
-        "sankey", "dankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de caja", "flujo de ingresos",
-    ])
 
 
 def _requested_investment_amount(message: str, default: float = 25000.0) -> float:
@@ -182,7 +208,8 @@ def _is_home_widget_request(message: str, surface: str = "mobile") -> bool:
 
     surface_terms = [
         "inicio", "pantalla principal", "home", "para ti", "mi pantalla",
-        "pantalla de inicio", "muro"
+        "pantalla de inicio", "muro", "movil", "móvil", "vista movil", "vista móvil",
+        "celular", "app", "telefono", "teléfono", "aplicacion", "aplicación"
     ]
     action_terms = [
         "agrega", "agregar", "agregalo", "agregala", "agregame",
@@ -198,11 +225,27 @@ def _is_home_widget_request(message: str, surface: str = "mobile") -> bool:
         "quita", "quitar", "quitalo", "quítalo", "quitala", "quítala",
         "elimina", "eliminar", "eliminalo", "elimínalo", "eliminala", "elimínala",
         "borra", "borrar", "borralo", "bórralo",
-        "restablece", "restablecer", "reinicia", "reiniciar", "reset"
+        "restablece", "restablecer", "reinicia", "reiniciar", "reset",
+        "limpia", "limpiar", "despeja", "despejar", "vacia", "vaciar"
+    ]
+    widget_terms = [
+        "widget", "widgets", "modulo", "modulos", "módulo", "módulos",
+        "tarjeta", "tarjetas", "componente", "componentes"
     ]
     has_surface = any(term in normalized for term in surface_terms)
     has_action = any(term in normalized for term in action_terms)
-    return has_surface and has_action
+    has_widget = any(w in normalized for w in widget_terms)
+
+    # 1. Matches surface term and action term (e.g. "quita la renta del inicio", "limpia la pantalla de inicio")
+    if has_surface and has_action:
+        return True
+
+    # 2. In mobile context, any widget management action + widget term (e.g. "borra todos los widgets", "elimina todos los widgets de mi cuenta")
+    if has_action and has_widget and surface != "dashboard":
+        return True
+
+    return False
+
 
 
 def _is_widget_replacement_request(message: str) -> bool:
@@ -221,7 +264,9 @@ def _sankey_payload(user_id: str, months: int = 1) -> A2UIPayload:
             "subtitle": f"Origen y destino de ingresos · {sankey_data['period']}",
             "valueFormat": "currency",
             "currency": "MXN",
-            "height": 330,
+            "height": 420,
+            "nodes": sankey_data["nodes"],
+            "links": sankey_data["links"],
             "data": {"nodes": sankey_data["nodes"], "links": sankey_data["links"]},
         },
     )
@@ -462,6 +507,10 @@ class GeminiOrchestrator:
   * Confírmale que el orden en su pantalla de inicio ha sido actualizado.
 - Si el cliente te pide quitar un widget de inicio (ej. "quita la renta del inicio", "elimina los gastos"):
   * Invoca `manage_home_widgets` con action="remove" y widget_type correspondiente.
+- Si el cliente te pide borrar, eliminar, quitar o limpiar TODOS los widgets de su pantalla de inicio o vista móvil (ej. "borra todos los widgets en la vista móvil", "elimina todos los widgets de mi inicio", "elimina todos los widgets de mi cuenta", "quita todos los widgets", "limpia la pantalla de inicio"):
+  * Invoca `manage_home_widgets` con action="clear".
+  * NUNCA generes una tarjeta de saldo (`BanorteBalanceCard`) ni ningún otro componente A2UI.
+  * Confírmale que todos los widgets de su pantalla de inicio móvil han sido removidos y que los componentes de su Dashboard Web (Command Center) permanecen intactos.
 - Si el cliente te pide restablecer sus widgets:
   * Invoca `manage_home_widgets` con action="reset".
 
@@ -503,6 +552,7 @@ Reglas:
 - Para saldos, deuda, gastos, pagos, transferencias e inversiones, consulta primero la herramienta bancaria adecuada; nunca inventes datos.
 - Responde directamente a una consulta concreta. Usa A2UI solo si facilita una acción o entender datos; un saldo simple puede resolverse con texto y tarjeta de saldo.
 - Si el usuario solicita ver más de una gráfica o visualización (o comparar múltiples perspectivas como gastos por categoría y tendencia histórica), puedes y debes enviar más de una gráfica a la vez invocando render_a2ui para cada una o usando la lista en 'visuals'. Usa gráficos cuando se soliciten o faciliten la comprensión y comparación.
+- Cuando el cliente pida comparar o ver ingresos y egresos por categoría (o flujo de efectivo / Sankey), invoca get_sankey_cashflow y renderiza BanorteChartCard con chartType: 'sankey', NUNCA uses la dona de gastos (SpendingDonutCard).
 - Transferencias y convenios solo se ejecutan desde la acción autenticada de la interfaz. Nunca solicites ni aceptes Token Móvil por chat.
 - Si falta un dato indispensable, haz una sola pregunta concreta; no recites una lista de capacidades."""
 
@@ -679,20 +729,81 @@ Reglas:
                 props["totalDebt"] = props["total_debt"]
 
         elif comp == "DebtRestructureCard":
+            real_debt = mcp_client._execute_mock("get_user_debt", {"user_id": user_id})
             if "totalDebt" not in props and "total_debt" in props:
                 props["totalDebt"] = props["total_debt"]
+            if "totalDebt" not in props or not props["totalDebt"]:
+                props["totalDebt"] = real_debt.get("total_debt", 28000.0)
             if "cardName" not in props and "card_name" in props:
                 props["cardName"] = props["card_name"]
+            if "cardName" not in props or not props["cardName"]:
+                props["cardName"] = real_debt.get("card_name", "Tarjeta Banorte Mastercard")
             if "cardLast4" not in props and "card_last4" in props:
                 props["cardLast4"] = props["card_last4"]
+            if "cardLast4" not in props or not props["cardLast4"]:
+                props["cardLast4"] = real_debt.get("card_last4", "8812")
             if "minimumPayment" not in props and "minimum_payment" in props:
                 props["minimumPayment"] = props["minimum_payment"]
+            if "minimumPayment" not in props or not props["minimumPayment"]:
+                props["minimumPayment"] = real_debt.get("minimum_payment", 2500.0)
             if "dueDate" not in props and "payment_due_date" in props:
                 props["dueDate"] = props["payment_due_date"]
             elif "dueDate" not in props and "due_date" in props:
                 props["dueDate"] = props["due_date"]
+            if "dueDate" not in props or not props["dueDate"]:
+                props["dueDate"] = real_debt.get("payment_due_date", "27 Sep 2026")
             if "currentRate" not in props and "interest_rate_annual" in props:
                 props["currentRate"] = props["interest_rate_annual"]
+            if "currentRate" not in props or not props["currentRate"]:
+                props["currentRate"] = real_debt.get("interest_rate_annual", "64.8% CAT")
+
+            # Defensive options normalization
+            raw_options = props.get("options")
+            if not raw_options or not isinstance(raw_options, list) or len(raw_options) == 0:
+                props["options"] = real_debt.get("options", [
+                    {"plan_id": "plan_12m", "months": 12, "monthly_payment": 3450.0, "annual_rate": "16.5%", "total_savings": 8200},
+                    {"plan_id": "plan_24m", "months": 24, "monthly_payment": 2480.0, "annual_rate": "17.0%", "total_savings": 14600, "label": "Recomendado por Maya"},
+                    {"plan_id": "plan_36m", "months": 36, "monthly_payment": 1810.0, "annual_rate": "17.5%", "total_savings": 18900}
+                ])
+            else:
+                norm_opts = []
+                for idx, opt in enumerate(raw_options):
+                    if not isinstance(opt, dict):
+                        continue
+                    m = opt.get("months") or opt.get("term_months") or opt.get("meses") or (12 * (idx + 1))
+                    mp = opt.get("monthly_payment") or opt.get("pago_mensual") or round(float(props["totalDebt"]) / m * 1.15, 2)
+                    norm_opts.append({
+                        "plan_id": opt.get("plan_id") or f"plan_{m}m",
+                        "months": int(m),
+                        "monthly_payment": float(mp),
+                        "annual_rate": str(opt.get("annual_rate") or opt.get("tasa") or opt.get("rate") or "16.5%"),
+                        "total_savings": float(opt.get("total_savings") or opt.get("ahorro_total") or 0.0),
+                        "label": opt.get("label") or opt.get("etiqueta")
+                    })
+                props["options"] = norm_opts if len(norm_opts) > 0 else real_debt.get("options")
+
+        elif comp in ["Timeline", "TransactionTimeline", "SpeiTimeline", "TimelineCard"]:
+            if "title" not in props:
+                props["title"] = "Estatus y Rastreo de Transacción Banorte"
+            raw_steps = props.get("steps") or props.get("items") or props.get("stages") or props.get("movimientos") or props.get("pasos")
+            if not raw_steps or not isinstance(raw_steps, list) or len(raw_steps) == 0:
+                props["steps"] = [
+                    {"label": "1. Solicitud Autorizada", "date": "11 Sep 2026 14:20:00", "status": "completed", "description": "Autorización exitosa desde Banorte Móvil con Token Digital."},
+                    {"label": "2. Validación de Fondos Banorte", "date": "11 Sep 2026 14:20:02", "status": "completed", "description": "Fondos validados y firma digital criptográfica SHA-256 generada."},
+                    {"label": "3. Dispersión a Red Banxico (SPEI CEP)", "date": "11 Sep 2026 14:20:05", "status": "completed", "description": "Mensaje procesado por Banco de México con clave de rastreo 202609118812BNTE."},
+                    {"label": "4. Liquidado en Banco Receptor", "date": "11 Sep 2026 14:20:08", "status": "completed", "description": "Abono exitoso reflejado en la cuenta del destinatario."}
+                ]
+            else:
+                norm_steps = []
+                for s in raw_steps:
+                    if isinstance(s, dict):
+                        norm_steps.append({
+                            "label": str(s.get("label") or s.get("title") or s.get("name") or "Paso"),
+                            "date": str(s.get("date") or s.get("fecha") or s.get("timestamp") or ""),
+                            "status": str(s.get("status") or s.get("estatus") or "completed"),
+                            "description": str(s.get("description") or s.get("detalle") or s.get("desc") or "")
+                        })
+                props["steps"] = norm_steps
 
         elif comp == "ConfirmationReceipt":
             if "monthlyPayment" not in props and "monthly_payment" in props:
@@ -837,6 +948,41 @@ Reglas:
             if "totalInterest" not in props and "total_interest" in props:
                 props["totalInterest"] = props["total_interest"]
 
+        elif comp in ["Chart", "BanorteChartCard", "SankeyChart"] or props.get("chartType") == "sankey":
+            if props.get("chartType") == "sankey" or comp == "SankeyChart":
+                comp = "BanorteChartCard"
+                props["chartType"] = "sankey"
+
+                raw_nodes = props.get("nodes") or (props.get("data", {}).get("nodes") if isinstance(props.get("data"), dict) else None)
+                raw_links = props.get("links") or (props.get("data", {}).get("links") if isinstance(props.get("data"), dict) else None)
+
+                has_valid_sankey = (
+                    isinstance(raw_nodes, list) and len(raw_nodes) > 0 and
+                    isinstance(raw_links, list) and len(raw_links) > 0 and
+                    all(isinstance(l, dict) and float(l.get("value", 0) or 0) > 0 for l in raw_links)
+                )
+
+                if not has_valid_sankey:
+                    m_count = 3 if any(k in str(props).lower() for k in ["3 mes", "tres mes", "trimest"]) else 1
+                    sankey_data = mcp_client.get_sankey_cashflow(uid, m_count)
+                    range_label = f"Últimos {sankey_data['months']} meses" if sankey_data["months"] > 1 else "Último mes"
+                    props["id"] = props.get("id") or f"banorte-sankey-cashflow-{sankey_data['months']}m"
+                    props["title"] = props.get("title") or f"Diagrama de Flujo de Efectivo (Sankey) · {range_label}"
+                    props["subtitle"] = props.get("subtitle") or f"Origen y destino de ingresos · {sankey_data['period']}"
+                    props["nodes"] = sankey_data["nodes"]
+                    props["links"] = sankey_data["links"]
+                    props["data"] = {"nodes": sankey_data["nodes"], "links": sankey_data["links"]}
+                else:
+                    props["nodes"] = raw_nodes
+                    props["links"] = raw_links
+                    props["data"] = {"nodes": raw_nodes, "links": raw_links}
+
+                props.setdefault("categoryKey", "name")
+                props.setdefault("valueKey", "value")
+                props.setdefault("valueFormat", "currency")
+                props.setdefault("currency", "MXN")
+                props.setdefault("height", 380)
+
         return A2UIPayload(component=comp, props=props)
 
     def _ensure_a2ui_components(self, request: ChatRequest, reply_text: str) -> List[A2UIPayload]:
@@ -918,6 +1064,9 @@ Reglas:
             return None
 
         if "dashboard" in request.message.lower() and not _is_dashboard_widget_request(request.message):
+            return None
+
+        if _is_home_widget_request(request.message, surface=getattr(request, "surface", "mobile")):
             return None
 
         user_id = request.user_id or "C001"
@@ -1103,12 +1252,51 @@ Reglas:
 
             return A2UIPayload(component="BanorteBalanceCard", props=props)
 
-        # 3. Debt
-        elif any(k in combined for k in ["deuda", "reestructur", "tarjeta de crédito", "convenio", "pagar menos"]):
+        # 3. Debt & Restructure
+        elif any(k in combined for k in ["deuda", "reestructur", "tarjeta de crédito", "convenio", "pagar menos", "extender", "diferir", "a meses", "pago a meses"]):
             debt = mcp_client._execute_mock("get_user_debt", {"user_id": user_id})
             if debt.get("total_debt", 0.0) > 0:
                 return A2UIPayload(component="DebtRestructureCard", props=debt)
             return None
+
+        # 3b. Rates over time
+        elif any(k in combined for k in ["tasa", "tasas", "taza", "tazas", "cat"]) and any(k in combined for k in ["tiempo", "histórico", "historico", "evolución", "evolucion", "meses", "cuenta"]):
+            rates = mcp_client.get_historical_rates_trend(user_id)
+            return A2UIPayload(
+                component="BanorteChartCard",
+                props={
+                    "id": "banorte-rates-trend-chart",
+                    "chartType": "line",
+                    "title": "Evolución de Tasas de Interés y CAT (Últimos 6 Meses)",
+                    "subtitle": "Historial de costo financiero de tu tarjeta vs. rendimiento Pagaré Banorte",
+                    "categoryKey": "mes",
+                    "valueFormat": "percent",
+                    "height": 290,
+                    "series": [
+                        { "name": "Tasa Ordinaria Tarjeta (%)", "yKey": "tasa_interes", "color": "#EB0029" },
+                        { "name": "CAT Promedio (%)", "yKey": "cat_promedio", "color": "#F7931A" },
+                        { "name": "Rendimiento Pagaré (%)", "yKey": "tasa_pagare", "color": "#00A859" }
+                    ],
+                    "data": { "data": rates["data"] }
+                }
+            )
+
+        # 3c. Transaction Timeline
+        elif any(k in combined for k in ["timeline", "línea de tiempo", "linea de tiempo", "rastreo", "estatus de mi transacción", "estatus de mi transaccion"]):
+            return A2UIPayload(
+                component="Timeline",
+                props={
+                    "id": "banorte-transaction-timeline",
+                    "title": "Rastreo de Movimiento SPEI Reciente ($1,500.00 MXN)",
+                    "orientation": "vertical",
+                    "steps": [
+                        {"label": "1. Solicitud SPEI Autorizada", "date": "11 Sep 2026 14:20:00", "status": "completed", "description": "Autorización con Token Digital Banorte Móvil."},
+                        {"label": "2. Validación de Fondos Banorte", "date": "11 Sep 2026 14:20:02", "status": "completed", "description": "Firma digital criptográfica SHA-256 generada."},
+                        {"label": "3. Transmisión a Red Banxico", "date": "11 Sep 2026 14:20:05", "status": "completed", "description": "Procesado por Banco de México con clave CEP."},
+                        {"label": "4. Liquidado y Acreditado", "date": "11 Sep 2026 14:20:08", "status": "completed", "description": "Abono exitoso reflejado en la cuenta del destinatario."}
+                    ]
+                }
+            )
 
         # 4. Financial Health Score
         elif any(k in combined for k in ["salud", "score", "diagnóstico", "diagnostico", "semáforo", "semaforo", "salud financiera"]):
@@ -1188,7 +1376,7 @@ Reglas:
         # Try live loop with streaming status if client is available
         # Widget placement has a client-side persistence contract. Keep this
         # path deterministic so a live model cannot omit the required payload.
-        if self.client and self.api_key and not _is_home_widget_request(request.message):
+        if self.client and self.api_key and not _is_home_widget_request(request.message, surface=getattr(request, "surface", "mobile")):
             try:
                 async for event in self._run_gemini_live_stream(request):
                     yield event
@@ -1356,14 +1544,19 @@ Reglas:
 
         is_invest = _is_investment_request(request.message)
         has_invest_card = any(p.component == "InvestmentSimulatorCard" for p in a2ui_payloads)
+        is_sankey = _is_sankey_request(request.message)
+        has_sankey_card = any(p.component == "BanorteChartCard" and p.props.get("chartType") == "sankey" for p in a2ui_payloads)
         is_spei = any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])
         should_ensure = (
             not a2ui_payloads or
             (len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard" and (is_spei or is_invest)) or
-            (is_invest and not has_invest_card)
+            (is_invest and not has_invest_card) or
+            (is_sankey and not has_sankey_card)
         )
         if should_ensure:
             if is_invest and not has_invest_card and len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard":
+                a2ui_payloads.clear()
+            if is_sankey and not has_sankey_card:
                 a2ui_payloads.clear()
             ensured_list = self._ensure_a2ui_components(request, final_reply)
             for p in ensured_list:
@@ -1592,6 +1785,8 @@ Reglas:
 
         is_invest = _is_investment_request(request.message)
         has_invest_card = any(p.component == "InvestmentSimulatorCard" for p in a2ui_payloads)
+        is_sankey = _is_sankey_request(request.message)
+        has_sankey_card = any(p.component == "BanorteChartCard" and p.props.get("chartType") == "sankey" for p in a2ui_payloads)
         clean_req_msg = re.sub(r'[^\w\s]', '', request.message.lower()).strip()
         is_greeting = any(clean_req_msg == g or clean_req_msg.startswith(g + " ") for g in ["hola", "buen dia", "buenos dias", "buen día", "buenos días", "buenas tardes", "buenas noches", "saludos", "que tal", "qué tal", "como estas", "cómo estás"])
         is_dashboard_info = "dashboard" in request.message.lower() and not _is_dashboard_widget_request(request.message)
@@ -1602,11 +1797,14 @@ Reglas:
             (
                 not a2ui_payloads or
                 (len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard" and (is_spei or is_invest)) or
-                (is_invest and not has_invest_card)
+                (is_invest and not has_invest_card) or
+                (is_sankey and not has_sankey_card)
             )
         )
         if should_ensure:
             if is_invest and not has_invest_card and len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard":
+                a2ui_payloads.clear()
+            if is_sankey and not has_sankey_card:
                 a2ui_payloads.clear()
             ensured_list = self._ensure_a2ui_components(request, final_reply)
             a2ui_payloads.extend(ensured_list)
@@ -2048,7 +2246,39 @@ Diálogo:
             widget_type = "financial_health"
             new_order = []
 
-            if any(r in msg for r in ["restablece", "restablecer", "por defecto", "original"]):
+            # Check for clear/erase all widgets FIRST
+            is_clear_all = (
+                any(term in msg for term in [
+                    "todos los widgets", "todas las tarjetas", "todos los modulos", "todos los módulos",
+                    "todos mis widgets", "todos los componentes", "limpia la pantalla", "limpiar la pantalla",
+                    "pantalla limpia", "pantalla vacia", "pantalla vacía", "sin widgets", "borra todo",
+                    "elimina todo", "quita todo", "quitar todo", "borrar todo", "eliminar todo",
+                    "limpiar todo", "borrar todos", "eliminar todos", "quitar todos", "limpia todos",
+                    "eliminar todos los widgets", "borrar todos los widgets", "quitar todos los widgets",
+                    "borra todos", "elimina todos", "quita todos"
+                ])
+                or (
+                    any(act in msg for act in ["quita", "quitar", "elimina", "eliminar", "borra", "borrar", "limpia", "limpiar", "despeja", "despejar", "vacia", "vaciar"])
+                    and any(all_w in msg for all_w in ["todos", "todo", "todas"])
+                )
+            )
+
+            if is_clear_all:
+                action = "clear"
+                res, log = await mcp_client.execute_tool("manage_home_widgets", {
+                    "user_id": user_id,
+                    "action": "clear"
+                })
+                mcp_calls.append(log)
+                reply = (
+                    f"Listo, {first_name}. He eliminado todos los widgets de tu pantalla de inicio en la vista móvil.\n\n"
+                    f"Tu pantalla principal ahora está completamente despejada (sin widgets). "
+                    f"Tus componentes del Dashboard Web (Command Center) permanecen intactos. "
+                    f"Si deseas agregar nuevos widgets o restablecer la vista original en cualquier momento, solo pídemelo por aquí."
+                )
+                return ChatResponse(reply=reply, a2ui=None, mcp_calls=mcp_calls)
+
+            elif any(r in msg for r in ["restablece", "restablecer", "por defecto", "original"]):
                 action = "reset"
 
                 res, log = await mcp_client.execute_tool("manage_home_widgets", {"user_id": user_id, "action": "reset"})
@@ -2297,7 +2527,9 @@ Diálogo:
         # 1. DEBT RESTRUCTURING INTENT (Core hackathon scenario)
         if any(k in msg for k in [
             "deuda", "debo", "adeudo", "reestructur", "reestructurar", "convenio",
-            "pagar tarjeta", "no puedo pagar", "intereses", "pagar menos", "saldo de mi tarjeta"
+            "pagar tarjeta", "no puedo pagar", "intereses", "pagar menos", "saldo de mi tarjeta",
+            "extender", "diferir", "a meses", "pago a meses", "pagar a meses", "meses sin intereses",
+            "plan de pagos", "pagar en plazos", "aplazar", "financiar a meses", "pasar a meses"
         ]):
             res, log = await mcp_client.execute_tool("get_user_debt", {"user_id": user_id})
             mcp_calls.append(log)
@@ -2333,10 +2565,18 @@ Diálogo:
 
         # 2. BALANCE INQUIRY
         elif (
-            any(k in msg for k in ["saldo", "cuanto tengo", "cuánto tengo", "cuenta", "cuentas", "dinero disponible", "ahorro", "nómina", "nomina", "débito", "debito"])
-            or (
-                any(question in msg for question in ["cuanto", "cuánto", "dime", "dime cuánto", "muéstrame", "muestrame"])
-                and any(subject in msg for subject in ["dinero", "disponible", "cuenta", "cuentas", "saldo"])
+            not any(neg in msg for neg in [
+                "tasa", "tasas", "taza", "tazas", "cat", "timeline", "rastreo",
+                "grafica", "gráfica", "gráfico", "grafico", "chart", "diagrama",
+                "widget", "widgets", "modulo", "modulos", "módulo", "módulos",
+                "tarjeta", "tarjetas", "componente", "componentes"
+            ])
+            and (
+                any(k in msg for k in ["saldo", "cuanto tengo", "cuánto tengo", "cuenta", "cuentas", "dinero disponible", "ahorro", "nómina", "nomina", "débito", "debito"])
+                or (
+                    any(question in msg for question in ["cuanto", "cuánto", "dime", "dime cuánto", "muéstrame", "muestrame"])
+                    and any(subject in msg for subject in ["dinero", "disponible", "cuenta", "cuentas", "saldo"])
+                )
             )
         ):
             res, log = await mcp_client.execute_tool("get_account_balance", {"user_id": user_id, "account_type": "all"})
@@ -2386,12 +2626,14 @@ Diálogo:
             )
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-        # 3. VISUALIZATIONS & CHARTS INTENT (Sankey, Heatmap, Bar, Line, Treemap, Waterfall, or Spending Donut)
+        # 3. VISUALIZATIONS & CHARTS INTENT (Sankey, Heatmap, Bar, Line, Treemap, Waterfall, Spending Donut, Timeline, or Rates)
         elif any(k in msg for k in [
             "sankey", "flujo", "origen y destino", "cash flow", "heatmap", "mapa de calor", "calendario",
             "barras", "barra", "bar chart", "línea", "líneas", "lineas", "evolución", "evolucion", "tendencia", "histórico", "historico",
             "compar", "ingreso", "ingresos", "ganancia", "ganancias", "egreso", "egresos",
-            "treemap", "árbol", "arbol", "waterfall", "cascada", "gasto", "gasté", "gastos", "categoría", "en qué"
+            "treemap", "árbol", "arbol", "waterfall", "cascada", "gasto", "gasté", "gastos", "categoría", "en qué",
+            "timeline", "línea de tiempo", "linea de tiempo", "rastreo", "estatus de mi transacción", "estatus de mi transaccion",
+            "tasa", "tasas", "taza", "tazas", "cat", "costo anual"
         ]):
             # 0. MULTI-GRAPH REQUEST (e.g. 2 charts requested simultaneously: donut + historical trend or bar chart)
             if _is_multi_graph_request(msg):
@@ -2434,7 +2676,39 @@ Diálogo:
                     mcp_calls=mcp_calls
                 )
 
-            # A. INCOME VS. EXPENSES COMPARISON (must precede the broad gasto fallback)
+            # A. SANKEY DIAGRAM (Cash Flow / Origen y Destino)
+            elif _is_sankey_request(msg):
+                months = _requested_month_count(msg, default=1)
+                sankey_data, log = await mcp_client.execute_tool("get_sankey_cashflow", {"user_id": user_id, "months": months})
+                mcp_calls.append(log)
+                reply = (
+                    f"Hola, {first_name}. Con gusto te presento tu **Diagrama de Flujo de Efectivo (Sankey)** interactivo para {sankey_data['period']}:\n\n"
+                    f"• **Ingreso Total Estimado:** ${sankey_data['total_income']:,.2f} MXN\n"
+                    f"• **Gastos Totales del Periodo:** ${sankey_data['total_spent']:,.2f} MXN\n"
+                    f"• **Capacidad de Ahorro / Remanente:** ${sankey_data['net_remainder']:,.2f} MXN\n\n"
+                    f"Puedes apreciar cómo tus ingresos de nómina se ramifican hacia gastos fijos indispensables, estilo de vida y tu liquidez disponible para ahorro en Pagaré Banorte."
+                )
+                a2ui = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": f"banorte-sankey-cashflow-{sankey_data['months']}m",
+                        "chartType": "sankey",
+                        "title": f"Diagrama de Flujo de Efectivo (Sankey) · Últimos {sankey_data['months']} Meses" if sankey_data['months'] > 1 else "Diagrama de Flujo de Efectivo (Sankey) · Último Mes",
+                        "subtitle": f"Origen y destino de ingresos · {sankey_data['period']}",
+                        "valueFormat": "currency",
+                        "currency": "MXN",
+                        "height": 420,
+                        "nodes": sankey_data["nodes"],
+                        "links": sankey_data["links"],
+                        "data": {
+                            "nodes": sankey_data["nodes"],
+                            "links": sankey_data["links"]
+                        }
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # B. INCOME VS. EXPENSES COMPARISON (must precede the broad gasto fallback)
             elif _is_income_expense_comparison(msg):
                 months = _requested_month_count(msg)
                 comparison, log = await mcp_client.execute_tool(
@@ -2467,36 +2741,6 @@ Diálogo:
                         ],
                         "data": {"data": comparison["data"]},
                     },
-                )
-                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
-
-            # B. SANKEY DIAGRAM (Cash Flow / Origen y Destino)
-            elif _is_sankey_request(msg):
-                months = _requested_month_count(msg, default=1)
-                sankey_data, log = await mcp_client.execute_tool("get_sankey_cashflow", {"user_id": user_id, "months": months})
-                mcp_calls.append(log)
-                reply = (
-                    f"Hola, {first_name}. Con gusto te presento tu **Diagrama de Flujo de Efectivo (Sankey)** interactivo para {sankey_data['period']}:\n\n"
-                    f"• **Ingreso Total Estimado:** ${sankey_data['total_income']:,.2f} MXN\n"
-                    f"• **Gastos Totales del Periodo:** ${sankey_data['total_spent']:,.2f} MXN\n"
-                    f"• **Capacidad de Ahorro / Remanente:** ${sankey_data['net_remainder']:,.2f} MXN\n\n"
-                    f"Puedes apreciar cómo tus ingresos de nómina se ramifican hacia gastos fijos indispensables, estilo de vida y tu liquidez disponible para ahorro en Pagaré Banorte."
-                )
-                a2ui = A2UIPayload(
-                    component="BanorteChartCard",
-                    props={
-                        "id": f"banorte-sankey-cashflow-{sankey_data['months']}m",
-                        "chartType": "sankey",
-                        "title": f"Diagrama de Flujo de Efectivo (Sankey) · Últimos {sankey_data['months']} Meses",
-                        "subtitle": f"Origen y destino de ingresos · {sankey_data['period']}",
-                        "valueFormat": "currency",
-                        "currency": "MXN",
-                        "height": 340,
-                        "data": {
-                            "nodes": sankey_data["nodes"],
-                            "links": sankey_data["links"]
-                        }
-                    }
                 )
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
@@ -2556,7 +2800,98 @@ Diálogo:
                 )
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-            # D. LINE CHART (Tendencia / Evolución temporal)
+            # D1. RATES OVER TIME (Tasas de interés, CAT y rendimientos a través del tiempo)
+            elif (
+                any(k in msg for k in ["tasa", "tasas", "taza", "tazas", "cat", "costo anual total", "intereses"])
+                and any(k in msg for k in ["tiempo", "meses", "histórico", "historico", "evolución", "evolucion", "tendencia", "cuenta", "mis tasas", "mis tazas", "gráfica", "grafica"])
+            ):
+                rates_data, log = await mcp_client.execute_tool("get_historical_rates_trend", {"user_id": user_id})
+                mcp_calls.append(log)
+                reply = (
+                    f"Hola, {first_name}. Con gusto he generado la gráfica de la **Evolución Histórica de tus Tasas de Interés y CAT** ({rates_data['period']}):\n\n"
+                    f"• **Tasa Ordinaria Actual:** {rates_data['current_ordinary_rate']} (*{rates_data['current_card']})\n"
+                    f"• **CAT Promedio:** {rates_data['current_cat']}\n"
+                    f"• **Rendimiento Pagaré Banorte:** 10.5% Anual Fijo\n\n"
+                    f"💡 *Oportunidad de ahorro:* Puedes congelar tu tasa al **{rates_data['preferential_restructure_rate']}** mediante nuestro convenio de reestructuración Banorte, reduciendo tu pago de intereses más del 70%."
+                )
+                a2ui = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": "banorte-rates-trend-chart",
+                        "chartType": "line",
+                        "title": "Evolución de Tasas de Interés y CAT (Últimos 6 Meses)",
+                        "subtitle": "Historial de costo financiero de tu tarjeta vs. rendimiento Pagaré Banorte",
+                        "categoryKey": "mes",
+                        "valueFormat": "percent",
+                        "height": 290,
+                        "series": [
+                            { "name": "Tasa Ordinaria Tarjeta (%)", "yKey": "tasa_interes", "color": "#EB0029" },
+                            { "name": "CAT Promedio (%)", "yKey": "cat_promedio", "color": "#F7931A" },
+                            { "name": "Rendimiento Pagaré (%)", "yKey": "tasa_pagare", "color": "#00A859" }
+                        ],
+                        "data": {
+                            "data": rates_data["data"]
+                        }
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # D2. TRANSACTION TIMELINE / RASTREO
+            elif any(k in msg for k in [
+                "timeline", "línea de tiempo", "linea de tiempo", "rastreo", "estatus de mi transacción",
+                "estatus de mi transaccion", "seguimiento", "reciente transacción", "reciente transaccion",
+                "última transacción", "ultima transaccion", "última compra", "ultima compra", "última transferencia", "ultima transferencia"
+            ]) and any(k in msg for k in ["timeline", "linea", "línea", "rastreo", "transacción", "transaccion", "compra", "transferencia", "movimiento"]):
+                recent_res = mcp_client._execute_mock("get_recent_transactions", {"user_id": user_id, "limit": 1})
+                tx_list = recent_res.get("transactions", [])
+                tx = tx_list[0] if tx_list else {"fecha": "2026-09-11 14:20:00", "comercio": "SPEI", "monto": -1500.0, "tipo": "TRANSFER"}
+
+                is_spei = tx.get("tipo") == "TRANSFER" or "spei" in str(tx.get("comercio", "")).lower()
+                comercio = tx.get("comercio", "SPEI")
+                monto_abs = abs(float(tx.get("monto", 1500.0)))
+                fecha_str = tx.get("fecha", "2026-09-11 14:20:00")
+
+                if is_spei:
+                    steps = [
+                        {"label": "1. Solicitud de Transferencia SPEI", "date": fecha_str, "status": "completed", "description": f"Transferencia de ${monto_abs:,.2f} MXN autorizada desde Banorte Móvil con Token Digital."},
+                        {"label": "2. Validación de Fondos y Firma Banorte", "date": "11 Sep 2026 14:20:02", "status": "completed", "description": "Suficiencia de saldo verificada y firma criptográfica SHA-256 generada."},
+                        {"label": "3. Transmisión a Red Banxico (SPEI)", "date": "11 Sep 2026 14:20:05", "status": "completed", "description": "Clave de rastreo Banxico asignada: 202609118812BNTE01."},
+                        {"label": "4. Liquidación y Abono (Folio CEP)", "date": "11 Sep 2026 14:20:08", "status": "completed", "description": "Recursos acreditados en banco receptor. Comprobante CEP verificado."}
+                    ]
+                    reply = (
+                        f"Hola, {first_name}. Aquí tienes la **Línea de Tiempo y Rastreo SPEI** de tu más reciente movimiento ({fecha_str}):\n\n"
+                        f"• **Operación:** Transferencia SPEI interbancaria\n"
+                        f"• **Monto:** ${monto_abs:,.2f} MXN\n"
+                        f"• **Estatus Banxico:** Liquidado y Acreditado (Comprobante CEP disponible)\n\n"
+                        f"Todos los filtros de seguridad y dispersión SPEI fueron completados exitosamente."
+                    )
+                else:
+                    steps = [
+                        {"label": "1. Autorización en Terminal POS", "date": fecha_str, "status": "completed", "description": f"Compra en {comercio} por ${monto_abs:,.2f} MXN validada con Chip y NIP."},
+                        {"label": "2. Reserva en Línea de Crédito", "date": fecha_str, "status": "completed", "description": "Saldo retenido de forma preventiva en Tarjeta Banorte (*8812)."},
+                        {"label": "3. Compensación Interbancaria (Prosa)", "date": "11 Sep 2026 23:59:00", "status": "completed", "description": "Conciliación del comercio recibida y validada en el corte nocturno."},
+                        {"label": "4. Liquidación y Registro Contable", "date": "12 Sep 2026 06:00:00", "status": "completed", "description": "Cargo formalmente aplicado (POSTED) en tu estado de cuenta."}
+                    ]
+                    reply = (
+                        f"Hola, {first_name}. Aquí tienes la **Línea de Tiempo** del ciclo de procesamiento de tu compra más reciente en **{comercio}**:\n\n"
+                        f"• **Comercio:** {comercio}\n"
+                        f"• **Monto:** ${monto_abs:,.2f} MXN\n"
+                        f"• **Estatus Contable:** Aplicado (POSTED)\n\n"
+                        f"La transacción completó su ciclo de compensación y liquidación bancaria."
+                    )
+
+                a2ui = A2UIPayload(
+                    component="Timeline",
+                    props={
+                        "id": "banorte-transaction-timeline",
+                        "title": f"Rastreo de Movimiento: {comercio} (${monto_abs:,.2f} MXN)",
+                        "orientation": "vertical",
+                        "steps": steps
+                    }
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # D3. LINE CHART (Tendencia / Evolución temporal de gastos)
             elif any(k in msg for k in ["línea", "linea", "líneas", "lineas", "evolución", "evolucion", "tendencia", "histórico", "historico", "comparativa mensual"]):
                 monthly_data, log = await mcp_client.execute_tool("get_historical_spending_trend", {"user_id": user_id, "months": 6})
                 mcp_calls.append(log)

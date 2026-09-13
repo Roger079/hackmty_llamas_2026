@@ -512,7 +512,7 @@ export const App: React.FC = () => {
     }
 
     try {
-      await streamChat({ message: text, user_id: selectedUserId, history: requestHistory });
+      await streamChat({ message: text, user_id: selectedUserId, history: requestHistory, surface: 'mobile' });
       refreshBankState(selectedUserId);
     } catch (error) {
       appendConnectionError(error);
@@ -554,6 +554,7 @@ export const App: React.FC = () => {
         ...(isExploratory ? {} : { action_context: actionContext }),
         user_id: selectedUserId,
         history: requestHistory,
+        surface: 'mobile',
       });
       refreshBankState(selectedUserId);
       return true;

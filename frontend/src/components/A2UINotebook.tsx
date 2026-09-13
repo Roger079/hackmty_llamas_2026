@@ -1055,12 +1055,6 @@ export const A2UINotebook: React.FC<A2UINotebookProps> = ({ onNavigateHome }) =>
                   <span className="font-mono text-[10px] text-slate-400">
                     ID: {item.id}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Interactivo
-                    </span>
-                  </div>
                 </div>
               </div>
             );

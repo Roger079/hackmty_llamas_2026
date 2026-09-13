@@ -12,20 +12,23 @@ export const BanorteChartCard: React.FC<BanorteChartCardProps> = ({
   id = 'banorte-chart',
   chartType = 'bar',
   title = 'Visualización Financiera Banorte',
-  height = 300,
+  height,
   valueFormat = 'currency',
   currency = 'MXN',
   onAction,
   disabled,
   ...rest
 }) => {
+  const isSankey = chartType === 'sankey';
+  const resolvedHeight = isSankey ? Math.max(height || 420, 420) : (height || 300);
+
   return (
     <div className="my-3">
       <Chart
         id={id}
         chartType={chartType}
         title={title}
-        height={height}
+        height={resolvedHeight}
         valueFormat={valueFormat}
         currency={currency}
         onAction={onAction ? (event, datum) => onAction({ action: event.name, params: datum, source_component: 'BanorteChartCard' }) : undefined}

@@ -134,9 +134,13 @@ export function getHomeWidgetsStorageKey(uid: string): string {
 export function loadHomeWidgets(uid: string): MobileWidgetItem[] {
   try {
     const raw = localStorage.getItem(getHomeWidgetsStorageKey(uid));
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
+        if (parsed.length === 0) {
+          // Explicitly cleared by user: return empty list so empty state is displayed!
+          return [];
+        }
         // Automatically migrate if localStorage only holds the legacy built-in defaults
         const hasOnlyOldDefaults = parsed.every((w: MobileWidgetItem) =>
           w.id === 'weekly-spending-default' ||
@@ -619,7 +623,7 @@ export function createWidgetItem(widgetType: string): MobileWidgetItem | null {
 
 export function executeHomeWidgetsAction(
   userId: string,
-  action: 'add' | 'remove' | 'reorder' | 'reset',
+  action: 'add' | 'remove' | 'reorder' | 'reset' | 'clear' | 'remove_all',
   params: {
     widgetId?: string;
     widgetType?: string;
@@ -631,6 +635,19 @@ export function executeHomeWidgetsAction(
   }
 ): MobileWidgetItem[] {
   let current = loadHomeWidgets(userId);
+
+  if (
+    action === 'clear' ||
+    action === 'remove_all' ||
+    (action === 'remove' &&
+      ['all', 'todos', '*', 'all_widgets', 'todos_los_widgets', 'todos los widgets'].includes(
+        (params.widgetType || params.widgetId || '').toLowerCase().trim()
+      ))
+  ) {
+    current = [];
+    saveHomeWidgets(userId, current);
+    return current;
+  }
 
   if (action === 'reset') {
     current = cloneDefaultWidgets();
