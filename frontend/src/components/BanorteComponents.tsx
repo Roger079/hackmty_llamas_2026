@@ -235,7 +235,7 @@ export const BanorteCard: React.FC<{
   cardType = "Débito Nómina",
   isGold = false,
   size = 'default',
-  className = '',
+  className = 'shadow-xl',
 }) => {
   const [showBalance, setShowBalance] = useState(true);
 
@@ -244,7 +244,7 @@ export const BanorteCard: React.FC<{
     : "from-[#EB0029] via-[#C70023] to-[#8C0018]";
 
   return (
-    <div className={`relative w-full ${size === 'large' ? 'h-60 max-w-none rounded-[1.65rem] p-7' : 'max-w-sm h-52 rounded-2xl p-6'} text-white overflow-hidden shadow-xl bg-gradient-to-br ${bgGradient} ${className}`}>
+    <div className={`relative w-full ${size === 'large' ? 'h-60 max-w-none rounded-[1.65rem] p-7' : 'max-w-sm h-52 rounded-2xl p-6'} text-white overflow-hidden bg-gradient-to-br ${bgGradient} ${className}`}>
       <div className="absolute -right-8 -bottom-10 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
       <div className="absolute right-5 top-5 opacity-[0.18] pointer-events-none" aria-hidden="true">
         <BrandLogo variant="icon" theme="red" className="h-14 w-14" alt="" />
@@ -257,27 +257,27 @@ export const BanorteCard: React.FC<{
         </div>
       </div>
 
-      <div className="absolute right-14 top-10 z-10 flex h-7 w-10 items-center justify-center rounded-md border border-amber-600/30 bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 shadow-inner">
+      <div className="absolute right-20 top-[5.75rem] z-10 flex h-7 w-10 items-center justify-center rounded-md border border-amber-600/30 bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 shadow-inner">
         <div className="h-4 w-6 rounded-[2px] border border-amber-800/40" />
       </div>
 
-      <div className="my-3 relative z-10">
-        <div className="text-xs text-white/80 flex items-center gap-2">
-          <span>Saldo disponible</span>
-          <button
-            type="button"
-            onClick={() => setShowBalance(!showBalance)}
-            className="text-white/90 hover:text-white text-xs underline decoration-dotted cursor-pointer"
-          >
-            {showBalance ? "Ocultar" : "Mostrar"}
-          </button>
-        </div>
-        <div className="text-2xl font-bold tracking-tight tabular-nums mt-0.5">
+      <div className="mt-14 mb-3 relative z-10">
+        <div className="text-xs text-white/80">Saldo disponible</div>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setShowBalance((visible) => !visible);
+          }}
+          className="mt-0.5 block cursor-pointer text-left text-2xl font-bold tracking-tight tabular-nums text-white transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          aria-label={showBalance ? "Ocultar saldo" : "Mostrar saldo"}
+          aria-pressed={showBalance}
+        >
           {showBalance ? `$ ${balance.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN` : "••••••••••"}
-        </div>
+        </button>
       </div>
 
-      <div className="flex justify-between items-end relative z-10 pt-2 border-t border-white/20">
+      <div className="absolute bottom-4 left-7 right-7 z-10 flex items-end justify-between border-t border-white/20 pt-2">
         <div>
           <div className="text-xs font-mono tracking-widest text-white/90">
             •••• •••• •••• {last4}
@@ -286,9 +286,9 @@ export const BanorteCard: React.FC<{
             {holderName}
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-[9px] uppercase tracking-wider text-white/60">Vence</div>
-          <div className="text-xs font-mono font-medium">{expiry}</div>
+        <div className="flex items-baseline gap-1.5 self-end text-right">
+          <span className="text-[9px] uppercase tracking-wider text-white/60">Vence</span>
+          <span className="text-xs font-mono font-medium">{expiry}</span>
         </div>
       </div>
     </div>

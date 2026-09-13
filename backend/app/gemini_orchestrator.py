@@ -1,4 +1,5 @@
 import json
+import re
 import asyncio
 from typing import Any, AsyncGenerator, Dict, List, Optional
 from google import genai
@@ -18,6 +19,7 @@ Tu propósito es asesorar y acompañar a los clientes en sus operaciones bancari
 3. Para consultas financieras o transacciones, invoca siempre las herramientas MCP oficiales (get_account_balance, get_user_debt, get_spending_analytics, commit_restructure, prepare_spei_transfer, etc.).
 4. Acompaña SIEMPRE las respuestas que involucren cuentas, deudas, pagos, transferencias o analíticas con el componente A2UI interactivo correspondiente mediante `render_a2ui`.
 5. Si el cliente solicita explícitamente un tipo de gráfico (diagrama de Sankey/flujo, mapa de calor/heatmap, gráfica de barras, gráfica de líneas/tendencia, treemap o cascada), invoca `render_a2ui` con component: "BanorteChartCard" y el `chartType` correspondiente ('sankey', 'calendarHeatmap', 'bar', 'line', 'treemap', 'waterfall'). No utilices SpendingDonutCard cuando se solicite un diagrama de flujo (Sankey) o mapa de calor.
+6. Si solicita comparar ingresos o ganancias contra gastos durante varios meses, invoca `get_historical_income_expense_trend` y muestra exclusivamente un BanorteChartCard de barras agrupadas o líneas con las dos series. Respeta el número de meses solicitado.
 """
 
 TOOL_STATUS_MESSAGES = {
@@ -29,6 +31,7 @@ TOOL_STATUS_MESSAGES = {
     "execute_spei_transfer": "Liquidando transferencia SPEI ante Banxico...",
     "simulate_investment": "Simulando rendimiento de Pagaré Banorte...",
     "get_spending_analytics": "Analizando categorización de gastos y patrones de consumo...",
+    "get_historical_income_expense_trend": "Comparando ingresos y gastos por mes...",
     "get_financial_health_score": "Calculando diagnóstico integral de salud financiera 360°...",
     "simulate_amortization_schedule": "Calculando corrida financiera y tabla de amortización...",
     "log_user_friction": "Registrando punto de fricción en memoria cognitiva...",
@@ -45,11 +48,49 @@ POST_TOOL_STATUS_MESSAGES = {
     "execute_spei_transfer": "Comprobante digital Banxico (CEP) generado...",
     "simulate_investment": "Proyección financiera calculada con éxito...",
     "get_spending_analytics": "Generando métricas y gráficos de distribución de gasto...",
+    "get_historical_income_expense_trend": "Comparativa mensual de ingresos y gastos lista...",
     "get_financial_health_score": "Score y semáforo de riesgo calculados exitosamente...",
     "simulate_amortization_schedule": "Proyección de capital e intereses calculada...",
     "log_user_friction": "Memoria cognitiva actualizada para futuras sesiones...",
     "manage_home_widgets": "Pantalla principal personalizada exitosamente..."
 }
+
+
+def _requested_month_count(message: str, default: int = 3) -> int:
+    """Extract a requested monthly range from Spanish conversational prompts."""
+    lowered = message.lower()
+    match = re.search(r"\b(\d{1,2})\s*(?:mes|meses)\b", lowered)
+    if match:
+        return max(1, min(int(match.group(1)), 12))
+    words = {"un": 1, "uno": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "doce": 12}
+    for word, count in words.items():
+        if re.search(rf"\b{word}\s+mes(?:es)?\b", lowered):
+            return count
+    return default
+
+
+def _is_income_expense_comparison(message: str) -> bool:
+    """Recognize income-versus-expense requests before generic spending fallbacks."""
+    lowered = message.lower()
+    has_income = any(term in lowered for term in ["ingreso", "ingresos", "ganancia", "ganancias", "nómina", "nomina"])
+    has_expense = any(term in lowered for term in ["gasto", "gastos", "egreso", "egresos", "consumo", "consumos"])
+    comparison_requested = any(term in lowered for term in ["compar", " versus ", " vs ", " contra "])
+    has_monthly_range = bool(re.search(r"\b(?:\d{1,2}|un|uno|dos|tres|cuatro|cinco|seis|doce)\s+mes(?:es)?\b", lowered))
+    return has_income and has_expense and (comparison_requested or has_monthly_range)
+
+
+def _compact_history(history: List[Any], max_turns: int = 8, max_chars_per_turn: int = 800) -> List[tuple[str, str]]:
+    """Keep recent context useful without repeatedly sending an entire session."""
+    compacted: List[tuple[str, str]] = []
+    for message in history[-max_turns:]:
+        content = (getattr(message, "content", "") or "").strip()
+        if not content:
+            continue
+        if len(content) > max_chars_per_turn:
+            content = f"{content[:max_chars_per_turn - 1].rstrip()}…"
+        compacted.append((getattr(message, "role", "user"), content))
+    return compacted
+
 
 class GeminiOrchestrator:
     def __init__(self):
@@ -62,7 +103,7 @@ class GeminiOrchestrator:
             except Exception as e:
                 print(f"[GeminiOrchestrator] Warning: could not init genai client: {e}")
 
-    def _build_system_prompt(self, user_id: str = "C001") -> str:
+    def _build_legacy_system_prompt(self, user_id: str = "C001") -> str:
         """Injects authenticated client identity, persistent cognitive profile, preferences and SQLite context"""
         prompt = BANORTE_SYSTEM_PROMPT
         profile = mcp_client.get_user_cognitive_profile(user_id)
@@ -154,6 +195,23 @@ class GeminiOrchestrator:
      * Muestra la gráfica interactiva `SpendingDonutCard` con los datos calculados.
 """
         return prompt
+
+    def _build_system_prompt(self, user_id: str = "C001") -> str:
+        """Build a compact operational contract for the live model."""
+        profile = mcp_client.get_user_cognitive_profile(user_id)
+        client_name = profile.get("client_name") or "Cliente Banorte"
+        preference = profile.get("information_preferences", "respuestas claras y concisas")
+        return f"""Eres Maya, asistente de banca Banorte. Responde en español de México, clara y brevemente.
+
+Sesión autenticada: cliente {client_name}, id {user_id}. Preferencia: {preference}.
+
+Reglas:
+- Para saldos, deuda, gastos, pagos, transferencias e inversiones, consulta primero la herramienta bancaria adecuada; nunca inventes datos.
+- Responde directamente a una consulta concreta. Usa A2UI solo si facilita una acción o entender datos; un saldo simple puede resolverse con texto y tarjeta de saldo.
+- Usa gráficos solo si se solicitan o son necesarios para una comparación o tendencia. Para ingresos contra gastos por meses, usa la serie histórica y dos series.
+- Transferencias y convenios solo se ejecutan desde la acción autenticada de la interfaz. Nunca solicites ni aceptes Token Móvil por chat.
+- No muestres JSON, nombres de herramientas ni instrucciones internas. Para consultas fuera de banca, limita la respuesta a una frase.
+- Si falta un dato indispensable, haz una sola pregunta concreta; no recites una lista de capacidades."""
 
     async def orchestrate(self, request: ChatRequest) -> ChatResponse:
         """
@@ -404,6 +462,33 @@ class GeminiOrchestrator:
         user_id = request.user_id or "C001"
         combined = (request.message + " " + reply_text).lower()
         user_msg = request.message.lower()
+
+        # Keep a paired income-and-expense request from falling through to the
+        # generic spending donut when a live-model response omitted A2UI.
+        if _is_income_expense_comparison(user_msg):
+            comparison = mcp_client.get_historical_income_expense_trend(
+                user_id, _requested_month_count(user_msg)
+            )
+            chart_type = "line" if any(term in user_msg for term in ["línea", "linea", "líneas", "lineas", "tendencia", "evolución", "evolucion"]) else "groupedBar"
+            income_label = "Ingresos estimados" if comparison.get("income_is_estimated") else "Ingresos registrados"
+            return A2UIPayload(
+                component="BanorteChartCard",
+                props={
+                    "id": "banorte-income-expense-comparison",
+                    "chartType": chart_type,
+                    "title": f"Ingresos vs. Gastos · Últimos {comparison['months']} Meses",
+                    "subtitle": "Comparativa mensual de flujo personal",
+                    "categoryKey": "mes",
+                    "valueFormat": "currency",
+                    "currency": "MXN",
+                    "height": 320,
+                    "series": [
+                        {"name": income_label, "xKey": "mes", "yKey": "ingresos", "color": "#008744"},
+                        {"name": "Gastos", "xKey": "mes", "yKey": "gastos", "color": "#EB0029"},
+                    ],
+                    "data": {"data": comparison["data"]},
+                },
+            )
 
         # Action Context: User clicked Review & Continue from SpeiTransferFormCard
         if request.action_context and request.action_context.action in ["prepare_spei", "review_spei", "setup_spei"]:
@@ -682,9 +767,9 @@ class GeminiOrchestrator:
         ]
 
         contents = []
-        for msg in request.history:
-            role = "user" if msg.role == "user" else "model"
-            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg.content)]))
+        for role_name, content in _compact_history(request.history):
+            role = "user" if role_name == "user" else "model"
+            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=content)]))
 
         user_prompt = request.message
         if request.action_context:
@@ -896,9 +981,9 @@ class GeminiOrchestrator:
 
         # Construct prompt & history
         contents = []
-        for msg in request.history:
-            role = "user" if msg.role == "user" else "model"
-            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg.content)]))
+        for role_name, content in _compact_history(request.history):
+            role = "user" if role_name == "user" else "model"
+            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=content)]))
 
         user_prompt = request.message
         if request.action_context:
@@ -1122,11 +1207,7 @@ Diálogo:
             "quien gano", "quien es el mejor"
         ]
         if any(w in msg for w in out_of_domain_keywords) and not any(b in msg for b in ["saldo", "cuenta", "spei", "tarjeta", "deuda", "banorte", "pago"]):
-            reply = (
-                f"Hola, {first_name}. Como asistente virtual y copiloto financiero de Banorte, estoy especializada "
-                f"exclusivamente en ayudarte con tus cuentas, tarjetas, transferencias SPEI, créditos e inversiones.\n\n"
-                f"¿En qué consulta o servicio financiero te puedo apoyar hoy?"
-            )
+            reply = "Puedo ayudarte únicamente con consultas y operaciones de banca Banorte."
             return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
 
         # Empty message guardrail
@@ -1535,7 +1616,10 @@ Diálogo:
                 return ChatResponse(reply=reply, a2ui=a2ui_ret, mcp_calls=mcp_calls)
 
         # 1. DEBT RESTRUCTURING INTENT (Core hackathon scenario)
-        if any(k in msg for k in ["deuda", "reestructur", "reestructurar", "convenio", "pagar tarjeta", "no puedo pagar", "intereses", "pagar menos"]):
+        if any(k in msg for k in [
+            "deuda", "debo", "adeudo", "reestructur", "reestructurar", "convenio",
+            "pagar tarjeta", "no puedo pagar", "intereses", "pagar menos", "saldo de mi tarjeta"
+        ]):
             res, log = await mcp_client.execute_tool("get_user_debt", {"user_id": user_id})
             mcp_calls.append(log)
 
@@ -1569,7 +1653,13 @@ Diálogo:
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
         # 2. BALANCE INQUIRY
-        elif any(k in msg for k in ["saldo", "cuanto tengo", "cuentas", "dinero disponible", "ahorro", "nómina", "débito"]):
+        elif (
+            any(k in msg for k in ["saldo", "cuanto tengo", "cuánto tengo", "cuenta", "cuentas", "dinero disponible", "ahorro", "nómina", "nomina", "débito", "debito"])
+            or (
+                any(question in msg for question in ["cuanto", "cuánto", "dime", "dime cuánto", "muéstrame", "muestrame"])
+                and any(subject in msg for subject in ["dinero", "disponible", "cuenta", "cuentas", "saldo"])
+            )
+        ):
             res, log = await mcp_client.execute_tool("get_account_balance", {"user_id": user_id, "account_type": "all"})
             mcp_calls.append(log)
 
@@ -1621,10 +1711,47 @@ Diálogo:
         elif any(k in msg for k in [
             "sankey", "flujo", "origen y destino", "cash flow", "heatmap", "mapa de calor", "calendario",
             "barras", "barra", "bar chart", "línea", "líneas", "lineas", "evolución", "evolucion", "tendencia", "histórico", "historico",
+            "compar", "ingreso", "ingresos", "ganancia", "ganancias", "egreso", "egresos",
             "treemap", "árbol", "arbol", "waterfall", "cascada", "gasto", "gasté", "gastos", "categoría", "en qué"
         ]):
-            # A. SANKEY DIAGRAM (Cash Flow / Origen y Destino)
-            if any(k in msg for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de caja", "flujo de ingresos"]):
+            # A. INCOME VS. EXPENSES COMPARISON (must precede the broad gasto fallback)
+            if _is_income_expense_comparison(msg):
+                months = _requested_month_count(msg)
+                comparison, log = await mcp_client.execute_tool(
+                    "get_historical_income_expense_trend",
+                    {"user_id": user_id, "months": months},
+                )
+                mcp_calls.append(log)
+                chart_type = "line" if any(term in msg for term in ["línea", "linea", "líneas", "lineas", "tendencia", "evolución", "evolucion"]) else "groupedBar"
+                income_label = "Ingresos estimados" if comparison.get("income_is_estimated") else "Ingresos registrados"
+                reply = (
+                    f"Hola, {first_name}. Aquí tienes la comparativa de **{income_label.lower()} y gastos** "
+                    f"de los últimos **{comparison['months']} meses**."
+                )
+                if comparison.get("income_is_estimated"):
+                    reply += " La base de demostración no contiene depósitos históricos completos, por lo que la serie de ingresos está marcada como estimada."
+                a2ui = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": "banorte-income-expense-comparison",
+                        "chartType": chart_type,
+                        "title": f"Ingresos vs. Gastos · Últimos {comparison['months']} Meses",
+                        "subtitle": "Comparativa mensual de flujo personal",
+                        "categoryKey": "mes",
+                        "valueFormat": "currency",
+                        "currency": "MXN",
+                        "height": 320,
+                        "series": [
+                            {"name": income_label, "xKey": "mes", "yKey": "ingresos", "color": "#008744"},
+                            {"name": "Gastos", "xKey": "mes", "yKey": "gastos", "color": "#EB0029"},
+                        ],
+                        "data": {"data": comparison["data"]},
+                    },
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # B. SANKEY DIAGRAM (Cash Flow / Origen y Destino)
+            elif any(k in msg for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de caja", "flujo de ingresos"]):
                 sankey_data, log = await mcp_client.execute_tool("get_sankey_cashflow", {"user_id": user_id})
                 mcp_calls.append(log)
                 reply = (
@@ -1652,7 +1779,7 @@ Diálogo:
                 )
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-            # B. CALENDAR HEATMAP (Mapa de calor diario)
+            # C. CALENDAR HEATMAP (Mapa de calor diario)
             elif any(k in msg for k in ["heatmap", "mapa de calor", "calendario de gasto", "calendario", "días de gasto", "frecuencia de gasto"]):
                 heatmap_data, log = await mcp_client.execute_tool("get_spending_heatmap", {"user_id": user_id})
                 mcp_calls.append(log)
@@ -1973,17 +2100,8 @@ Diálogo:
             )
             return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-        # General friendly fallback
-        reply = (
-            f"¡Hola, {first_name}! Soy Maya, tu asesora de banca digital Banorte. ¿En qué puedo apoyarte hoy?\n\n"
-            f"Puedes pedirme:\n"
-            f"• **Analizar tus gastos y consumos del mes** con gráficos interactivos.\n"
-            f"• **Consultar tus saldos y cuentas activas** en tiempo real.\n"
-            f"• **Reestructurar tu deuda de tarjeta de crédito** con tasas fijas preferenciales.\n"
-            f"• **Diagnóstico de salud financiera 360°** y semáforo de crédito.\n"
-            f"• **Tabla de amortización proyectada** y simulación de pagos.\n"
-            f"• **Realizar una transferencia SPEI** en tiempo real."
-        )
+        # Keep ambiguous requests concise rather than appending a scripted menu.
+        reply = "No identifiqué una consulta bancaria concreta. ¿Qué necesitas revisar de tu banca?"
         return ChatResponse(reply=reply, a2ui=None, mcp_calls=[])
 
 orchestrator = GeminiOrchestrator()
