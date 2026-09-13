@@ -78,6 +78,30 @@ def _is_income_expense_comparison(message: str) -> bool:
     return has_income and has_expense and (comparison_requested or has_monthly_range)
 
 
+def _is_sankey_request(message: str) -> bool:
+    return any(term in message.lower() for term in [
+        "sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de caja", "flujo de ingresos",
+    ])
+
+
+def _sankey_payload(user_id: str, months: int) -> A2UIPayload:
+    sankey_data = mcp_client.get_sankey_cashflow(user_id, months)
+    range_label = f"Últimos {sankey_data['months']} meses" if sankey_data["months"] > 1 else "Último mes"
+    return A2UIPayload(
+        component="BanorteChartCard",
+        props={
+            "id": f"banorte-sankey-cashflow-{sankey_data['months']}m",
+            "chartType": "sankey",
+            "title": f"Diagrama de Flujo de Efectivo (Sankey) · {range_label}",
+            "subtitle": f"Origen y destino de ingresos · {sankey_data['period']}",
+            "valueFormat": "currency",
+            "currency": "MXN",
+            "height": 330,
+            "data": {"nodes": sankey_data["nodes"], "links": sankey_data["links"]},
+        },
+    )
+
+
 def _compact_history(history: List[Any], max_turns: int = 8, max_chars_per_turn: int = 800) -> List[tuple[str, str]]:
     """Keep recent context useful without repeatedly sending an entire session."""
     compacted: List[tuple[str, str]] = []
@@ -445,6 +469,12 @@ Reglas:
 
     def _ensure_a2ui_component(self, request: ChatRequest, a2ui_payload: Optional[A2UIPayload], reply_text: str) -> Optional[A2UIPayload]:
         """Guarantees a rich A2UI component is attached whenever financial data or spending is discussed"""
+        user_msg = request.message.lower()
+        if _is_sankey_request(user_msg):
+            # Do not allow an LLM-generated visual payload to silently discard
+            # an explicit period in the user's request.
+            return _sankey_payload(request.user_id or "C001", _requested_month_count(user_msg, default=1))
+
         if a2ui_payload:
             # If the user explicitly asks for a SPEI transfer and we got a generic BalanceCard, replace with SpeiTransferFormCard
             is_spei_intent = any(k in request.message.lower() for k in ["transfer", "transfie", "enviar dinero", "mandar dinero", "spei", "hacer transferencia"])
@@ -566,24 +596,8 @@ Reglas:
             )
 
         # 1. Specific Visual Charts & Spending Analytics
-        if any(k in combined for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de ingresos"]):
-            sankey_data = mcp_client.get_sankey_cashflow(user_id)
-            return A2UIPayload(
-                component="BanorteChartCard",
-                props={
-                    "id": "banorte-sankey-cashflow",
-                    "chartType": "sankey",
-                    "title": "Diagrama de Flujo de Efectivo (Sankey)",
-                    "subtitle": f"Origen y destino de ingresos · {sankey_data['period']}",
-                    "valueFormat": "currency",
-                    "currency": "MXN",
-                    "height": 330,
-                    "data": {
-                        "nodes": sankey_data["nodes"],
-                        "links": sankey_data["links"]
-                    }
-                }
-            )
+        if _is_sankey_request(combined):
+            return _sankey_payload(user_id, _requested_month_count(user_msg, default=1))
         elif any(k in combined for k in ["heatmap", "mapa de calor", "calendario de gasto", "calendario", "días de gasto"]):
             heatmap_data = mcp_client.get_spending_heatmap(user_id)
             return A2UIPayload(
@@ -1755,8 +1769,9 @@ Diálogo:
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
             # B. SANKEY DIAGRAM (Cash Flow / Origen y Destino)
-            elif any(k in msg for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de caja", "flujo de ingresos"]):
-                sankey_data, log = await mcp_client.execute_tool("get_sankey_cashflow", {"user_id": user_id})
+            elif _is_sankey_request(msg):
+                months = _requested_month_count(msg, default=1)
+                sankey_data, log = await mcp_client.execute_tool("get_sankey_cashflow", {"user_id": user_id, "months": months})
                 mcp_calls.append(log)
                 reply = (
                     f"Hola, {first_name}. Con gusto te presento tu **Diagrama de Flujo de Efectivo (Sankey)** interactivo para {sankey_data['period']}:\n\n"
@@ -1768,9 +1783,9 @@ Diálogo:
                 a2ui = A2UIPayload(
                     component="BanorteChartCard",
                     props={
-                        "id": "banorte-sankey-cashflow",
+                        "id": f"banorte-sankey-cashflow-{sankey_data['months']}m",
                         "chartType": "sankey",
-                        "title": "Diagrama de Flujo de Efectivo (Sankey)",
+                        "title": f"Diagrama de Flujo de Efectivo (Sankey) · Últimos {sankey_data['months']} Meses",
                         "subtitle": f"Origen y destino de ingresos · {sankey_data['period']}",
                         "valueFormat": "currency",
                         "currency": "MXN",

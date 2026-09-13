@@ -868,7 +868,7 @@ class McpClient:
 
         elif tool_name in ["get_sankey_cashflow", "get_cash_flow_sankey"]:
             uid = args.get("user_id", "C001")
-            return self.get_sankey_cashflow(uid)
+            return self.get_sankey_cashflow(uid, args.get("months", 1))
 
         elif tool_name in ["get_spending_heatmap", "get_calendar_heatmap"]:
             uid = args.get("user_id", "C001")
@@ -886,18 +886,71 @@ class McpClient:
 
         return {"error": f"Herramienta '{tool_name}' no reconocida por el servidor MCP"}
 
-    def get_sankey_cashflow(self, user_id: str = "C001") -> Dict[str, Any]:
-        """Generates authentic multi-stage cash flow graph nodes and links for Sankey diagrams"""
+    def get_sankey_cashflow(self, user_id: str = "C001", months: int = 1) -> Dict[str, Any]:
+        """Aggregate the latest requested ledger months into Sankey nodes and links."""
+        months = max(1, min(int(months or 1), 12))
         real_state = self.get_real_customer_state(user_id)
         client_name = real_state.get("client_name") or "Cliente Banorte"
-        avail_bal = float(real_state.get("total_available_balance", 27900.0))
 
-        analytics = self._execute_mock("get_spending_analytics", {"user_id": user_id})
-        cats = analytics.get("categories", [])
-        total_spent = float(analytics.get("total_spent", 6450.0))
-        nomina_income = round(avail_bal + total_spent, 2)
-        if nomina_income <= total_spent:
-            nomina_income = round(total_spent * 1.8, 2)
+        # Select distinct ledger months first. This avoids treating a partial
+        # current month as the entire requested range and works across years.
+        month_keys: List[str] = []
+        transactions = []
+        conn = self._get_db_conn()
+        if conn:
+            try:
+                month_rows = conn.execute(
+                    """
+                    SELECT substr(transaction_date, 1, 7) AS month
+                    FROM chatbot_transactions_view
+                    WHERE customer_id = ?
+                    GROUP BY month
+                    ORDER BY month DESC
+                    LIMIT ?
+                    """,
+                    (user_id, months),
+                ).fetchall()
+                month_keys = [str(row["month"]) for row in reversed(month_rows)]
+                if month_keys:
+                    placeholders = ", ".join("?" for _ in month_keys)
+                    transactions = conn.execute(
+                        f"""
+                        SELECT transaction_type, merchant_name, amount
+                        FROM chatbot_transactions_view
+                        WHERE customer_id = ?
+                          AND substr(transaction_date, 1, 7) IN ({placeholders})
+                        """,
+                        [user_id, *month_keys],
+                    ).fetchall()
+            finally:
+                conn.close()
+
+        categories: Dict[str, Dict[str, Any]] = {}
+        total_spent = 0.0
+        recorded_income = 0.0
+        for transaction in transactions:
+            amount = float(transaction["amount"] or 0.0)
+            transaction_type = str(transaction["transaction_type"] or "").upper()
+            merchant = transaction["merchant_name"] or "Comercio"
+            is_income = amount > 0 or transaction_type in {"DEPOSIT", "PAYROLL", "CREDIT"}
+            is_expense = amount < 0 or transaction_type in {"PURCHASE", "PAYMENT", "WITHDRAWAL", "TRANSFER"}
+
+            if is_income:
+                recorded_income += abs(amount)
+            if is_expense:
+                spent_value = abs(amount)
+                total_spent += spent_value
+                category, color, _ = srv._categorize_merchant(merchant)
+                entry = categories.setdefault(category, {"name": category, "amount": 0.0, "color": color})
+                entry["amount"] += spent_value
+
+        # The demo dataset can omit historical payroll deposits. Keep that
+        # limitation visible in the response while preserving the flow model.
+        income_is_estimated = recorded_income <= 0 and total_spent > 0
+        nomina_income = recorded_income if recorded_income > 0 else max(total_spent * 1.18, 27900.0 * len(month_keys))
+        nomina_income = round(nomina_income, 2)
+        total_spent = round(total_spent, 2)
+        cats = sorted(categories.values(), key=lambda category: category["amount"], reverse=True)
 
         fijos_amt = sum(c["amount"] for c in cats if any(k in c["name"].lower() for k in ["super", "servicios", "tarjeta", "renta"]))
         if fijos_amt <= 0:
@@ -940,9 +993,18 @@ class McpClient:
         nodes.append({"id": "inversion", "label": "Pagaré / Inversión Banorte", "color": "#008A5A"})
         links.append({"source": "ahorro", "target": "inversion", "value": ahorro_amt})
 
+        if month_keys:
+            labels = [datetime.strptime(month, "%Y-%m").strftime("%b %Y") for month in month_keys]
+            period = labels[0] if len(labels) == 1 else f"{labels[0]} – {labels[-1]}"
+        else:
+            period = "Sin movimientos registrados"
+
         return {
             "client": client_name,
-            "period": analytics.get("period", "Septiembre 2026"),
+            "period": period,
+            "months": len(month_keys),
+            "month_keys": month_keys,
+            "income_is_estimated": income_is_estimated,
             "total_income": nomina_income,
             "total_spent": total_spent,
             "net_remainder": ahorro_amt,
