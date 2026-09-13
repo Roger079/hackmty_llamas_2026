@@ -26,6 +26,47 @@ export function savePinnedWidgets(userId: string, widgets: DashboardWidgetItem[]
   }
 }
 
+/**
+ * Loads pinned widgets from cloud SQLite database, falling back to localStorage.
+ */
+export async function fetchCloudPinnedWidgets(userId: string): Promise<DashboardWidgetItem[]> {
+  try {
+    const res = await fetch(`/api/dashboard/widgets?user_id=${userId || 'C001'}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.widgets) && data.widgets.length > 0) {
+        savePinnedWidgets(userId, data.widgets);
+        return data.widgets;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not fetch cloud pinned widgets:', err);
+  }
+  return getPinnedWidgets(userId);
+}
+
+/**
+ * Removes a pinned widget from cloud SQLite and local storage.
+ */
+export async function removeCloudPinnedWidget(userId: string, widgetId: string): Promise<void> {
+  try {
+    fetch(`/api/dashboard/widgets?user_id=${userId || 'C001'}&widget_id=${encodeURIComponent(widgetId)}`, {
+      method: 'DELETE',
+    }).catch(() => {});
+  } catch {}
+}
+
+/**
+ * Clears all pinned widgets from cloud SQLite and local storage.
+ */
+export async function clearCloudPinnedWidgets(userId: string): Promise<void> {
+  try {
+    fetch(`/api/dashboard/widgets?user_id=${userId || 'C001'}`, {
+      method: 'DELETE',
+    }).catch(() => {});
+  } catch {}
+}
+
 export function broadcastWidgetToDashboard(userId: string, widget: DashboardWidgetItem): void {
   try {
     // 1. Persist to localStorage
@@ -40,12 +81,23 @@ export function broadcastWidgetToDashboard(userId: string, widget: DashboardWidg
     }
     savePinnedWidgets(userId, updated);
 
-    // 2. Broadcast to other open windows/tabs (e.g. /dashboard)
+    // 2. Broadcast to other open windows/tabs on the same machine
     if (typeof BroadcastChannel !== 'undefined') {
-      const channel = new BroadcastChannel(SYNC_CHANNEL_NAME);
-      channel.postMessage({ type: 'PIN_WIDGET', userId, widget });
-      channel.close();
+      try {
+        const channel = new BroadcastChannel(SYNC_CHANNEL_NAME);
+        channel.postMessage({ type: 'PIN_WIDGET', userId, widget });
+        channel.close();
+      } catch {}
     }
+
+    // 3. Cross-Device Cloud Sync: Push to remote Cloud Dashboard
+    fetch('/api/dashboard/widgets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId || 'C001', widget }),
+    }).catch((err) => {
+      console.warn('Could not push widget to cloud dashboard:', err);
+    });
   } catch (err) {
     console.warn('Could not broadcast widget to dashboard:', err);
   }
@@ -55,27 +107,53 @@ export function subscribeToDashboardSync(
   userId: string,
   onWidgetReceived: (widget: DashboardWidgetItem) => void
 ): () => void {
-  if (typeof BroadcastChannel === 'undefined') {
-    return () => {};
+  let isCleanedUp = false;
+
+  // 1. Local Browser Tab Sync (BroadcastChannel)
+  let channel: BroadcastChannel | null = null;
+  if (typeof BroadcastChannel !== 'undefined') {
+    try {
+      channel = new BroadcastChannel(SYNC_CHANNEL_NAME);
+      channel.addEventListener('message', (event: MessageEvent) => {
+        if (event.data?.type === 'PIN_WIDGET') {
+          if (!userId || !event.data.userId || event.data.userId === userId) {
+            if (event.data.widget) {
+              onWidgetReceived(event.data.widget);
+            }
+          }
+        }
+      });
+    } catch {}
   }
 
-  const channel = new BroadcastChannel(SYNC_CHANNEL_NAME);
-
-  const handleMessage = (event: MessageEvent) => {
-    if (event.data?.type === 'PIN_WIDGET') {
-      // If no specific userId filter, or matches the current user
-      if (!userId || !event.data.userId || event.data.userId === userId) {
-        if (event.data.widget) {
-          onWidgetReceived(event.data.widget);
+  // 2. Real-Time Cloud SSE Sync (Cross-Device Phone -> Cloud PC)
+  let eventSource: EventSource | null = null;
+  if (typeof EventSource !== 'undefined') {
+    try {
+      eventSource = new EventSource(`/api/dashboard/events?user_id=${userId || 'C001'}`);
+      eventSource.addEventListener('widget', (event) => {
+        if (isCleanedUp) return;
+        try {
+          const widget = JSON.parse(event.data);
+          if (widget && widget.component) {
+            onWidgetReceived(widget);
+          }
+        } catch (err) {
+          console.warn('Error parsing cloud widget event:', err);
         }
-      }
+      });
+    } catch (err) {
+      console.warn('Could not connect to cloud dashboard SSE:', err);
     }
-  };
-
-  channel.addEventListener('message', handleMessage);
+  }
 
   return () => {
-    channel.removeEventListener('message', handleMessage);
-    channel.close();
+    isCleanedUp = true;
+    if (channel) {
+      channel.close();
+    }
+    if (eventSource) {
+      eventSource.close();
+    }
   };
 }

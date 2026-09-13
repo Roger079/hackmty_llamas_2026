@@ -54,6 +54,9 @@ import {
   savePinnedWidgets,
   subscribeToDashboardSync,
   broadcastWidgetToDashboard,
+  fetchCloudPinnedWidgets,
+  removeCloudPinnedWidget,
+  clearCloudPinnedWidgets,
 } from '../utils/dashboardSync';
 
 interface PowerUserDashboardProps {
@@ -150,9 +153,16 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
     // 1. Bank State
     refreshBankState(selectedUserId);
 
-    // 2. Load only widgets explicitly pinned or sent by the user
+    // 2. Load widgets explicitly pinned or sent by the user (localStorage first, then cloud sync)
     const stored = getPinnedWidgets(selectedUserId);
     setWidgets(stored);
+    fetchCloudPinnedWidgets(selectedUserId)
+      .then((cloudWidgets) => {
+        if (cloudWidgets && cloudWidgets.length > 0) {
+          setWidgets(cloudWidgets);
+        }
+      })
+      .catch(() => {});
 
 
     // 3. Cognitive Profile
@@ -202,6 +212,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
   const handleClearWidgets = () => {
     setWidgets([]);
     savePinnedWidgets(selectedUserId, []);
+    clearCloudPinnedWidgets(selectedUserId);
     showToast('✓ Widgets retirados del Command Center');
   };
 
@@ -213,6 +224,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
       savePinnedWidgets(selectedUserId, updated);
       return updated;
     });
+    removeCloudPinnedWidget(selectedUserId, widgetId);
     showToast('Widget retirado del Command Center');
   };
 
@@ -409,6 +421,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
       savePinnedWidgets(selectedUserId, updated);
       return updated;
     });
+    broadcastWidgetToDashboard(selectedUserId, newWidget);
     setIsAddMenuOpen(false);
     showToast(`✓ Widget añadido: ${newWidget.title}`);
   };
@@ -475,6 +488,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
             savePinnedWidgets(selectedUserId, updated);
             return updated;
           });
+          broadcastWidgetToDashboard(selectedUserId, newWidgetItem);
         }
 
         if (actionCtx.action === 'execute_spei') {
@@ -583,6 +597,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
           savePinnedWidgets(selectedUserId, updated);
           return updated;
         });
+        broadcastWidgetToDashboard(selectedUserId, confirmWidget);
 
         showToast(`✓ Tarjeta SPEI lista para autorizar con Token Móvil`);
       }
@@ -695,6 +710,7 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
               savePinnedWidgets(selectedUserId, updated);
               return updated;
             });
+            broadcastWidgetToDashboard(selectedUserId, newWidgetItem);
             showToast(`✨ Widget anclado al Command Center desde Maya Studio`);
           } else if (event === 'done' && dataJson) {
             if (dataJson.reply && (!accumulatedText || accumulatedText.trim().length === 0)) {

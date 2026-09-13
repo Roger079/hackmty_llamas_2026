@@ -1,6 +1,9 @@
+import asyncio
+from collections import defaultdict
 import json
 import os
 from pathlib import Path
+from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -180,6 +183,86 @@ async def clear_chat_history(user_id: str = "C001"):
     """Purges chat history for a customer (right to be forgotten / session reset)"""
     result = mcp_client.clear_chat_history(user_id)
     return result
+
+# 7. CROSS-DEVICE CLOUD DASHBOARD SYNCHRONIZATION
+dashboard_subscribers: Dict[str, List[asyncio.Queue]] = defaultdict(list)
+
+@app.post("/api/dashboard/widgets")
+async def pin_dashboard_widget(request: Request):
+    """
+    Called by mobile app when user taps 'Enviar a Dashboard Web'.
+    Saves widget in SQLite and broadcasts to all connected desktop dashboards in real-time.
+    """
+    body = await request.json()
+    user_id = body.get("user_id") or "C001"
+    widget = body.get("widget") or {}
+    if not widget:
+        raise HTTPException(status_code=400, detail="Widget payload required")
+
+    saved_widget = mcp_client.save_dashboard_widget(user_id, widget)
+
+    # Real-time push to all connected desktop subscribers for this user
+    queues = dashboard_subscribers.get(user_id, [])
+    for q in list(queues):
+        try:
+            await q.put(saved_widget)
+        except Exception:
+            pass
+
+    return {"status": "success", "widget": saved_widget}
+
+@app.get("/api/dashboard/widgets")
+async def get_dashboard_widgets(user_id: str = "C001"):
+    """Returns all pinned dashboard widgets for customer stored in cloud SQLite"""
+    widgets = mcp_client.get_dashboard_widgets(user_id)
+    return {
+        "user_id": user_id,
+        "count": len(widgets),
+        "widgets": widgets
+    }
+
+@app.delete("/api/dashboard/widgets")
+async def delete_dashboard_widget(user_id: str = "C001", widget_id: Optional[str] = None):
+    """Removes a pinned widget or clears all widgets for customer"""
+    if widget_id:
+        mcp_client.delete_dashboard_widget(user_id, widget_id)
+    else:
+        mcp_client.clear_dashboard_widgets(user_id)
+    return {"status": "success"}
+
+@app.get("/api/dashboard/events")
+async def dashboard_events(user_id: str = "C001"):
+    """
+    Server-Sent Events (SSE) stream for Desktop Dashboard.
+    Enables instant cross-device projection when mobile phone pins a widget.
+    """
+    async def event_generator():
+        q: asyncio.Queue = asyncio.Queue()
+        dashboard_subscribers[user_id].append(q)
+        try:
+            yield {
+                "event": "connected",
+                "data": json.dumps({"status": "ready", "user_id": user_id})
+            }
+            while True:
+                try:
+                    widget = await asyncio.wait_for(q.get(), timeout=20.0)
+                    yield {
+                        "event": "widget",
+                        "data": json.dumps(widget, ensure_ascii=False)
+                    }
+                except asyncio.TimeoutError:
+                    # Keep-alive heartbeat for cloud proxies / load balancers
+                    yield {
+                        "event": "ping",
+                        "data": "{}"
+                    }
+        finally:
+            if q in dashboard_subscribers[user_id]:
+                dashboard_subscribers[user_id].remove(q)
+
+    return EventSourceResponse(event_generator())
+
 
 from fastapi.responses import FileResponse, RedirectResponse
 

@@ -403,6 +403,102 @@ class McpClient:
                 conn.close()
         return {"status": "cleared", "customer_id": customer_id, "deleted_count": deleted}
 
+    def save_dashboard_widget(self, user_id: str, widget: Dict[str, Any]) -> Dict[str, Any]:
+        """Persists a pinned dashboard widget to SQLite for cross-device synchronization."""
+        conn = self._get_db_conn()
+        widget_id = widget.get("id") or f"w-{int(time.time()*1000)}"
+        widget["id"] = widget_id
+        if conn:
+            try:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS dashboard_pinned_widgets (
+                        id TEXT PRIMARY KEY,
+                        customer_id TEXT NOT NULL,
+                        widget_json TEXT NOT NULL,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                conn.execute("""
+                    INSERT OR REPLACE INTO dashboard_pinned_widgets (id, customer_id, widget_json, updated_at)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                """, (widget_id, user_id, json.dumps(widget, ensure_ascii=False)))
+                conn.commit()
+            except Exception as e:
+                print(f"[save_dashboard_widget] DB error: {e}")
+            finally:
+                conn.close()
+        return widget
+
+    def get_dashboard_widgets(self, user_id: str) -> List[Dict[str, Any]]:
+        """Retrieves pinned dashboard widgets from SQLite in reverse chronological order."""
+        conn = self._get_db_conn()
+        widgets = []
+        if conn:
+            try:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS dashboard_pinned_widgets (
+                        id TEXT PRIMARY KEY,
+                        customer_id TEXT NOT NULL,
+                        widget_json TEXT NOT NULL,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                rows = conn.execute("""
+                    SELECT widget_json FROM dashboard_pinned_widgets
+                    WHERE customer_id = ?
+                    ORDER BY updated_at DESC
+                """, (user_id,)).fetchall()
+                for r in rows:
+                    try:
+                        widgets.append(json.loads(r["widget_json"]))
+                    except Exception:
+                        pass
+            except Exception as e:
+                print(f"[get_dashboard_widgets] DB error: {e}")
+            finally:
+                conn.close()
+        return widgets
+
+    def delete_dashboard_widget(self, user_id: str, widget_id: str) -> None:
+        """Deletes a specific pinned widget from SQLite."""
+        conn = self._get_db_conn()
+        if conn:
+            try:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS dashboard_pinned_widgets (
+                        id TEXT PRIMARY KEY,
+                        customer_id TEXT NOT NULL,
+                        widget_json TEXT NOT NULL,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                conn.execute("DELETE FROM dashboard_pinned_widgets WHERE customer_id = ? AND id = ?", (user_id, widget_id))
+                conn.commit()
+            except Exception as e:
+                print(f"[delete_dashboard_widget] DB error: {e}")
+            finally:
+                conn.close()
+
+    def clear_dashboard_widgets(self, user_id: str) -> None:
+        """Clears all pinned widgets for a customer from SQLite."""
+        conn = self._get_db_conn()
+        if conn:
+            try:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS dashboard_pinned_widgets (
+                        id TEXT PRIMARY KEY,
+                        customer_id TEXT NOT NULL,
+                        widget_json TEXT NOT NULL,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                conn.execute("DELETE FROM dashboard_pinned_widgets WHERE customer_id = ?", (user_id,))
+                conn.commit()
+            except Exception as e:
+                print(f"[clear_dashboard_widgets] DB error: {e}")
+            finally:
+                conn.close()
+
     def get_real_customer_list(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Returns the real customers from the SQLite database"""
         conn = self._get_db_conn()
