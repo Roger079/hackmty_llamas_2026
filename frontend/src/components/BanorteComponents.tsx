@@ -126,117 +126,136 @@ export const MayaChatWidget: React.FC<{
     "Transferencias"
   ];
 
-  if (!isOpen) {
-    return (
+  return (
+    <>
+      {/* 1. Scroll-Reactive Maya Floating Action Button (Buttery Smooth Retraction & Expansion) */}
       <button
+        type="button"
         onClick={onToggle}
         aria-label="Abrir Maya, asistente virtual"
-        className={`fixed bottom-24 right-4 z-40 flex items-center rounded-full border-2 border-white bg-[#EB0029] text-white shadow-[0_16px_42px_rgba(151,0,32,0.36)] transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer sm:bottom-6 sm:right-6 ${
+        className={`fixed bottom-24 right-4 z-40 flex items-center rounded-full border-2 border-white bg-[#EB0029] text-white shadow-[0_12px_36px_rgba(235,0,41,0.38)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer select-none sm:bottom-6 sm:right-6 ${
+          isOpen
+            ? 'opacity-0 scale-75 pointer-events-none'
+            : 'opacity-100 scale-100 pointer-events-auto hover:scale-105 active:scale-95'
+        } ${
           isCompact
-            ? 'h-12 w-12 p-2.5 justify-center shadow-lg'
-            : 'gap-3 p-2 pr-4 max-w-[calc(100vw-2rem)]'
+            ? 'w-12 h-12 p-0 justify-center shadow-md'
+            : 'w-[230px] h-12 px-2.5 justify-start gap-2.5'
         }`}
       >
-        <MayaAvatar size={isCompact ? 'sm' : 'md'} />
+        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#EB0029] shrink-0 shadow-xs">
+          <BrandLogo variant="icon" theme="red" className="h-4 w-4" alt="" />
+        </div>
         <div
-          className={`overflow-hidden transition-all duration-300 text-left leading-tight ${
-            isCompact ? 'max-w-0 opacity-0 pointer-events-none' : 'max-w-[220px] opacity-100'
+          className={`flex flex-col text-left overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] whitespace-nowrap ${
+            isCompact
+              ? 'max-w-0 opacity-0 -translate-x-3 pointer-events-none'
+              : 'max-w-[170px] opacity-100 translate-x-0'
           }`}
         >
-          <span className="block text-sm font-black tracking-tight text-white">Maya</span>
-          <span className="block max-w-[205px] truncate text-[10px] font-bold text-white drop-shadow-sm">
-            Pregúntame por una gráfica de tus gastos
+          <span className="block text-xs font-black tracking-tight text-white leading-tight">Maya</span>
+          <span className="block max-w-[160px] truncate text-[10px] font-semibold text-white/90 leading-tight">
+            Pregúntame por una gráfica
           </span>
         </div>
       </button>
-    );
-  }
 
-  return (
-    <div className="fixed bottom-0 right-0 z-50 flex w-full max-w-sm flex-col overflow-hidden rounded-t-[28px] border border-red-900/20 bg-white text-slate-900 shadow-[0_18px_55px_rgba(110,0,24,0.32)] animate-in slide-in-from-bottom duration-300 sm:bottom-5 sm:right-6 sm:rounded-[28px]">
-      {/* Widget Header */}
-      <div className="flex items-center justify-between border-b border-white/20 bg-[#EB0029] px-4 py-3 text-white">
-        <div className="flex items-center gap-2">
-          <MayaAvatar size="sm" />
-          <div>
-            <h4 className="text-xs font-bold text-white">Maya</h4>
-            <span className="text-[10px] font-mono text-amber-200">En línea</span>
+      {/* 2. Maya Interactive Popover Widget (Smooth Slide & Retraction Exit) */}
+      <div
+        className={`fixed bottom-0 right-0 z-50 flex w-full max-w-sm flex-col overflow-hidden rounded-t-[28px] border border-red-900/20 bg-white text-slate-900 shadow-[0_18px_55px_rgba(110,0,24,0.32)] sm:bottom-5 sm:right-6 sm:rounded-[28px] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          isOpen
+            ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
+            : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
+        }`}
+      >
+        {/* Widget Header */}
+        <div className="flex items-center justify-between border-b border-white/20 bg-[#EB0029] px-4 py-3 text-white">
+          <div className="flex items-center gap-2">
+            <MayaAvatar size="sm" />
+            <div>
+              <h4 className="text-xs font-bold text-white">Maya</h4>
+              <span className="text-[10px] font-mono text-amber-200">En línea</span>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-          {onExpandToFull && (
+          <div className="flex items-center gap-1">
+            {onExpandToFull && (
+              <button
+                type="button"
+                onClick={onExpandToFull}
+                className="rounded-lg p-1.5 text-white/80 transition hover:bg-white/15 hover:text-white cursor-pointer"
+                title="Pantalla completa"
+                aria-label="Pantalla completa"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </button>
+            )}
             <button
-              onClick={onExpandToFull}
+              type="button"
+              onClick={onToggle}
               className="rounded-lg p-1.5 text-white/80 transition hover:bg-white/15 hover:text-white cursor-pointer"
-              title="Pantalla completa"
-              aria-label="Pantalla completa"
+              title="Minimizar"
+              aria-label="Minimizar"
             >
-              <Maximize2 className="h-4 w-4" />
+              <Minimize2 className="h-4 w-4" />
             </button>
-          )}
-          <button
-            onClick={onToggle}
-            className="rounded-lg p-1.5 text-white/80 transition hover:bg-white/15 hover:text-white cursor-pointer"
-            title="Minimizar"
-            aria-label="Minimizar"
-          >
-            <Minimize2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Widget Body */}
-      <div className="max-h-[420px] space-y-4 overflow-y-auto bg-gradient-to-b from-red-50 to-white p-4">
-        <div className="flex items-start gap-3">
-          <MayaAvatar size="md" />
-          <div className="flex-1">
-            <h3 className="text-base font-bold leading-snug text-slate-900">
-              ¡Hola! Soy Maya, tu asistente virtual. ¡Chatea conmigo!
-            </h3>
           </div>
         </div>
 
-        {/* Intent Pills from Screenshot 2 */}
-        <div className="space-y-1.5">
-          {quickPills.map((pill) => (
-            <button
-              key={pill}
-              onClick={() => dispatchPrompt(pill)}
-              className="w-full rounded-xl border border-red-100 bg-white px-4 py-2 text-left text-xs font-semibold text-[#A5002C] shadow-sm transition hover:border-[#EB0029] hover:bg-red-50 cursor-pointer"
-            >
-              {pill}
-            </button>
-          ))}
-        </div>
-      </div>
+        {/* Widget Body */}
+        <div className="max-h-[420px] space-y-4 overflow-y-auto bg-gradient-to-b from-red-50 to-white p-4">
+          <div className="flex items-start gap-3">
+            <MayaAvatar size="md" />
+            <div className="flex-1">
+              <h3 className="text-base font-bold leading-snug text-slate-900">
+                ¡Hola! Soy Maya, tu asistente virtual. ¡Chatea conmigo!
+              </h3>
+            </div>
+          </div>
 
-      {/* Widget Input Bar */}
-      <div className="border-t border-red-100 bg-white p-3">
-        <div className="relative flex items-center">
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                submitInput();
-              }
-            }}
-            placeholder="Escriba algo..."
-            className="w-full rounded-xl border border-red-100 bg-red-50/50 px-3.5 py-2.5 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#EB0029]"
-          />
-          <button
-            onClick={submitInput}
-            className="absolute right-2 p-1 text-[#EB0029] transition hover:text-[#A5002C] cursor-pointer"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
+          {/* Intent Pills from Screenshot 2 */}
+          <div className="space-y-1.5">
+            {quickPills.map((pill) => (
+              <button
+                key={pill}
+                type="button"
+                onClick={() => dispatchPrompt(pill)}
+                className="w-full rounded-xl border border-red-100 bg-white px-4 py-2 text-left text-xs font-semibold text-[#A5002C] shadow-sm transition hover:border-[#EB0029] hover:bg-red-50 cursor-pointer"
+              >
+                {pill}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Widget Input Bar */}
+        <div className="border-t border-red-100 bg-white p-3">
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  submitInput();
+                }
+              }}
+              placeholder="Escriba algo..."
+              className="w-full rounded-xl border border-red-100 bg-red-50/50 px-3.5 py-2.5 pr-10 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#EB0029]"
+            />
+            <button
+              type="button"
+              onClick={submitInput}
+              className="absolute right-2 p-1 text-[#EB0029] transition hover:text-[#A5002C] cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

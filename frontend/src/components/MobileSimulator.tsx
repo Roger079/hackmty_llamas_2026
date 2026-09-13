@@ -91,9 +91,10 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentY = window.scrollY || document.documentElement.scrollTop;
-          if (currentY > lastScrollYRef.current + 10 && currentY > 40) {
+          const delta = currentY - lastScrollYRef.current;
+          if (delta > 15 && currentY > 50) {
             setIsScrollingDown(true);
-          } else if (currentY < lastScrollYRef.current - 10) {
+          } else if (delta < -15 || currentY < 30) {
             setIsScrollingDown(false);
           }
           lastScrollYRef.current = Math.max(0, currentY);
@@ -149,25 +150,7 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
     setSelectedCard(closestIndex);
   };
 
-  // 1. FULLSCREEN MAYA SCREEN TAKEOVER
-  // When activeTab === 'maya', Maya takes over the ENTIRE viewport on iPhone 15 Pro Max
-  if (activeTab === 'maya') {
-    return (
-      <div className="fixed inset-0 z-50 bg-white flex flex-col h-full w-full overflow-hidden">
-        <ChatStream
-          className="flex-1 w-full flex flex-col h-full overflow-hidden"
-          messages={messages}
-          isLoading={isLoading}
-          onSendMessage={onSendMessage}
-          onAction={onAction}
-          clientName={clientName}
-          onResetDemo={onResetDemo}
-          userId={userId}
-          onMinimize={() => setActiveTab('home')}
-        />
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen w-full bg-[#F4F6F9] text-slate-900 flex flex-col justify-between antialiased">
@@ -293,7 +276,13 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
               <div
                 ref={cardRailRef}
                 onScroll={updateSelectedCardFromScroll}
-                className="card-rail isolate flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 py-2 scroll-smooth no-scrollbar"
+                className="card-rail isolate flex snap-x snap-mandatory gap-3.5 overflow-x-auto py-2 scroll-smooth no-scrollbar"
+                style={{
+                  paddingLeft: 'calc((100% - min(348px, calc(100vw - 2.5rem))) / 2)',
+                  paddingRight: 'calc((100% - min(348px, calc(100vw - 2.5rem))) / 2)',
+                  scrollPaddingLeft: 'calc((100% - min(348px, calc(100vw - 2.5rem))) / 2)',
+                  scrollPaddingRight: 'calc((100% - min(348px, calc(100vw - 2.5rem))) / 2)',
+                }}
               >
                 {mobileCards.map((card, index) => (
                   <div
@@ -307,8 +296,8 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                         selectMobileCard(index);
                       }
                     }}
-                    className={`relative w-[calc(100vw-2.5rem)] max-w-[390px] shrink-0 snap-center text-left transition duration-300 ${
-                      selectedCard === index ? 'z-10 scale-100 opacity-100' : 'z-0 scale-[0.96] opacity-75'
+                    className={`relative w-[min(348px,calc(100vw-2.5rem))] shrink-0 snap-center text-left transition-all duration-300 ${
+                      selectedCard === index ? 'z-10 scale-100 opacity-100' : 'z-0 scale-[0.95] opacity-75'
                     }`}
                     aria-pressed={selectedCard === index}
                   >
@@ -331,10 +320,13 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
               </div>
               <div className="mt-1.5 flex justify-center gap-1.5" aria-label="Selector de tarjeta">
                 {mobileCards.map((card, index) => (
-                  <span
+                  <button
                     key={card.last4}
-                    className={`h-1.5 rounded-full transition-all ${
-                      selectedCard === index ? 'w-5 bg-[#EB0029]' : 'w-1.5 bg-slate-300'
+                    type="button"
+                    onClick={() => selectMobileCard(index)}
+                    aria-label={`Seleccionar tarjeta ${index + 1}`}
+                    className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                      selectedCard === index ? 'w-5 bg-[#EB0029]' : 'w-1.5 bg-slate-300 hover:bg-slate-400'
                     }`}
                   />
                 ))}
@@ -818,49 +810,82 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
       {/* 3. Bottom Native Mobile Navigation Bar - Authentic Banorte Red Banner */}
       <nav
         aria-label="Navegación principal"
-        className="fixed bottom-0 inset-x-0 bg-[#EB0029] border-t border-red-600/30 text-white z-40 shadow-[0_-4px_24px_rgba(235,0,41,0.22)] rounded-t-2xl pb-6 pt-2.5 px-6"
+        className="fixed bottom-0 inset-x-0 bg-[#EB0029] border-t border-red-600/30 text-white z-40 shadow-[0_-4px_24px_rgba(235,0,41,0.22)] rounded-t-2xl"
       >
-        <div className="max-w-[430px] mx-auto flex justify-around items-center">
+        <div className="max-w-[430px] mx-auto grid grid-cols-3 items-center px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={() => setActiveTab('home')}
-            className={`flex flex-col items-center justify-center min-w-[72px] py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'home'
-                ? 'bg-white text-[#EB0029] shadow-sm font-extrabold'
-                : 'text-white/80 hover:text-white hover:bg-white/10 font-bold'
-            }`}
+            className="flex flex-col items-center justify-center w-full py-1 cursor-pointer transition-all group"
           >
-            <Home className="h-6 w-6 mb-1 shrink-0" />
-            <span className="text-xs leading-none">Inicio</span>
+            <div
+              className={`flex flex-col items-center justify-center w-[96px] py-1.5 px-2 rounded-xl transition-all duration-200 ${
+                activeTab === 'home'
+                  ? 'bg-white text-[#EB0029] shadow-sm font-black scale-105'
+                  : 'text-white/80 group-hover:text-white font-medium hover:bg-white/10'
+              }`}
+            >
+              <Home className="h-6 w-6 mb-0.5 shrink-0" />
+              <span className="text-[11px] leading-tight tracking-tight">Inicio</span>
+            </div>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('cards')}
-            className={`flex flex-col items-center justify-center min-w-[72px] py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'cards'
-                ? 'bg-white text-[#EB0029] shadow-sm font-extrabold'
-                : 'text-white/80 hover:text-white hover:bg-white/10 font-bold'
-            }`}
+            className="flex flex-col items-center justify-center w-full py-1 cursor-pointer transition-all group"
           >
-            <CreditCard className="h-6 w-6 mb-1 shrink-0" />
-            <span className="text-xs leading-none">Tarjetas</span>
+            <div
+              className={`flex flex-col items-center justify-center w-[96px] py-1.5 px-2 rounded-xl transition-all duration-200 ${
+                activeTab === 'cards'
+                  ? 'bg-white text-[#EB0029] shadow-sm font-black scale-105'
+                  : 'text-white/80 group-hover:text-white font-medium hover:bg-white/10'
+              }`}
+            >
+              <CreditCard className="h-6 w-6 mb-0.5 shrink-0" />
+              <span className="text-[11px] leading-tight tracking-tight">Tarjetas</span>
+            </div>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('activity')}
-            className={`flex flex-col items-center justify-center min-w-[72px] py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'activity'
-                ? 'bg-white text-[#EB0029] shadow-sm font-extrabold'
-                : 'text-white/80 hover:text-white hover:bg-white/10 font-bold'
-            }`}
+            className="flex flex-col items-center justify-center w-full py-1 cursor-pointer transition-all group"
           >
-            <FileText className="h-6 w-6 mb-1 shrink-0" />
-            <span className="text-xs leading-none">Movimientos</span>
+            <div
+              className={`flex flex-col items-center justify-center w-[96px] py-1.5 px-2 rounded-xl transition-all duration-200 ${
+                activeTab === 'activity'
+                  ? 'bg-white text-[#EB0029] shadow-sm font-black scale-105'
+                  : 'text-white/80 group-hover:text-white font-medium hover:bg-white/10'
+              }`}
+            >
+              <FileText className="h-6 w-6 mb-0.5 shrink-0" />
+              <span className="text-[11px] leading-tight tracking-tight">Movimientos</span>
+            </div>
           </button>
         </div>
       </nav>
+
+      {/* 4. Fullscreen Maya Chat Screen Takeover with Smooth Slide-Up & Retraction Exit */}
+      <div
+        className={`fixed inset-0 z-50 bg-white flex flex-col h-full w-full overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          activeTab === 'maya'
+            ? 'translate-y-0 opacity-100 pointer-events-auto'
+            : 'translate-y-full opacity-0 pointer-events-none'
+        }`}
+      >
+        <ChatStream
+          className="flex-1 w-full flex flex-col h-full overflow-hidden"
+          messages={messages}
+          isLoading={isLoading}
+          onSendMessage={onSendMessage}
+          onAction={onAction}
+          clientName={clientName}
+          onResetDemo={onResetDemo}
+          userId={userId}
+          onMinimize={() => setActiveTab('home')}
+        />
+      </div>
     </div>
   );
 };
