@@ -94,9 +94,7 @@ Maya does not dump raw text or static images. When a user asks a financial quest
 The webapp is specifically architected to support two distinct operational surfaces:
 
 ### 1. Banorte Móvil PWA (Mobile Surface)
-* **Touch-First Phone Shell:** Renders with realistic iPhone proportions, dynamic island/notch, battery/WiFi indicators, quick-action rails, and interactive bottom sheets.
-* **3D Flippable Debit Card:** Interactive 3D credit/debit card on the home screen with physical flip animation and on-demand CVV reveal.
-* **Progressive Web App (PWA):** Equipped with `manifest.webmanifest`, app icons, and an active Service Worker (`sw.js`) allowing direct installation on real Android and iOS home screens.
+* **Progressive Web App (PWA):** Equipped with `manifest.webmanifest`, app icons, and an active Service Worker (`sw.js`) allowing direct installation on real Android and iOS home screens. HERE WE NEED TO ADD MORE INFO ABOUT THE APP THAT ACTUALLY EXISTS, THE WIDGETS 
 
 ### 2. Power User Command Center (Desktop Surface)
 * **Panoramic Multi-Widget Workspace:** Designed for laptops and desktop monitors where power users, business owners, and active investors need multiple charts open simultaneously without mobile space constraints.
@@ -112,7 +110,6 @@ The webapp is specifically architected to support two distinct operational surfa
 Security in financial AI requires strict boundaries. Maya implements the **Model Context Protocol (FastMCP)** to isolate the language model from the underlying database:
 
 * **Zero Direct SQL Access:** Gemini never touches raw SQL. It can only call strongly typed, Pydantic-validated tool definitions (`get_account_balance`, `get_user_debt`, `commit_restructure`, `execute_spei_transfer`, etc.).
-* **Real Atomic Transactions:** Transacting via SPEI executes real SQL transactions (`BEGIN TRANSACTION`), updates ledger balances in `account_balance`, writes to `bank_transaction`, and returns real Banxico CEP tracking codes.
 * **Dual-Transport Architecture:**
   - *Remote Mode:* Connects over HTTP/SSE to a standalone FastMCP daemon on port 8001.
   - *In-Process Mode:* Seamlessly falls back to direct, zero-latency SQLite execution in the same process, guaranteeing 100% demo stability without coordinating multiple terminals.
