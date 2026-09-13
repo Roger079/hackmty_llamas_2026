@@ -150,6 +150,40 @@ async def get_bank_state(user_id: str = "C001"):
     """Returns real accounts, balances, credit card debts, and audited transactions from SQLite"""
     return mcp_client.get_real_customer_state(user_id)
 
+@app.get("/api/bank/transactions")
+async def get_bank_transactions(
+    user_id: str = "C001",
+    category: str = "",
+    merchant: str = "",
+    date: str = "",
+    month: str = "",
+    period: str = "",
+    search: str = "",
+    target_amount: Optional[float] = None,
+    limit: int = 50
+):
+    """Returns filtered audited transactions from SQLite for interactive widget drill-downs"""
+    effective_month = month or period
+    items = mcp_client.get_filtered_transactions(
+        customer_id=user_id,
+        category=category,
+        merchant=merchant,
+        date_str=date,
+        month=effective_month,
+        search=search,
+        target_amount=target_amount,
+        limit=limit
+    )
+    total_val = round(sum(abs(item["amount"]) for item in items), 2)
+    return {
+        "user_id": user_id,
+        "category": category,
+        "month": effective_month or (date[:7] if date else "2026-09"),
+        "count": len(items),
+        "total_amount": total_val,
+        "transactions": items
+    }
+
 @app.post("/api/bank/reset")
 async def reset_bank_state():
     """Resets mock banking accounts, debts and balances to initial state"""

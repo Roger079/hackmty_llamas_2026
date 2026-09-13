@@ -13,31 +13,109 @@ export interface MobileWidgetItem {
 
 export const DEFAULT_HOME_WIDGETS: MobileWidgetItem[] = [
   {
-    id: 'weekly-spending-default',
-    type: 'built_in',
-    builtInKey: 'weekly_spending',
-    title: 'Gastos de la semana',
-    subtitle: 'Tendencia de los últimos 7 días',
+    id: 'default-bar-chart',
+    type: 'a2ui',
+    title: 'Gastos por Categoría (Barras)',
+    subtitle: 'Septiembre 2026 · Comparativa mensual',
     category: 'Finanzas',
     colSpan: 2,
+    payload: {
+      component: 'BanorteChartCard',
+      props: {
+        id: 'widget-default-bar-chart',
+        chartType: 'bar',
+        title: 'Gastos por Categoría',
+        subtitle: 'Septiembre 2026 · Distribución en MXN',
+        height: 250,
+        categoryKey: 'category',
+        valueKey: 'amount',
+        data: [
+          { category: 'Supermercado', label: 'Supermercado', amount: 5200, value: 5200, color: '#EB0029' },
+          { category: 'Servicios', label: 'Servicios', amount: 3100, value: 3100, color: '#004B87' },
+          { category: 'Restaurantes', label: 'Restaurantes', amount: 2800, value: 2800, color: '#D97706' },
+          { category: 'Transporte', label: 'Transporte', amount: 2250, value: 2250, color: '#8B5CF6' },
+          { category: 'Farmacia', label: 'Farmacia', amount: 1500, value: 1500, color: '#10B981' },
+        ],
+      },
+    },
   },
   {
-    id: 'rent-payment-default',
-    type: 'built_in',
-    builtInKey: 'rent_payment',
-    title: 'Pago recurrente',
-    subtitle: 'Renta mensual',
-    category: 'Pagos',
-    colSpan: 1,
+    id: 'default-heatmap-chart',
+    type: 'a2ui',
+    title: 'Frecuencia de Gastos Diarios (Heatmap)',
+    subtitle: 'Septiembre 2026 · Mapa de calor',
+    category: 'Finanzas',
+    colSpan: 2,
+    payload: {
+      component: 'BanorteChartCard',
+      props: {
+        id: 'widget-default-heatmap-chart',
+        chartType: 'calendarHeatmap',
+        title: 'Frecuencia de Gastos Diarios',
+        subtitle: 'Septiembre 2026 · Intensidad de consumos',
+        height: 240,
+        dateKey: 'date',
+        valueKey: 'value',
+        data: [
+          { date: '2026-09-01', value: 450, count: 2 },
+          { date: '2026-09-02', value: 1200, count: 4 },
+          { date: '2026-09-03', value: 320, count: 1 },
+          { date: '2026-09-04', value: 2800, count: 5 },
+          { date: '2026-09-05', value: 950, count: 3 },
+          { date: '2026-09-06', value: 150, count: 1 },
+          { date: '2026-09-07', value: 4100, count: 6 },
+          { date: '2026-09-08', value: 800, count: 2 },
+          { date: '2026-09-09', value: 1450, count: 3 },
+          { date: '2026-09-10', value: 3100, count: 5 },
+          { date: '2026-09-11', value: 620, count: 2 },
+          { date: '2026-09-12', value: 1890, count: 4 },
+          { date: '2026-09-13', value: 380, count: 1 },
+          { date: '2026-09-14', value: 920, count: 2 },
+          { date: '2026-09-15', value: 5400, count: 7 },
+          { date: '2026-09-16', value: 1100, count: 3 },
+          { date: '2026-09-17', value: 750, count: 2 },
+          { date: '2026-09-18', value: 2400, count: 4 },
+          { date: '2026-09-19', value: 1350, count: 3 },
+          { date: '2026-09-20', value: 290, count: 1 },
+          { date: '2026-09-21', value: 820, count: 2 },
+          { date: '2026-09-22', value: 1640, count: 3 },
+          { date: '2026-09-23', value: 410, count: 1 },
+          { date: '2026-09-24', value: 1980, count: 4 },
+          { date: '2026-09-25', value: 2200, count: 4 },
+          { date: '2026-09-26', value: 680, count: 2 },
+          { date: '2026-09-27', value: 310, count: 1 },
+          { date: '2026-09-28', value: 3800, count: 5 },
+        ],
+      },
+    },
   },
   {
-    id: 'investment-quick-default',
-    type: 'built_in',
-    builtInKey: 'investment_quick',
-    title: 'Fondo de inversión',
-    subtitle: 'Mi inversión al día',
-    category: 'Inversión',
-    colSpan: 1,
+    id: 'default-waterfall-chart',
+    type: 'a2ui',
+    title: 'Conciliación Financiera (Waterfall)',
+    subtitle: 'Septiembre 2026 · Flujo neto de efectivo',
+    category: 'Finanzas',
+    colSpan: 2,
+    payload: {
+      component: 'BanorteChartCard',
+      props: {
+        id: 'widget-default-waterfall-chart',
+        chartType: 'waterfall',
+        title: 'Conciliación Financiera (Waterfall)',
+        subtitle: 'Septiembre 2026 · Flujo neto de efectivo',
+        height: 260,
+        categoryKey: 'etapa',
+        valueKey: 'monto',
+        data: [
+          { etapa: 'Ingresos Nómina', category: 'Ingresos Nómina', monto: 38500, amount: 38500 },
+          { etapa: 'Renta', category: 'Renta', monto: -14200, amount: -14200 },
+          { etapa: 'Supermercado', category: 'Supermercado', monto: -6200, amount: -6200 },
+          { etapa: 'Servicios', category: 'Servicios', monto: -3100, amount: -3100 },
+          { etapa: 'Inversión Ahorro', category: 'Inversión Ahorro', monto: -5000, amount: -5000 },
+          { etapa: 'Saldo Neto', category: 'Saldo Neto', monto: 10000, amount: 10000 },
+        ],
+      },
+    },
   },
 ];
 
@@ -59,13 +137,26 @@ export function loadHomeWidgets(uid: string): MobileWidgetItem[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        // Automatically migrate if localStorage only holds the legacy built-in defaults
+        const hasOnlyOldDefaults = parsed.every((w: MobileWidgetItem) =>
+          w.id === 'weekly-spending-default' ||
+          w.id === 'rent-payment-default' ||
+          w.id === 'investment-quick-default' ||
+          w.builtInKey === 'weekly_spending' ||
+          w.builtInKey === 'rent_payment' ||
+          w.builtInKey === 'investment_quick'
+        );
+        if (hasOnlyOldDefaults) {
+          saveHomeWidgets(uid, DEFAULT_HOME_WIDGETS);
+          return cloneDefaultWidgets();
+        }
         return parsed;
       }
     }
   } catch (err) {
     console.warn('Error loading home widgets:', err);
   }
-  return DEFAULT_HOME_WIDGETS;
+  return cloneDefaultWidgets();
 }
 
 const HOME_WIDGETS_CHANNEL = 'banorte_home_widgets_channel';

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ActionContext } from '../types/a2ui';
+import { InteractiveDrilldownModal } from './InteractiveDrilldownModal';
 
 interface CategoryItem {
   name: string;
@@ -56,6 +57,7 @@ function describeArc(cx: number, cy: number, r: number, innerR: number, startAng
 
 export const SpendingDonutCard: React.FC<SpendingDonutCardProps> = (props) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [drilldownCategory, setDrilldownCategory] = useState<CategoryItem | null>(null);
 
   const rawCats = Array.isArray(props.categories) && props.categories.length > 0 ? props.categories : [
     { name: 'Supermercado & Despensa', amount: 5420, percentage: 36.5, color: '#EB0029' },
@@ -104,130 +106,153 @@ export const SpendingDonutCard: React.FC<SpendingDonutCardProps> = (props) => {
   const activeCategory = hoveredIdx !== null ? cats[hoveredIdx] : null;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-red-100 bg-white text-slate-900 shadow-xs animate-in fade-in duration-200">
-      {/* 1. Authentic Banorte Red Header */}
-      <div className="flex items-center justify-between bg-[#EB0029] px-4 py-3 text-white">
-        <div>
-          <h3 className="text-xs sm:text-sm font-extrabold tracking-tight">
-            Gastos por Categoría · {props.period || 'Septiembre 2026'}
-          </h3>
-          <p className="text-[10px] text-red-100">
-            {props.summary || 'Distribución de tus consumos del periodo en tiempo real'}
-          </p>
+    <>
+      <article className="overflow-hidden rounded-2xl border border-red-100 bg-white text-slate-900 shadow-xs animate-in fade-in duration-200">
+        {/* 1. Authentic Banorte Red Header */}
+        <div className="flex items-center justify-between bg-[#EB0029] px-4 py-3 text-white">
+          <div>
+            <h3 className="text-xs sm:text-sm font-extrabold tracking-tight">
+              Gastos por Categoría · {props.period || 'Septiembre 2026'}
+            </h3>
+            <p className="text-[10px] text-red-100">
+              {props.summary || 'Distribución de tus consumos del periodo en tiempo real (Toca para auditar)'}
+            </p>
+          </div>
+          {props.trend_pct !== undefined ? (
+            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+              {props.trend_pct > 0 ? `+${props.trend_pct}%` : `${props.trend_pct}%`} vs mes ant.
+            </span>
+          ) : (
+            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+              Auditado
+            </span>
+          )}
         </div>
-        {props.trend_pct !== undefined ? (
-          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
-            {props.trend_pct > 0 ? `+${props.trend_pct}%` : `${props.trend_pct}%`} vs mes ant.
-          </span>
-        ) : (
-          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
-            Auditado
-          </span>
-        )}
-      </div>
 
-      {/* 2. Donut Chart Section */}
-      <div className="p-4 flex flex-col items-center">
-        <svg
-          viewBox="0 0 280 220"
-          className="w-full max-w-[280px] h-[200px] overflow-visible"
-          role="img"
-          aria-label="Gráfica de pastel de gastos por categoría"
-        >
-          {arcSegments.map(({ cat, idx, pathD }) => {
-            const isHovered = hoveredIdx === idx;
-            return (
-              <path
-                key={idx}
-                d={pathD}
-                fill={cat.color}
-                stroke="#FFFFFF"
-                strokeWidth={isHovered ? 3 : 2}
-                className="transition-all duration-200 cursor-pointer"
-                style={{
-                  opacity: hoveredIdx !== null && !isHovered ? 0.6 : 1,
-                  transform: isHovered ? 'scale(1.02)' : 'scale(1)',
-                  transformOrigin: `${cx}px ${cy}px`,
-                }}
-                onMouseEnter={() => setHoveredIdx(idx)}
-                onMouseLeave={() => setHoveredIdx(null)}
-              >
-                <title>{`${cat.name}: $${cat.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN (${cat.percentage}%)`}</title>
-              </path>
-            );
-          })}
-
-          {/* Center text hole */}
-          <text x={cx} y={cy - 8} textAnchor="middle" className="text-[10px] font-bold fill-slate-400">
-            {activeCategory ? activeCategory.name.slice(0, 16) : 'Total'}
-          </text>
-          <text
-            x={cx}
-            y={cy + 12}
-            textAnchor="middle"
-            className="text-base font-black fill-slate-900 tabular-nums"
+        {/* 2. Donut Chart Section */}
+        <div className="p-4 flex flex-col items-center">
+          <svg
+            viewBox="0 0 280 220"
+            className="w-full max-w-[280px] h-[200px] overflow-visible"
+            role="img"
+            aria-label="Gráfica de pastel de gastos por categoría"
           >
-            ${(activeCategory ? activeCategory.amount : total).toLocaleString('es-MX', {
-              minimumFractionDigits: 2,
+            {arcSegments.map(({ cat, idx, pathD }) => {
+              const isHovered = hoveredIdx === idx;
+              return (
+                <path
+                  key={idx}
+                  d={pathD}
+                  fill={cat.color}
+                  stroke="#FFFFFF"
+                  strokeWidth={isHovered ? 3 : 2}
+                  className="transition-all duration-200 cursor-pointer hover:filter hover:brightness-110"
+                  style={{
+                    opacity: hoveredIdx !== null && !isHovered ? 0.6 : 1,
+                    transform: isHovered ? 'scale(1.03)' : 'scale(1)',
+                    transformOrigin: `${cx}px ${cy}px`,
+                  }}
+                  onMouseEnter={() => setHoveredIdx(idx)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                  onClick={() => setDrilldownCategory(cat)}
+                >
+                  <title>{`Clic para ver movimientos de ${cat.name}: $${cat.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN (${cat.percentage}%)`}</title>
+                </path>
+              );
             })}
-          </text>
-          <text x={cx} y={cy + 25} textAnchor="middle" className="text-[9px] font-bold fill-slate-400">
-            {activeCategory ? `${activeCategory.percentage}% del total` : 'MXN'}
-          </text>
-        </svg>
-      </div>
 
-      {/* 3. Sleek, Unified Category Breakdown (Single Card, No Detached Table) */}
-      <div className="border-t border-slate-100 bg-slate-50/70 p-3.5 sm:p-4 space-y-3">
-        <div className="flex items-center justify-between px-0.5">
-          <h4 className="text-xs font-black text-slate-800 tracking-tight">Desglose Detallado de Gastos</h4>
-          <span className="text-[10px] text-slate-500 font-semibold">{cats.length} categorías</span>
-        </div>
-
-        <div className="space-y-2.5">
-          {cats.map((c, i) => (
-            <div
-              key={i}
-              className={`space-y-1 p-1.5 rounded-xl transition-colors cursor-pointer ${
-                hoveredIdx === i ? 'bg-white shadow-2xs ring-1 ring-slate-200' : 'hover:bg-white/60'
-              }`}
-              onMouseEnter={() => setHoveredIdx(i)}
-              onMouseLeave={() => setHoveredIdx(null)}
+            {/* Center text hole */}
+            <text x={cx} y={cy - 8} textAnchor="middle" className="text-[10px] font-bold fill-slate-400 pointer-events-none">
+              {activeCategory ? activeCategory.name.slice(0, 16) : 'Total'}
+            </text>
+            <text
+              x={cx}
+              y={cy + 12}
+              textAnchor="middle"
+              className="text-base font-black fill-slate-900 tabular-nums pointer-events-none"
             >
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 min-w-0 pr-2">
-                  <span className="h-2.5 w-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: c.color }} />
-                  <span className="font-bold text-slate-800 truncate text-[11px]">{c.name}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-black tabular-nums text-slate-900 text-[11px]">
-                    ${c.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
-                    <span className="text-[9px] font-bold text-slate-400">MXN</span>
-                  </span>
-                  <span className="rounded-full bg-slate-200/80 px-1.5 py-0.2 font-mono text-[10px] font-bold text-slate-700">
-                    {c.percentage}%
-                  </span>
-                </div>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.max(0, c.percentage))}%`, backgroundColor: c.color }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Total Summary Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200/80 pt-2.5 px-0.5 text-xs font-black text-slate-900">
-          <span className="uppercase tracking-wider text-[10px] text-slate-500">Total Periodo (100%)</span>
-          <span className="tabular-nums text-xs sm:text-sm text-[#EB0029] font-black">
-            ${totalCalculated.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
-            <span className="text-[10px] font-bold text-slate-500">MXN</span>
+              ${(activeCategory ? activeCategory.amount : total).toLocaleString('es-MX', {
+                minimumFractionDigits: 2,
+              })}
+            </text>
+            <text x={cx} y={cy + 25} textAnchor="middle" className="text-[9px] font-bold fill-slate-400 pointer-events-none">
+              {activeCategory ? `${activeCategory.percentage}% del total` : 'MXN'}
+            </text>
+          </svg>
+          <span className="text-[10px] text-slate-400 font-medium -mt-2">
+            💡 Toca un segmento o categoría para auditar sus movimientos
           </span>
         </div>
-      </div>
-    </article>
+
+        {/* 3. Sleek, Unified Category Breakdown */}
+        <div className="border-t border-slate-100 bg-slate-50/70 p-3.5 sm:p-4 space-y-3">
+          <div className="flex items-center justify-between px-0.5">
+            <h4 className="text-xs font-black text-slate-800 tracking-tight">Desglose Detallado de Gastos</h4>
+            <span className="text-[10px] text-slate-500 font-semibold">{cats.length} categorías</span>
+          </div>
+
+          <div className="space-y-2.5">
+            {cats.map((c, i) => (
+              <div
+                key={i}
+                className={`space-y-1 p-2 rounded-xl transition-all duration-150 cursor-pointer ${
+                  hoveredIdx === i ? 'bg-white shadow-sm ring-1 ring-red-200 scale-[1.01]' : 'hover:bg-white/80'
+                }`}
+                onMouseEnter={() => setHoveredIdx(i)}
+                onMouseLeave={() => setHoveredIdx(null)}
+                onClick={() => setDrilldownCategory(c)}
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: c.color }} />
+                    <span className="font-bold text-slate-800 truncate text-[11px]">{c.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-black tabular-nums text-slate-900 text-[11px]">
+                      ${c.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
+                      <span className="text-[9px] font-bold text-slate-400">MXN</span>
+                    </span>
+                    <span className="rounded-full bg-slate-200/80 px-1.5 py-0.2 font-mono text-[10px] font-bold text-slate-700">
+                      {c.percentage}%
+                    </span>
+                  </div>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, c.percentage))}%`, backgroundColor: c.color }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Total Summary Footer */}
+          <div className="flex items-center justify-between border-t border-slate-200/80 pt-2.5 px-0.5 text-xs font-black text-slate-900">
+            <span className="uppercase tracking-wider text-[10px] text-slate-500">Total Periodo (100%)</span>
+            <span className="tabular-nums text-xs sm:text-sm text-[#EB0029] font-black">
+              ${totalCalculated.toLocaleString('es-MX', { minimumFractionDigits: 2 })}{' '}
+              <span className="text-[10px] font-bold text-slate-500">MXN</span>
+            </span>
+          </div>
+        </div>
+      </article>
+
+      {drilldownCategory && (
+        <InteractiveDrilldownModal
+          isOpen={!!drilldownCategory}
+          onClose={() => setDrilldownCategory(null)}
+          title={drilldownCategory.name}
+          category={drilldownCategory.name}
+          period={props.period || 'Septiembre 2026'}
+          month="2026-09"
+          targetAmount={drilldownCategory.amount}
+          color={drilldownCategory.color}
+          subtitle={`${drilldownCategory.percentage}% del gasto total de ${props.period || 'Septiembre 2026'}`}
+        />
+      )}
+    </>
   );
 };
+
+export default SpendingDonutCard;

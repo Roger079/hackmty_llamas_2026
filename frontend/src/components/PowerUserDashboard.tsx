@@ -123,8 +123,117 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
     window.setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Default widgets are empty until the user specifically adds or pins them
-  const getDefaultWidgetsForUser = (): DashboardWidgetItem[] => [];
+  // Default widgets are Bar Chart, Heatmap, and Waterfall
+  const getDefaultWidgetsForUser = (): DashboardWidgetItem[] => [
+    {
+      id: 'default-dash-bar-chart',
+      title: 'Gastos por Categoría (Barras)',
+      component: 'BanorteChartCard',
+      source: 'system',
+      chartType: 'bar',
+      colorTheme: '#EB0029',
+      pinnedAt: '09:00',
+      payload: {
+        component: 'BanorteChartCard',
+        props: {
+          id: 'widget-dash-bar-chart',
+          chartType: 'bar',
+          title: 'Gastos por Categoría',
+          subtitle: 'Septiembre 2026 · Distribución en MXN',
+          height: 260,
+          categoryKey: 'category',
+          valueKey: 'amount',
+          data: [
+            { category: 'Supermercado', label: 'Supermercado', amount: 5200, value: 5200, color: '#EB0029' },
+            { category: 'Servicios', label: 'Servicios', amount: 3100, value: 3100, color: '#004B87' },
+            { category: 'Restaurantes', label: 'Restaurantes', amount: 2800, value: 2800, color: '#D97706' },
+            { category: 'Transporte', label: 'Transporte', amount: 2250, value: 2250, color: '#8B5CF6' },
+            { category: 'Farmacia', label: 'Farmacia', amount: 1500, value: 1500, color: '#10B981' },
+          ],
+        },
+      },
+    },
+    {
+      id: 'default-dash-heatmap-chart',
+      title: 'Frecuencia de Gastos Diarios (Heatmap)',
+      component: 'BanorteChartCard',
+      source: 'system',
+      chartType: 'calendarHeatmap',
+      colorTheme: '#EB0029',
+      pinnedAt: '09:00',
+      payload: {
+        component: 'BanorteChartCard',
+        props: {
+          id: 'widget-dash-heatmap-chart',
+          chartType: 'calendarHeatmap',
+          title: 'Frecuencia de Gastos Diarios',
+          subtitle: 'Septiembre 2026 · Intensidad de consumos',
+          height: 250,
+          dateKey: 'date',
+          valueKey: 'value',
+          data: [
+            { date: '2026-09-01', value: 450, count: 2 },
+            { date: '2026-09-02', value: 1200, count: 4 },
+            { date: '2026-09-03', value: 320, count: 1 },
+            { date: '2026-09-04', value: 2800, count: 5 },
+            { date: '2026-09-05', value: 950, count: 3 },
+            { date: '2026-09-06', value: 150, count: 1 },
+            { date: '2026-09-07', value: 4100, count: 6 },
+            { date: '2026-09-08', value: 800, count: 2 },
+            { date: '2026-09-09', value: 1450, count: 3 },
+            { date: '2026-09-10', value: 3100, count: 5 },
+            { date: '2026-09-11', value: 620, count: 2 },
+            { date: '2026-09-12', value: 1890, count: 4 },
+            { date: '2026-09-13', value: 380, count: 1 },
+            { date: '2026-09-14', value: 920, count: 2 },
+            { date: '2026-09-15', value: 5400, count: 7 },
+            { date: '2026-09-16', value: 1100, count: 3 },
+            { date: '2026-09-17', value: 750, count: 2 },
+            { date: '2026-09-18', value: 2400, count: 4 },
+            { date: '2026-09-19', value: 1350, count: 3 },
+            { date: '2026-09-20', value: 290, count: 1 },
+            { date: '2026-09-21', value: 820, count: 2 },
+            { date: '2026-09-22', value: 1640, count: 3 },
+            { date: '2026-09-23', value: 410, count: 1 },
+            { date: '2026-09-24', value: 1980, count: 4 },
+            { date: '2026-09-25', value: 2200, count: 4 },
+            { date: '2026-09-26', value: 680, count: 2 },
+            { date: '2026-09-27', value: 310, count: 1 },
+            { date: '2026-09-28', value: 3800, count: 5 },
+          ],
+        },
+      },
+    },
+    {
+      id: 'default-dash-waterfall-chart',
+      title: 'Conciliación Financiera (Waterfall)',
+      component: 'BanorteChartCard',
+      source: 'system',
+      chartType: 'waterfall',
+      colorTheme: '#0A5CA8',
+      pinnedAt: '09:00',
+      payload: {
+        component: 'BanorteChartCard',
+        props: {
+          id: 'widget-dash-waterfall-chart',
+          chartType: 'waterfall',
+          title: 'Conciliación Financiera (Waterfall)',
+          subtitle: 'Septiembre 2026 · Flujo neto de efectivo',
+          height: 260,
+          categoryKey: 'etapa',
+          valueKey: 'monto',
+          data: [
+            { etapa: 'Ingresos Nómina', category: 'Ingresos Nómina', monto: 38500, amount: 38500 },
+            { etapa: 'Renta', category: 'Renta', monto: -14200, amount: -14200 },
+            { etapa: 'Supermercado', category: 'Supermercado', monto: -6200, amount: -6200 },
+            { etapa: 'Servicios', category: 'Servicios', monto: -3100, amount: -3100 },
+            { etapa: 'Inversión Ahorro', category: 'Inversión Ahorro', monto: -5000, amount: -5000 },
+            { etapa: 'Saldo Neto', category: 'Saldo Neto', monto: 10000, amount: 10000 },
+          ],
+        },
+      },
+    },
+  ];
 
   const refreshBankState = async (userId: string) => {
     try {
@@ -155,7 +264,13 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
 
     // 2. Load widgets explicitly pinned or sent by the user (localStorage first, then cloud sync)
     const stored = getPinnedWidgets(selectedUserId);
-    setWidgets(stored);
+    if (stored && stored.length > 0) {
+      setWidgets(stored);
+    } else {
+      const defaults = getDefaultWidgetsForUser();
+      setWidgets(defaults);
+      savePinnedWidgets(selectedUserId, defaults);
+    }
     fetchCloudPinnedWidgets(selectedUserId)
       .then((cloudWidgets) => {
         if (cloudWidgets && cloudWidgets.length > 0) {
@@ -407,6 +522,123 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
               minimumPayment: 2100.0,
               dueDate: '27 Sep 2026',
               currentRate: '64.8% CAT',
+            },
+          },
+        };
+        break;
+
+      case 'bar':
+        newWidget = {
+          id: `w-bar-${Date.now()}`,
+          title: 'Gastos por Categoría (Barras)',
+          component: 'BanorteChartCard',
+          source: 'studio',
+          chartType: 'bar',
+          colorTheme: '#EB0029',
+          pinnedAt: timestamp,
+          payload: {
+            component: 'BanorteChartCard',
+            props: {
+              id: `bar-${Date.now()}`,
+              chartType: 'bar',
+              title: 'Gastos por Categoría',
+              subtitle: 'Septiembre 2026 · Distribución en MXN',
+              height: 260,
+              categoryKey: 'category',
+              valueKey: 'amount',
+              data: [
+                { category: 'Supermercado', label: 'Supermercado', amount: 5200, value: 5200, color: '#EB0029' },
+                { category: 'Servicios', label: 'Servicios', amount: 3100, value: 3100, color: '#004B87' },
+                { category: 'Restaurantes', label: 'Restaurantes', amount: 2800, value: 2800, color: '#D97706' },
+                { category: 'Transporte', label: 'Transporte', amount: 2250, value: 2250, color: '#8B5CF6' },
+                { category: 'Farmacia', label: 'Farmacia', amount: 1500, value: 1500, color: '#10B981' },
+              ],
+            },
+          },
+        };
+        break;
+
+      case 'heatmap':
+        newWidget = {
+          id: `w-heatmap-${Date.now()}`,
+          title: 'Frecuencia de Gastos Diarios (Heatmap)',
+          component: 'BanorteChartCard',
+          source: 'studio',
+          chartType: 'calendarHeatmap',
+          colorTheme: '#EB0029',
+          pinnedAt: timestamp,
+          payload: {
+            component: 'BanorteChartCard',
+            props: {
+              id: `heatmap-${Date.now()}`,
+              chartType: 'calendarHeatmap',
+              title: 'Frecuencia de Gastos Diarios',
+              subtitle: 'Septiembre 2026 · Intensidad de consumos',
+              height: 250,
+              dateKey: 'date',
+              valueKey: 'value',
+              data: [
+                { date: '2026-09-01', value: 450, count: 2 },
+                { date: '2026-09-02', value: 1200, count: 4 },
+                { date: '2026-09-03', value: 320, count: 1 },
+                { date: '2026-09-04', value: 2800, count: 5 },
+                { date: '2026-09-05', value: 950, count: 3 },
+                { date: '2026-09-06', value: 150, count: 1 },
+                { date: '2026-09-07', value: 4100, count: 6 },
+                { date: '2026-09-08', value: 800, count: 2 },
+                { date: '2026-09-09', value: 1450, count: 3 },
+                { date: '2026-09-10', value: 3100, count: 5 },
+                { date: '2026-09-11', value: 620, count: 2 },
+                { date: '2026-09-12', value: 1890, count: 4 },
+                { date: '2026-09-13', value: 380, count: 1 },
+                { date: '2026-09-14', value: 920, count: 2 },
+                { date: '2026-09-15', value: 5400, count: 7 },
+                { date: '2026-09-16', value: 1100, count: 3 },
+                { date: '2026-09-17', value: 750, count: 2 },
+                { date: '2026-09-18', value: 2400, count: 4 },
+                { date: '2026-09-19', value: 1350, count: 3 },
+                { date: '2026-09-20', value: 290, count: 1 },
+                { date: '2026-09-21', value: 820, count: 2 },
+                { date: '2026-09-22', value: 1640, count: 3 },
+                { date: '2026-09-23', value: 410, count: 1 },
+                { date: '2026-09-24', value: 1980, count: 4 },
+                { date: '2026-09-25', value: 2200, count: 4 },
+                { date: '2026-09-26', value: 680, count: 2 },
+                { date: '2026-09-27', value: 310, count: 1 },
+                { date: '2026-09-28', value: 3800, count: 5 },
+              ],
+            },
+          },
+        };
+        break;
+
+      case 'waterfall':
+        newWidget = {
+          id: `w-waterfall-${Date.now()}`,
+          title: 'Conciliación Financiera (Waterfall)',
+          component: 'BanorteChartCard',
+          source: 'studio',
+          chartType: 'waterfall',
+          colorTheme: '#0A5CA8',
+          pinnedAt: timestamp,
+          payload: {
+            component: 'BanorteChartCard',
+            props: {
+              id: `waterfall-${Date.now()}`,
+              chartType: 'waterfall',
+              title: 'Conciliación Financiera (Waterfall)',
+              subtitle: 'Septiembre 2026 · Flujo neto de efectivo',
+              height: 260,
+              categoryKey: 'etapa',
+              valueKey: 'monto',
+              data: [
+                { etapa: 'Ingresos Nómina', category: 'Ingresos Nómina', monto: 38500, amount: 38500 },
+                { etapa: 'Renta', category: 'Renta', monto: -14200, amount: -14200 },
+                { etapa: 'Supermercado', category: 'Supermercado', monto: -6200, amount: -6200 },
+                { etapa: 'Servicios', category: 'Servicios', monto: -3100, amount: -3100 },
+                { etapa: 'Inversión Ahorro', category: 'Inversión Ahorro', monto: -5000, amount: -5000 },
+                { etapa: 'Saldo Neto', category: 'Saldo Neto', monto: 10000, amount: 10000 },
+              ],
             },
           },
         };
@@ -866,6 +1098,39 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                         <div>
                           <div className="font-bold text-emerald-700">⚡ SPEI 1-Clic Instantáneo</div>
                           <div className="text-[10px] text-slate-400">Enviar $850 a Sofía en un toque</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAddWidgetFromCatalog('bar')}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                      >
+                        <BarChart3 className="h-4 w-4 text-[#EB0029]" />
+                        <div>
+                          <div className="font-bold text-slate-800">Gastos por Categoría (Barras)</div>
+                          <div className="text-[10px] text-slate-400">Comparativa mensual de gastos</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAddWidgetFromCatalog('heatmap')}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                      >
+                        <Activity className="h-4 w-4 text-rose-500" />
+                        <div>
+                          <div className="font-bold text-slate-800">Frecuencia Diaria (Heatmap)</div>
+                          <div className="text-[10px] text-slate-400">Mapa de calor últimos 30 días</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAddWidgetFromCatalog('waterfall')}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                      >
+                        <TrendingUp className="h-4 w-4 text-blue-700" />
+                        <div>
+                          <div className="font-bold text-slate-800">Conciliación (Waterfall)</div>
+                          <div className="text-[10px] text-slate-400">Ingresos vs Gastos vs Saldo Neto</div>
                         </div>
                       </button>
                       <button

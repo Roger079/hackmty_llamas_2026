@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ArrowLeft, Zap, Wifi, Droplets, Flame, ShieldCheck, CheckCircle2, Calendar, Sparkles, RefreshCw } from 'lucide-react';
 
 export interface ServiceItem {
@@ -151,16 +152,47 @@ export const MobileBillPayModal: React.FC<MobileBillPayModalProps> = ({
     }
   };
 
-  return (
+  // Freeze background page scroll while modal is active so it stays anchored to the current viewport
+  useEffect(() => {
+    if (!isOpen && !isClosing) return;
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    const originalOverscroll = document.body.style.overscrollBehavior;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    document.body.style.overscrollBehavior = 'none';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+      document.body.style.overscrollBehavior = originalOverscroll;
+    };
+  }, [isOpen, isClosing]);
+
+  if (!isOpen && !isClosing) return null;
+  if (typeof document === 'undefined') return null;
+
+  const modalContent = (
     <div
       onClick={handleClose}
-      className={`fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm transition-opacity ${
+      className={`fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden flex items-end justify-center bg-black/60 backdrop-blur-sm transition-opacity p-0 touch-none overscroll-none ${
         isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop'
       }`}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: '100dvh',
+        width: '100vw',
+        zIndex: 100,
+      }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-lg overflow-hidden rounded-t-[32px] bg-white shadow-2xl flex flex-col max-h-[90vh] ${
+        className={`w-full max-w-lg overflow-hidden rounded-t-[32px] bg-white shadow-2xl flex flex-col max-h-[85dvh] border border-slate-100 touch-auto ${
           isClosing ? 'animate-modal-sheet-down' : 'animate-modal-sheet'
         }`}
         role="dialog"
@@ -416,5 +448,7 @@ export const MobileBillPayModal: React.FC<MobileBillPayModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 export default MobileBillPayModal;

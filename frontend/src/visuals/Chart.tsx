@@ -1,12 +1,83 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import type { ChartProps, RecordRow, SeriesConfig } from './types';
 import { arc, extent, format, num, palette, path, pointer, resolve, rows, scale, statusColor } from './utils';
+import { InteractiveDrilldownModal } from '../components/InteractiveDrilldownModal';
+import { parseMonthString } from '../utils/transactionDrilldownService';
 
-const margin={top:30,right:20,bottom:42,left:58};
-function useWidth(){const ref=useRef<HTMLDivElement>(null);const [w,setW]=useState(640);useEffect(()=>{const o=new ResizeObserver(()=>setW(ref.current?.clientWidth||640));if(ref.current)o.observe(ref.current);return()=>o.disconnect()},[]);return[ref,w] as const}
-const axis=(w:number,h:number,values:number[],fmt:(x:number)=>string)=>{const [lo,hi]=extent(values);const ticks=Array.from({length:5},(_,i)=>lo+(hi-lo)*i/4);return <>{ticks.map(v=>{const y=scale(v,[lo,hi],[h-margin.bottom,margin.top]);return <g key={v}><line x1={margin.left} x2={w-margin.right} y1={y} y2={y} stroke="#E6EDF4"/><text x={margin.left-9} y={y+4} textAnchor="end" fontSize="10" fill="#6D85A1">{fmt(v)}</text></g>})}<line x1={margin.left} x2={w-margin.right} y1={h-margin.bottom} y2={h-margin.bottom} stroke="#C9D7E5"/></>}
-function pointsFor(data:RecordRow[], s:SeriesConfig, i:number, w:number,h:number, all:number[]){const xk=s.xKey||'x',yk=s.yKey||'y',[lo,hi]=extent(all);return data.map((d,j)=>({d,x:scale(j,[0,Math.max(data.length-1,1)],[margin.left,w-margin.right]),y:scale(num(d[yk]),[lo,hi],[h-margin.bottom,margin.top]),v:num(d[yk]),label:String(d[xk]??j),color:s.color||palette[i%palette.length]}))}
-function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:RecordRow[];series:SeriesConfig[]}){
+export interface ChartDrilldownRequest {
+  title: string;
+  category?: string;
+  date?: string;
+  month?: string;
+  period?: string;
+  amount?: number;
+  color?: string;
+  subtitle?: string;
+}
+
+const margin = { top: 30, right: 20, bottom: 42, left: 58 };
+
+function useWidth() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(640);
+  useEffect(() => {
+    const o = new ResizeObserver(() => setW(ref.current?.clientWidth || 640));
+    if (ref.current) o.observe(ref.current);
+    return () => o.disconnect();
+  }, []);
+  return [ref, w] as const;
+}
+
+const axis = (w: number, h: number, values: number[], fmt: (x: number) => string) => {
+  const [lo, hi] = extent(values);
+  const ticks = Array.from({ length: 5 }, (_, i) => lo + (hi - lo) * i / 4);
+  return (
+    <>
+      {ticks.map(v => {
+        const y = scale(v, [lo, hi], [h - margin.bottom, margin.top]);
+        return (
+          <g key={v}>
+            <line x1={margin.left} x2={w - margin.right} y1={y} y2={y} stroke="#E6EDF4" />
+            <text x={margin.left - 9} y={y + 4} textAnchor="end" fontSize="10" fill="#6D85A1">
+              {fmt(v)}
+            </text>
+          </g>
+        );
+      })}
+      <line x1={margin.left} x2={w - margin.right} y1={h - margin.bottom} y2={h - margin.bottom} stroke="#C9D7E5" />
+    </>
+  );
+};
+
+function pointsFor(data: RecordRow[], s: SeriesConfig, i: number, w: number, h: number, all: number[]) {
+  const xk = s.xKey || 'x', yk = s.yKey || 'y', [lo, hi] = extent(all);
+  return data.map((d, j) => ({
+    d,
+    x: scale(j, [0, Math.max(data.length - 1, 1)], [margin.left, w - margin.right]),
+    y: scale(num(d[yk]), [lo, hi], [h - margin.bottom, margin.top]),
+    v: num(d[yk]),
+    label: String(d[xk] ?? j),
+    color: s.color || palette[i % palette.length]
+  }));
+}
+
+function Cartesian({
+  p,
+  w,
+  h,
+  data,
+  series,
+  chartMonth,
+  onDrilldown
+}: {
+  p: ChartProps;
+  w: number;
+  h: number;
+  data: RecordRow[];
+  series: SeriesConfig[];
+  chartMonth: string;
+  onDrilldown?: (req: ChartDrilldownRequest) => void;
+}) {
   const rawData = data.length ? data : rows(p.data, p.dataPath);
   const firstRow = rawData[0] || {};
   const catKey = p.categoryKey || Object.keys(firstRow).find(k => typeof firstRow[k] === 'string' && !['color', 'status'].includes(k)) || 'label';
@@ -51,10 +122,24 @@ function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:Rec
   const marks = p.chartType === 'barHorizontal' ? main.map((d, i) => {
     const v = num(d[p.valueKey || series[0]?.yKey || 'value']);
     const yy = margin.top + i * (h - margin.top - margin.bottom) / count;
+    const barColor = v < 0 ? p.colorNegative || '#C7354F' : p.colorPositive || '#E4003B';
+    const labelStr = String(d[catKey] ?? '');
+    const barMonth = parseMonthString(labelStr) || chartMonth;
     return (
-      <g key={i}>
-        <text x={margin.left - 7} y={yy + 15} textAnchor="end" fontSize="10" fill="#526B87" fontWeight="600">
-          {String(d[catKey] ?? '')}
+      <g
+        key={i}
+        className="group cursor-pointer"
+        onClick={() => onDrilldown?.({
+          title: labelStr || 'Detalle de Movimiento',
+          category: labelStr,
+          amount: Math.abs(v),
+          color: barColor,
+          month: barMonth,
+          subtitle: `Gastos correspondientes a ${labelStr}`,
+        })}
+      >
+        <text x={margin.left - 7} y={yy + 15} textAnchor="end" fontSize="10" fill="#526B87" fontWeight="600" className="group-hover:fill-[#EB0029] transition-colors">
+          {labelStr}
         </text>
         <rect
           x={margin.left}
@@ -62,8 +147,11 @@ function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:Rec
           width={scale(v, [0, Math.max(hi, 1)], [0, w - margin.left - margin.right])}
           height={Math.max(8, (h - margin.top - margin.bottom) / count - 8)}
           rx="5"
-          fill={v < 0 ? p.colorNegative || '#C7354F' : p.colorPositive || '#E4003B'}
-        />
+          fill={barColor}
+          className="transition-all duration-150 group-hover:opacity-85 group-hover:brightness-110 group-hover:scale-x-[1.01]"
+        >
+          <title>{`${labelStr}: ${format(v, p.valueFormat, p.currency)}`}</title>
+        </rect>
       </g>
     );
   }) : isBarFamily ? main.flatMap((d, i) => {
@@ -83,6 +171,9 @@ function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:Rec
           ? (series[k]?.color || palette[k % palette.length])
           : (d.color || series[0]?.color || palette[i % palette.length])
       );
+      const barTitle = String(resolve(series[k]?.name, p.data) || d[catKey] || 'Valor');
+      const rawCatStr = String(d[catKey] || barTitle);
+      const barMonth = parseMonthString(rawCatStr) || chartMonth;
 
       return (
         <rect
@@ -93,8 +184,18 @@ function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:Rec
           height={Math.max(hh, 2)}
           rx="3"
           fill={barColor}
+          className="transition-all duration-150 hover:opacity-85 hover:brightness-110 hover:scale-y-[1.02] cursor-pointer"
+          style={{ transformOrigin: `${xx + barW / 2}px ${yy + hh}px` }}
+          onClick={() => onDrilldown?.({
+            title: barTitle,
+            category: rawCatStr,
+            amount: Math.abs(v),
+            color: barColor,
+            month: barMonth,
+            subtitle: `Total registrado: ${format(v, p.valueFormat, p.currency)}`,
+          })}
         >
-          <title>{`${series[k]?.name || String(d[catKey] || 'Valor')}: ${format(v, p.valueFormat, p.currency)}`}</title>
+          <title>{`${barTitle}: ${format(v, p.valueFormat, p.currency)}`}</title>
         </rect>
       );
     });
@@ -107,9 +208,31 @@ function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:Rec
       <g key={i}>
         {fill && <path d={fill} fill={pts[0]?.color} opacity=".14" />}
         <path d={d} fill="none" stroke={pts[0]?.color} strokeWidth="2.5" />
-        {pts.map((q, j) => (
-          <circle key={j} cx={q.x} cy={q.y} r="3" fill="#fff" stroke={q.color} strokeWidth="2" />
-        ))}
+        {pts.map((q, j) => {
+          const ptTitle = `${String(resolve(s.name, p.data) || 'Registro')}: ${q.label}`;
+          const ptMonth = parseMonthString(q.label) || chartMonth;
+          return (
+            <circle
+              key={j}
+              cx={q.x}
+              cy={q.y}
+              r="3.5"
+              fill="#fff"
+              stroke={q.color}
+              strokeWidth="2"
+              className="cursor-pointer hover:r-5 transition-all"
+              onClick={() => onDrilldown?.({
+                title: ptTitle,
+                category: q.label,
+                amount: Math.abs(q.v),
+                color: q.color,
+                month: ptMonth,
+              })}
+            >
+              <title>{`${q.label}: ${format(q.v, p.valueFormat, p.currency)}`}</title>
+            </circle>
+          );
+        })}
       </g>
     );
   });
@@ -128,8 +251,96 @@ function Cartesian({p,w,h,data,series}: {p:ChartProps;w:number;h:number;data:Rec
     </>
   );
 }
-function Radial({p,w,h,data}:{p:ChartProps;w:number;h:number;data:RecordRow[]}){const cx=w/2,cy=h/2,r=Math.min(w,h)/2-30, vals:number[]=data.map(d=>num(d[p.valueKey||'value']));const total=vals.reduce((a,b)=>a+b,0)||1;let angle=-Math.PI/2;return <>{data.map((d,i)=>{const next=angle+Math.max(0,vals[i])/total*Math.PI*2;const out=<path key={i} d={arc(cx,cy,r,angle,next,p.chartType==='donut'?r*.6:0)} fill={palette[i%palette.length]} stroke="#FFFFFF" strokeWidth="2" onClick={()=>p.action&&p.onAction?.(p.action.event,d)} style={{cursor:p.action?'pointer':'default'}}/>;angle=next;return out})}<text x={cx} y={cy-2} textAnchor="middle" fontSize="11" fill="#6D85A1" fontWeight="600">{p.chartType==='donut'?'Total':''}</text><text x={cx} y={cy+18} textAnchor="middle" fontSize="18" fontWeight="700" fill="#061D3A">{p.chartType==='donut'?format(total,p.valueFormat,p.currency):''}</text></>}
-function Gauge({p,w,h}:{p:ChartProps;w:number;h:number}){const min=num(resolve(p.gaugeMin,p.data)),max=num(resolve(p.gaugeMax,p.data),100),value=num(resolve(p.gaugeValue,p.data));const cx=w/2,cy=h*.76,r=Math.min(w*.38,h*.62),ratio=Math.max(0,Math.min(1,(value-min)/(max-min||1)));const bands=p.thresholds||[{from:min,to:max,status:'neutral'} as any];return <>{bands.map((b,i)=>{const from=num(resolve(b.from,p.data)),to=num(resolve(b.to,p.data));return <path key={i} d={arc(cx,cy,r,Math.PI+Math.PI*(from-min)/(max-min||1),Math.PI+Math.PI*(to-min)/(max-min||1),r-15)} fill={statusColor[(b.status||'neutral') as keyof typeof statusColor]}/>})}<line x1={cx} y1={cy} x2={cx+r*.78*Math.cos(Math.PI+Math.PI*ratio)} y2={cy+r*.78*Math.sin(Math.PI+Math.PI*ratio)} stroke="#061D3A" strokeWidth="3"/><circle cx={cx} cy={cy} r="6" fill="#061D3A"/><text x={cx} y={cy+30} textAnchor="middle" fontSize="22" fontWeight="700" fill="#061D3A">{format(value,p.valueFormat,p.currency)}</text></>}
+
+function Radial({
+  p,
+  w,
+  h,
+  data,
+  chartMonth,
+  onDrilldown
+}: {
+  p: ChartProps;
+  w: number;
+  h: number;
+  data: RecordRow[];
+  chartMonth: string;
+  onDrilldown?: (req: ChartDrilldownRequest) => void;
+}) {
+  const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 30;
+  const vals: number[] = data.map(d => num(d[p.valueKey || 'value']));
+  const total = vals.reduce((a, b) => a + b, 0) || 1;
+  let angle = -Math.PI / 2;
+
+  return (
+    <>
+      {data.map((d, i) => {
+        const next = angle + Math.max(0, vals[i]) / total * Math.PI * 2;
+        const catName = String(d[p.categoryKey || 'label'] || d['name'] || `Categoría ${i + 1}`);
+        const sliceColor = palette[i % palette.length];
+        const pct = Math.round((vals[i] / total) * 100);
+        const out = (
+          <path
+            key={i}
+            d={arc(cx, cy, r, angle, next, p.chartType === 'donut' ? r * 0.6 : 0)}
+            fill={sliceColor}
+            stroke="#FFFFFF"
+            strokeWidth="2"
+            className="transition-all duration-200 hover:opacity-90 hover:brightness-105 cursor-pointer hover:scale-102"
+            style={{ transformOrigin: `${cx}px ${cy}px` }}
+            onClick={() => {
+              if (p.action) p.onAction?.(p.action.event, d);
+              onDrilldown?.({
+                title: catName,
+                category: catName,
+                amount: vals[i],
+                color: sliceColor,
+                month: chartMonth,
+                subtitle: `${pct}% del total registrado`,
+              });
+            }}
+          >
+            <title>{`${catName}: ${format(vals[i], p.valueFormat || 'currency', p.currency || 'MXN')} (${pct}%)`}</title>
+          </path>
+        );
+        angle = next;
+        return out;
+      })}
+      <text x={cx} y={cy - 2} textAnchor="middle" fontSize="11" fill="#6D85A1" fontWeight="600">
+        {p.chartType === 'donut' ? 'Total' : ''}
+      </text>
+      <text x={cx} y={cy + 18} textAnchor="middle" fontSize="18" fontWeight="700" fill="#061D3A">
+        {p.chartType === 'donut' ? format(total, p.valueFormat, p.currency) : ''}
+      </text>
+    </>
+  );
+}
+
+function Gauge({ p, w, h }: { p: ChartProps; w: number; h: number }) {
+  const min = num(resolve(p.gaugeMin, p.data)), max = num(resolve(p.gaugeMax, p.data), 100), value = num(resolve(p.gaugeValue, p.data));
+  const cx = w / 2, cy = h * 0.76, r = Math.min(w * 0.38, h * 0.62), ratio = Math.max(0, Math.min(1, (value - min) / (max - min || 1)));
+  const bands = p.thresholds || [{ from: min, to: max, status: 'neutral' } as any];
+  return (
+    <>
+      {bands.map((b, i) => {
+        const from = num(resolve(b.from, p.data)), to = num(resolve(b.to, p.data));
+        return (
+          <path
+            key={i}
+            d={arc(cx, cy, r, Math.PI + Math.PI * (from - min) / (max - min || 1), Math.PI + Math.PI * (to - min) / (max - min || 1), r - 15)}
+            fill={statusColor[(b.status || 'neutral') as keyof typeof statusColor]}
+          />
+        );
+      })}
+      <line x1={cx} y1={cy} x2={cx + r * 0.78 * Math.cos(Math.PI + Math.PI * ratio)} y2={cy + r * 0.78 * Math.sin(Math.PI + Math.PI * ratio)} stroke="#061D3A" strokeWidth="3" />
+      <circle cx={cx} cy={cy} r="6" fill="#061D3A" />
+      <text x={cx} y={cy + 30} textAnchor="middle" fontSize="22" fontWeight="700" fill="#061D3A">
+        {format(value, p.valueFormat, p.currency)}
+      </text>
+    </>
+  );
+}
+
 function toSafeArray<T>(...candidates: unknown[]): T[] {
   for (const item of candidates) {
     if (Array.isArray(item)) return item as T[];
@@ -137,7 +348,19 @@ function toSafeArray<T>(...candidates: unknown[]): T[] {
   return [];
 }
 
-function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
+function SankeyDiagram({
+  p,
+  w,
+  h,
+  chartMonth,
+  onDrilldown
+}: {
+  p: ChartProps;
+  w: number;
+  h: number;
+  chartMonth: string;
+  onDrilldown?: (req: ChartDrilldownRequest) => void;
+}) {
   const nodeFromPointer = p.sankeyNodesPath ? pointer(p.data, p.sankeyNodesPath) : undefined;
   const linkFromPointer = p.sankeyLinksPath ? pointer(p.data, p.sankeyLinksPath) : undefined;
 
@@ -152,8 +375,6 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
     (p as any).links
   );
 
-  // Payloads produced by different A2UI surfaces use either id/label or name.
-  // Normalize both shapes before the layout pass so malformed data degrades safely.
   let nodes: Array<{ id: string; label: string; color?: string }> = rawNodesInput.map((node: any, index) => ({
     id: String(node?.id ?? node?.name ?? `node_${index}`),
     label: String(node?.label ?? node?.name ?? node?.id ?? `Categoría ${index + 1}`),
@@ -250,55 +471,66 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
     }
   });
 
-  const nodeArr = Array.from(nodeMap.values());
-  nodeArr.forEach(n => {
-    if (n.inLinks.length === 0 && n.outLinks.length > 0) {
+  nodeMap.forEach(n => {
+    const inSum = n.inLinks.reduce((sum, l) => sum + num(l.value), 0);
+    const outSum = n.outLinks.reduce((sum, l) => sum + num(l.value), 0);
+    n.value = Math.max(inSum, outSum, 1);
+  });
+
+  nodeMap.forEach(n => {
+    if (n.inLinks.length === 0) {
       n.column = 0;
     }
   });
 
-  for (let pass = 0; pass < 4; pass++) {
+  let changed = true;
+  let iters = 0;
+  while (changed && iters < 10) {
+    changed = false;
+    iters++;
     links.forEach(l => {
       const src = nodeMap.get(l.source);
       const tgt = nodeMap.get(l.target);
-      if (src && tgt) {
-        tgt.column = Math.max(tgt.column, src.column + 1);
+      if (src && tgt && tgt.column <= src.column) {
+        tgt.column = src.column + 1;
+        changed = true;
       }
     });
   }
 
+  const nodeArr = Array.from(nodeMap.values());
+  const maxCol = Math.max(...nodeArr.map(n => n.column), 1);
+
+  const leftPad = w < 440 ? 60 : 80;
+  const rightPad = w < 440 ? 60 : 80;
+  const usableW = Math.max(w - leftPad - rightPad, 120);
+
+  const colWidth = usableW / maxCol;
   nodeArr.forEach(n => {
-    const outSum = n.outLinks.reduce((sum, l) => sum + num(l.value), 0);
-    const inSum = n.inLinks.reduce((sum, l) => sum + num(l.value), 0);
-    n.value = Math.max(outSum, inSum, 1);
+    n.x = leftPad + n.column * colWidth;
   });
 
-  const maxCol = Math.max(...nodeArr.map(n => n.column), 1);
-  const padLeft = w < 440 ? 80 : 125;
-  const padRight = w < 440 ? 85 : 130;
-  const padTop = 24;
-  const padBottom = 26;
-  const usableW = Math.max(w - padLeft - padRight, 100);
-  const usableH = Math.max(h - padTop - padBottom, 120);
+  const columns: Array<typeof nodeArr> = Array.from({ length: maxCol + 1 }, () => []);
+  nodeArr.forEach(n => columns[n.column].push(n));
 
-  for (let col = 0; col <= maxCol; col++) {
-    const colNodes = nodeArr.filter(n => n.column === col);
-    if (!colNodes.length) continue;
-    const colX = padLeft + (col / (maxCol || 1)) * (usableW - 16);
-    const colVal = colNodes.reduce((sum, n) => sum + n.value, 0) || 1;
-    const gap = Math.max(6, Math.min(18, (usableH * 0.22) / Math.max(colNodes.length - 1, 1)));
+  const topPad = 24;
+  const botPad = 28;
+  const usableH = Math.max(h - topPad - botPad, 100);
+
+  columns.forEach(colNodes => {
+    if (!colNodes.length) return;
+    const colTotalVal = colNodes.reduce((sum, n) => sum + n.value, 0) || 1;
+    const gap = 12;
     const totalGaps = (colNodes.length - 1) * gap;
-    const availForNodes = Math.max(usableH - totalGaps, colNodes.length * 16);
+    const availForNodes = Math.max(usableH - totalGaps, colNodes.length * 10);
 
-    let curY = padTop;
+    let currY = topPad;
     colNodes.forEach(n => {
-      n.w = 16;
-      n.h = Math.max(16, (n.value / colVal) * availForNodes);
-      n.x = colX;
-      n.y = curY;
-      curY += n.h + gap;
+      n.h = Math.max(8, (n.value / colTotalVal) * availForNodes);
+      n.y = currY;
+      currY += n.h + gap;
     });
-  }
+  });
 
   const srcOffset = new Map<string, number>();
   const tgtOffset = new Map<string, number>();
@@ -353,11 +585,21 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
           fill={`url(#${gradId})`}
           stroke={strokeColor}
           strokeWidth="0.5"
-          strokeOpacity="0.25"
-          className="transition-all duration-200 hover:opacity-90"
+          strokeOpacity="0.3"
+          className="transition-all duration-200 hover:opacity-90 hover:stroke-width-2 cursor-pointer filter hover:drop-shadow-sm"
           style={{ cursor: 'pointer' }}
+          onClick={() => {
+            onDrilldown?.({
+              title: tgt.label,
+              category: tgt.label,
+              amount: val,
+              color: tgt.color,
+              month: chartMonth,
+              subtitle: `Flujo desde ${src.label}`,
+            });
+          }}
         >
-          <title>{`${src.label} → ${tgt.label}: ${format(val, p.valueFormat || 'currency', p.currency || 'MXN')}`}</title>
+          <title>{`Clic para auditar movimientos de ${src.label} → ${tgt.label}: ${format(val, p.valueFormat || 'currency', p.currency || 'MXN')}`}</title>
         </path>
       </g>
     );
@@ -373,7 +615,20 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
         const displayLabel = n.label.length > maxLen ? n.label.slice(0, maxLen - 1) + '…' : n.label;
 
         return (
-          <g key={n.id}>
+          <g
+            key={n.id}
+            className="group cursor-pointer"
+            onClick={() => {
+              onDrilldown?.({
+                title: n.label,
+                category: n.label,
+                amount: n.value,
+                color: n.color,
+                month: chartMonth,
+                subtitle: `${n.column === 0 ? 'Nómina / Abono registrado' : 'Gasto por concepto'} (${format(n.value, p.valueFormat || 'currency', p.currency || 'MXN')})`,
+              });
+            }}
+          >
             <rect
               x={n.x}
               y={n.y}
@@ -383,8 +638,10 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
               fill={n.color}
               stroke="#FFFFFF"
               strokeWidth="2"
+              className="transition-all duration-200 group-hover:scale-105 group-hover:filter group-hover:drop-shadow-md"
+              style={{ transformOrigin: `${n.x + n.w / 2}px ${n.y + n.h / 2}px` }}
             >
-              <title>{`${n.label}: ${format(n.value, p.valueFormat || 'currency', p.currency || 'MXN')}`}</title>
+              <title>{`Clic para ver movimientos de ${n.label}: ${format(n.value, p.valueFormat || 'currency', p.currency || 'MXN')}`}</title>
             </rect>
             {isLeft ? (
               <g>
@@ -395,6 +652,7 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
                   fontSize="10"
                   fontWeight="700"
                   fill="#061D3A"
+                  className="group-hover:fill-[#EB0029] transition-colors"
                 >
                   {displayLabel}
                 </text>
@@ -418,6 +676,7 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
                   fontSize="10"
                   fontWeight="700"
                   fill="#061D3A"
+                  className="group-hover:fill-[#EB0029] transition-colors"
                 >
                   {displayLabel}
                 </text>
@@ -440,6 +699,7 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
                 fontSize="9"
                 fontWeight="700"
                 fill="#061D3A"
+                className="group-hover:fill-[#EB0029] transition-colors"
               >
                 {displayLabel}
               </text>
@@ -451,7 +711,21 @@ function SankeyDiagram({ p, w, h }: { p: ChartProps; w: number; h: number }) {
   );
 }
 
-function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: number; data: RecordRow[] }) {
+function CalendarHeatmapChart({
+  p,
+  w,
+  h,
+  data,
+  chartMonth,
+  onDrilldown
+}: {
+  p: ChartProps;
+  w: number;
+  h: number;
+  data: RecordRow[];
+  chartMonth: string;
+  onDrilldown?: (req: ChartDrilldownRequest) => void;
+}) {
   const key = p.valueKey || 'value';
   const dateKey = p.dateKey || 'date';
 
@@ -461,7 +735,7 @@ function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: 
   }
   if (!items.length) {
     items = Array.from({ length: 30 }, (_, i) => ({
-      date: `2026-09-${String(i + 1).padStart(2, '0')}`,
+      date: `${chartMonth}-${String(i + 1).padStart(2, '0')}`,
       value: [1, 15, 30].includes(i + 1) ? 1850 : (i % 3 === 0 ? 320 : i % 2 === 0 ? 150 : 0)
     }));
   }
@@ -477,7 +751,6 @@ function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: 
   const startY = 24;
   const availGridH = Math.max(h - startY - 36, 120);
 
-  // Compute maximum cell size that fits both horizontally and vertically
   const maxCellW = Math.floor((availW - 6 * cellGap) / 7);
   const maxCellH = Math.floor((availGridH - (numRows - 1) * cellGap) / numRows);
   const cellSize = Math.max(18, Math.min(maxCellW, maxCellH, 44));
@@ -511,10 +784,25 @@ function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: 
         const intensity = val > 0 ? Math.max(0.18, Math.min(1, val / maxVal)) : 0;
         const fillColor = val === 0 ? '#F1F5F9' : '#EB0029';
         const fillOpacity = val === 0 ? 0.9 : intensity;
-        const dateStr = String(d[dateKey] || `Día ${i + 1}`);
+        const dateStr = String(d[dateKey] || `${chartMonth}-${String(i + 1).padStart(2, '0')}`);
+        const cellMonth = dateStr ? dateStr.slice(0, 7) : chartMonth;
 
         return (
-          <g key={i}>
+          <g
+            key={i}
+            className="group cursor-pointer"
+            onClick={() => {
+              onDrilldown?.({
+                title: `Movimientos del ${dateStr}`,
+                date: dateStr,
+                month: cellMonth,
+                category: 'Gasto Diario',
+                amount: val,
+                color: val > 0 ? '#EB0029' : '#64748B',
+                subtitle: val > 0 ? `Total gastado en el día: ${format(val, 'currency', 'MXN')}` : 'Sin compras registradas este día',
+              });
+            }}
+          >
             <rect
               x={x}
               y={y}
@@ -525,10 +813,10 @@ function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: 
               fillOpacity={fillOpacity}
               stroke={val > 0 ? '#EB0029' : '#E2E8F0'}
               strokeWidth="1"
-              className="transition-all hover:stroke-[#061D3A] hover:stroke-[2px]"
-              style={{ cursor: 'pointer' }}
+              className="transition-all duration-150 group-hover:stroke-[#061D3A] group-hover:stroke-[2.5px] group-hover:scale-105"
+              style={{ cursor: 'pointer', transformOrigin: `${x + cellSize / 2}px ${y + cellSize / 2}px` }}
             >
-              <title>{`${dateStr}: ${format(val, p.valueFormat || 'currency', p.currency || 'MXN')}`}</title>
+              <title>{`Clic para auditar movimientos del ${dateStr}: ${format(val, p.valueFormat || 'currency', p.currency || 'MXN')}`}</title>
             </rect>
             <text
               x={x + cellSize / 2}
@@ -557,7 +845,21 @@ function CalendarHeatmapChart({ p, w, h, data }: { p: ChartProps; w: number; h: 
   );
 }
 
-function WaterfallChart({ p, w, h, data }: { p: ChartProps; w: number; h: number; data: RecordRow[] }) {
+function WaterfallChart({
+  p,
+  w,
+  h,
+  data,
+  chartMonth,
+  onDrilldown
+}: {
+  p: ChartProps;
+  w: number;
+  h: number;
+  data: RecordRow[];
+  chartMonth: string;
+  onDrilldown?: (req: ChartDrilldownRequest) => void;
+}) {
   const key = p.valueKey || 'monto';
   const catKey = p.categoryKey || 'etapa';
   const items = data.length ? data : rows(p.data, p.dataPath);
@@ -589,7 +891,6 @@ function WaterfallChart({ p, w, h, data }: { p: ChartProps; w: number; h: number
 
   const allVals = bars.flatMap(b => [b.base, b.top, 0]);
   const [lo, hi] = extent(allVals);
-  // Add 15% headroom above top values so bars and labels never hit the SVG top edge
   const maxRange = Math.max(hi * 1.15, 1);
   const minRange = Math.min(lo < 0 ? lo * 1.15 : 0, 0);
 
@@ -608,12 +909,10 @@ function WaterfallChart({ p, w, h, data }: { p: ChartProps; w: number; h: number
         const hh = Math.max(Math.abs(yBase - yTop), 3);
         const color = b.isTotal ? '#0A5CA8' : b.isPositive ? '#008A5A' : '#EB0029';
 
-        // Keep labels from clipping top border or colliding inside the bar
         const isNearTop = yTop - 6 < margin.top + 2;
         const labelY = (isNearTop && hh >= 18) ? yTop + 13 : Math.max(margin.top + 8, yTop - 6);
         const labelFill = (isNearTop && hh >= 18) ? '#FFFFFF' : color;
 
-        // Smart horizontal alignment so edge labels do not clip outside margins
         const isFirst = i === 0;
         const isLast = i === count - 1;
         let labelX = x(i);
@@ -627,7 +926,20 @@ function WaterfallChart({ p, w, h, data }: { p: ChartProps; w: number; h: number
         }
 
         return (
-          <g key={i}>
+          <g
+            key={i}
+            className="group cursor-pointer"
+            onClick={() => {
+              onDrilldown?.({
+                title: b.label,
+                category: b.label,
+                amount: Math.abs(b.val),
+                color: color,
+                month: chartMonth,
+                subtitle: b.isTotal ? 'Balance acumulado' : (b.isPositive ? 'Etapa de Abono / Nómina' : 'Etapa de Egreso / Gasto'),
+              });
+            }}
+          >
             <rect
               x={xx}
               y={yTop}
@@ -635,8 +947,10 @@ function WaterfallChart({ p, w, h, data }: { p: ChartProps; w: number; h: number
               height={hh}
               rx="4"
               fill={color}
+              className="transition-all duration-150 group-hover:opacity-90 group-hover:scale-[1.02] filter group-hover:drop-shadow-sm"
+              style={{ transformOrigin: `${xx + bw / 2}px ${yTop + hh / 2}px` }}
             >
-              <title>{`${b.label}: ${format(b.val, p.valueFormat || 'currency', p.currency || 'MXN')}`}</title>
+              <title>{`Clic para ver movimientos de ${b.label}: ${format(b.val, p.valueFormat || 'currency', p.currency || 'MXN')}`}</title>
             </rect>
             <text
               x={labelX}
@@ -655,6 +969,7 @@ function WaterfallChart({ p, w, h, data }: { p: ChartProps; w: number; h: number
               fontSize="10"
               fontWeight="600"
               fill="#6D85A1"
+              className="group-hover:fill-[#061D3A] transition-colors"
             >
               {b.label.slice(0, 10)}
             </text>
@@ -676,7 +991,21 @@ function WaterfallChart({ p, w, h, data }: { p: ChartProps; w: number; h: number
   );
 }
 
-function TreemapChart({ p, w, h, data }: { p: ChartProps; w: number; h: number; data: RecordRow[] }) {
+function TreemapChart({
+  p,
+  w,
+  h,
+  data,
+  chartMonth,
+  onDrilldown
+}: {
+  p: ChartProps;
+  w: number;
+  h: number;
+  data: RecordRow[];
+  chartMonth: string;
+  onDrilldown?: (req: ChartDrilldownRequest) => void;
+}) {
   const key = p.valueKey || 'amount';
   const catKey = p.categoryKey || 'name';
   const items = data.length ? data : rows(p.data, p.dataPath);
@@ -713,8 +1042,22 @@ function TreemapChart({ p, w, h, data }: { p: ChartProps; w: number; h: number; 
       {rects.map(r => {
         const val = num(r.d[key]);
         const pct = Math.round((val / total) * 100);
+        const catName = String(r.d[catKey] || 'Categoría');
         return (
-          <g key={r.idx}>
+          <g
+            key={r.idx}
+            className="group cursor-pointer"
+            onClick={() => {
+              onDrilldown?.({
+                title: catName,
+                category: catName,
+                amount: val,
+                color: r.color,
+                month: chartMonth,
+                subtitle: `${pct}% del total presupuestado (${format(val, p.valueFormat || 'currency', p.currency || 'MXN')})`,
+              });
+            }}
+          >
             <rect
               x={r.x + 1}
               y={r.y + 1}
@@ -724,10 +1067,10 @@ function TreemapChart({ p, w, h, data }: { p: ChartProps; w: number; h: number; 
               fill={r.color}
               stroke="#FFFFFF"
               strokeWidth="2"
-              className="transition-all hover:opacity-90"
-              style={{ cursor: 'pointer' }}
+              className="transition-all duration-150 group-hover:opacity-90 group-hover:scale-[1.01] filter group-hover:drop-shadow-sm"
+              style={{ cursor: 'pointer', transformOrigin: `${r.x + r.w / 2}px ${r.y + r.h / 2}px` }}
             >
-              <title>{`${r.d[catKey]}: ${format(val, p.valueFormat || 'currency', p.currency || 'MXN')} (${pct}%)`}</title>
+              <title>{`Clic para ver movimientos de ${catName}: ${format(val, p.valueFormat || 'currency', p.currency || 'MXN')} (${pct}%)`}</title>
             </rect>
             {r.w > 45 && r.h > 35 && (
               <g pointerEvents="none">
@@ -738,7 +1081,7 @@ function TreemapChart({ p, w, h, data }: { p: ChartProps; w: number; h: number; 
                   fontWeight="700"
                   fill="#FFFFFF"
                 >
-                  {String(r.d[catKey] || '').slice(0, Math.floor(r.w / 8))}
+                  {catName.slice(0, Math.floor(r.w / 8))}
                 </text>
                 <text
                   x={r.x + 8}
@@ -758,27 +1101,252 @@ function TreemapChart({ p, w, h, data }: { p: ChartProps; w: number; h: number; 
   );
 }
 
-function Special({p,w,h,data}:{p:ChartProps;w:number;h:number;data:RecordRow[]}){
+function Special({
+  p,
+  w,
+  h,
+  data,
+  chartMonth,
+  onDrilldown
+}: {
+  p: ChartProps;
+  w: number;
+  h: number;
+  data: RecordRow[];
+  chartMonth: string;
+  onDrilldown?: (req: ChartDrilldownRequest) => void;
+}) {
   if (p.chartType === 'sankey') {
-    return <SankeyDiagram p={p} w={w} h={h} />;
+    return <SankeyDiagram p={p} w={w} h={h} chartMonth={chartMonth} onDrilldown={onDrilldown} />;
   }
   if (p.chartType === 'calendarHeatmap' || p.chartType === 'heatmap') {
-    return <CalendarHeatmapChart p={p} w={w} h={h} data={data} />;
+    return <CalendarHeatmapChart p={p} w={w} h={h} data={data} chartMonth={chartMonth} onDrilldown={onDrilldown} />;
   }
   if (p.chartType === 'waterfall') {
-    return <WaterfallChart p={p} w={w} h={h} data={data} />;
+    return <WaterfallChart p={p} w={w} h={h} data={data} chartMonth={chartMonth} onDrilldown={onDrilldown} />;
   }
   if (p.chartType === 'treemap') {
-    return <TreemapChart p={p} w={w} h={h} data={data} />;
+    return <TreemapChart p={p} w={w} h={h} data={data} chartMonth={chartMonth} onDrilldown={onDrilldown} />;
   }
-  const key=p.valueKey||'value';
-  if(p.chartType==='histogram'){const values=data.map(d=>num(d[key]));const [lo,hi]=extent(values), bins=Array.from({length:8},()=>0);values.forEach(v=>bins[Math.min(7,Math.floor((v-lo)/(hi-lo||1)*8))]++);return <Cartesian p={{...p,chartType:'bar',data:{bins:bins.map((v,i)=>({label:Math.round(lo+(hi-lo)*i/8),value:v}))},dataPath:'/bins',categoryKey:'label',valueKey:'value'}} w={w} h={h} data={[] } series={[]}/>}
-  if(p.chartType==='sunburst'){const total=data.reduce((a,d)=>a+Math.max(0,num(d[key])),0)||1,cx=w/2,cy=h/2,r=Math.min(w,h)/2-24;let a=-Math.PI/2;return <>{data.map((d,i)=>{const next=a+Math.max(0,num(d[key]))/total*Math.PI*2,ret=<path key={i} d={arc(cx,cy,r,a,next,r*.42)} fill={palette[i%palette.length]} stroke="#fff"/>;a=next;return ret})}</>}
-  if(p.chartType==='scatter'||p.chartType==='bubble'){const s=p.series?.[0],xk=s?.xKey||p.categoryKey||'x',yk=s?.yKey||key,sk=s?.sizeKey||'size';const [xl,xh]=extent(data.map(d=>num(d[xk]))),[yl,yh]=extent(data.map(d=>num(d[yk]))),[sl,sh]=extent(data.map(d=>num(d[sk],1)));return <>{axis(w,h,data.map(d=>num(d[yk])),v=>format(v,p.valueFormat,p.currency))}{data.map((d,i)=><circle key={i} cx={scale(num(d[xk]),[xl,xh],[margin.left,w-margin.right])} cy={scale(num(d[yk]),[yl,yh],[h-margin.bottom,margin.top])} r={p.chartType==='bubble'?4+16*scale(num(d[sk],1),[sl,sh],[0,1]):5} fill={palette[i%palette.length]} opacity=".72"><title>{`${d[xk]} · ${d[yk]}`}</title></circle>)}</>}
-  if(p.chartType==='candlestick'){const s=p.series?.[0],ok=s?.openKey||'open',hk=s?.highKey||'high',lk=s?.lowKey||'low',ck=s?.closeKey||'close',vals=data.flatMap(d=>[num(d[hk]),num(d[lk])]),[lo,hi]=extent(vals),step=(w-margin.left-margin.right)/Math.max(data.length,1);return <>{axis(w,h,vals,v=>format(v,p.valueFormat,p.currency))}{data.map((d,i)=>{const x=margin.left+step*(i+.5),up=num(d[ck])>=num(d[ok]),yy=(v:number)=>scale(v,[lo,hi],[h-margin.bottom,margin.top]);return <g key={i}><line x1={x} x2={x} y1={yy(num(d[hk]))} y2={yy(num(d[lk]))} stroke={up?'#008A5A':'#C7354F'}/><rect x={x-step*.25} y={yy(Math.max(num(d[ok]),num(d[ck])))} width={step*.5} height={Math.max(2,Math.abs(yy(num(d[ok]))-yy(num(d[ck]))))} fill={up?'#008A5A':'#C7354F'}/></g>})}</>}
-  if(p.chartType==='boxplot'){const s=p.series?.[0],q1=s?.q1Key||'q1',med=s?.medianKey||'median',q3=s?.q3Key||'q3',min=s?.minKey||'min',max=s?.maxKey||'max',vals=data.flatMap(d=>[num(d[min]),num(d[q1]),num(d[med]),num(d[q3]),num(d[max])]),[lo,hi]=extent(vals),step=(w-margin.left-margin.right)/Math.max(data.length,1),yy=(v:number)=>scale(v,[lo,hi],[h-margin.bottom,margin.top]);return <>{axis(w,h,vals,v=>format(v,p.valueFormat,p.currency))}{data.map((d,i)=>{const x=margin.left+step*(i+.5);return <g key={i}><line x1={x} x2={x} y1={yy(num(d[min]))} y2={yy(num(d[max]))} stroke="#4A515E"/><rect x={x-step*.25} y={yy(num(d[q3]))} width={step*.5} height={Math.abs(yy(num(d[q1]))-yy(num(d[q3])))} fill="#FDE2E4" stroke="#EB0029"/><line x1={x-step*.25} x2={x+step*.25} y1={yy(num(d[med]))} y2={yy(num(d[med]))} stroke="#EB0029" strokeWidth="2"/></g>})}</>}
-  if(p.chartType==='bullet'){const max=num(resolve(p.gaugeMax,p.data),Math.max(num(resolve(p.bulletTarget,p.data)),num(resolve(p.bulletValue,p.data)),1));const v=num(resolve(p.bulletValue,p.data)),t=num(resolve(p.bulletTarget,p.data));return <><rect x={margin.left} y={h/2-18} width={w-margin.left-margin.right} height="36" rx="7" fill="#EAEFF5"/>{(p.thresholds||[]).map((b,i)=><rect key={i} x={scale(num(resolve(b.from,p.data)),[0,max],[margin.left,w-margin.right])} y={h/2-18} width={scale(num(resolve(b.to,p.data))-num(resolve(b.from,p.data)),[0,max],[0,w-margin.left-margin.right])} height="36" fill={statusColor[b.status||'neutral']} opacity=".24"/>)}<rect x={margin.left} y={h/2-8} width={scale(v,[0,max],[0,w-margin.left-margin.right])} height="16" rx="4" fill="#E4003B"/><line x1={scale(t,[0,max],[margin.left,w-margin.right])} x2={scale(t,[0,max],[margin.left,w-margin.right])} y1={h/2-28} y2={h/2+28} stroke="#061D3A" strokeWidth="3"/></>}
-  if(p.chartType==='radar'){const n=Math.max(data.length,3),cx=w/2,cy=h/2,r=Math.min(w,h)/2-38,max=Math.max(...data.map(d=>num(d[key])),1);const radarPoints=data.map((d,i)=>{const a=-Math.PI/2+i*Math.PI*2/n,rr=r*num(d[key])/max;return [cx+rr*Math.cos(a),cy+rr*Math.sin(a)] as [number,number]});return <>{Array.from({length:n},(_,i)=>{const a=-Math.PI/2+i*Math.PI*2/n;return <line key={i} x1={cx} y1={cy} x2={cx+r*Math.cos(a)} y2={cy+r*Math.sin(a)} stroke="#E2E6EC"/>})}<path d={path(radarPoints)+' Z'} fill="#EB0029" opacity=".2" stroke="#EB0029" strokeWidth="2"/></>}
-  return <Cartesian p={p} w={w} h={h} data={data} series={p.series||[]}/>
+  const key = p.valueKey || 'value';
+  if (p.chartType === 'histogram') {
+    const values = data.map(d => num(d[key]));
+    const [lo, hi] = extent(values), bins = Array.from({ length: 8 }, () => 0);
+    values.forEach(v => bins[Math.min(7, Math.floor((v - lo) / (hi - lo || 1) * 8))]++);
+    return <Cartesian p={{ ...p, chartType: 'bar', data: { bins: bins.map((v, i) => ({ label: Math.round(lo + (hi - lo) * i / 8), value: v })) }, dataPath: '/bins', categoryKey: 'label', valueKey: 'value' }} w={w} h={h} data={[]} series={[]} chartMonth={chartMonth} onDrilldown={onDrilldown} />;
+  }
+  if (p.chartType === 'sunburst') {
+    const total = data.reduce((a, d) => a + Math.max(0, num(d[key])), 0) || 1, cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 24;
+    let a = -Math.PI / 2;
+    return (
+      <>
+        {data.map((d, i) => {
+          const next = a + Math.max(0, num(d[key])) / total * Math.PI * 2;
+          const ret = (
+            <path
+              key={i}
+              d={arc(cx, cy, r, a, next, r * 0.42)}
+              fill={palette[i % palette.length]}
+              stroke="#fff"
+              className="cursor-pointer hover:opacity-85"
+              onClick={() => onDrilldown?.({
+                title: String(d[p.categoryKey || 'name'] || `Segmento ${i + 1}`),
+                category: String(d[p.categoryKey || 'name'] || ''),
+                amount: num(d[key]),
+                color: palette[i % palette.length],
+                month: chartMonth,
+              })}
+            />
+          );
+          a = next;
+          return ret;
+        })}
+      </>
+    );
+  }
+  if (p.chartType === 'scatter' || p.chartType === 'bubble') {
+    const s = p.series?.[0], xk = s?.xKey || p.categoryKey || 'x', yk = s?.yKey || key, sk = s?.sizeKey || 'size';
+    const [xl, xh] = extent(data.map(d => num(d[xk]))), [yl, yh] = extent(data.map(d => num(d[yk]))), [sl, sh] = extent(data.map(d => num(d[sk], 1)));
+    return (
+      <>
+        {axis(w, h, data.map(d => num(d[yk])), v => format(v, p.valueFormat, p.currency))}
+        {data.map((d, i) => (
+          <circle
+            key={i}
+            cx={scale(num(d[xk]), [xl, xh], [margin.left, w - margin.right])}
+            cy={scale(num(d[yk]), [yl, yh], [h - margin.bottom, margin.top])}
+            r={p.chartType === 'bubble' ? 4 + 16 * scale(num(d[sk], 1), [sl, sh], [0, 1]) : 5}
+            fill={palette[i % palette.length]}
+            opacity=".72"
+            className="cursor-pointer hover:opacity-100"
+            onClick={() => onDrilldown?.({
+              title: `${d[xk]} · ${d[yk]}`,
+              category: String(d[xk]),
+              amount: num(d[yk]),
+              color: palette[i % palette.length],
+              month: chartMonth,
+            })}
+          >
+            <title>{`${d[xk]} · ${d[yk]}`}</title>
+          </circle>
+        ))}
+      </>
+    );
+  }
+  if (p.chartType === 'candlestick') {
+    const s = p.series?.[0], ok = s?.openKey || 'open', hk = s?.highKey || 'high', lk = s?.lowKey || 'low', ck = s?.closeKey || 'close';
+    const vals = data.flatMap(d => [num(d[hk]), num(d[lk])]), [lo, hi] = extent(vals), step = (w - margin.left - margin.right) / Math.max(data.length, 1);
+    return (
+      <>
+        {axis(w, h, vals, v => format(v, p.valueFormat, p.currency))}
+        {data.map((d, i) => {
+          const x = margin.left + step * (i + 0.5), up = num(d[ck]) >= num(d[ok]), yy = (v: number) => scale(v, [lo, hi], [h - margin.bottom, margin.top]);
+          return (
+            <g key={i}>
+              <line x1={x} x2={x} y1={yy(num(d[hk]))} y2={yy(num(d[lk]))} stroke={up ? '#008A5A' : '#C7354F'} />
+              <rect x={x - step * 0.25} y={yy(Math.max(num(d[ok]), num(d[ck])))} width={step * 0.5} height={Math.max(2, Math.abs(yy(num(d[ok])) - yy(num(d[ck]))))} fill={up ? '#008A5A' : '#C7354F'} />
+            </g>
+          );
+        })}
+      </>
+    );
+  }
+  if (p.chartType === 'boxplot') {
+    const s = p.series?.[0], q1 = s?.q1Key || 'q1', med = s?.medianKey || 'median', q3 = s?.q3Key || 'q3', min = s?.minKey || 'min', max = s?.maxKey || 'max';
+    const vals = data.flatMap(d => [num(d[min]), num(d[q1]), num(d[med]), num(d[q3]), num(d[max])]), [lo, hi] = extent(vals), step = (w - margin.left - margin.right) / Math.max(data.length, 1), yy = (v: number) => scale(v, [lo, hi], [h - margin.bottom, margin.top]);
+    return (
+      <>
+        {axis(w, h, vals, v => format(v, p.valueFormat, p.currency))}
+        {data.map((d, i) => {
+          const x = margin.left + step * (i + 0.5);
+          return (
+            <g key={i}>
+              <line x1={x} x2={x} y1={yy(num(d[min]))} y2={yy(num(d[max]))} stroke="#4A515E" />
+              <rect x={x - step * 0.25} y={yy(num(d[q3]))} width={step * 0.5} height={Math.abs(yy(num(d[q1])) - yy(num(d[q3])))} fill="#FDE2E4" stroke="#EB0029" />
+              <line x1={x - step * 0.25} x2={x + step * 0.25} y1={yy(num(d[med]))} y2={yy(num(d[med]))} stroke="#EB0029" strokeWidth="2" />
+            </g>
+          );
+        })}
+      </>
+    );
+  }
+  if (p.chartType === 'bullet') {
+    const max = num(resolve(p.gaugeMax, p.data), Math.max(num(resolve(p.bulletTarget, p.data)), num(resolve(p.bulletValue, p.data)), 1));
+    const v = num(resolve(p.bulletValue, p.data)), t = num(resolve(p.bulletTarget, p.data));
+    return (
+      <>
+        <rect x={margin.left} y={h / 2 - 18} width={w - margin.left - margin.right} height="36" rx="7" fill="#EAEFF5" />
+        {(p.thresholds || []).map((b, i) => (
+          <rect key={i} x={scale(num(resolve(b.from, p.data)), [0, max], [margin.left, w - margin.right])} y={h / 2 - 18} width={scale(num(resolve(b.to, p.data)) - num(resolve(b.from, p.data)), [0, max], [0, w - margin.left - margin.right])} height="36" fill={statusColor[b.status || 'neutral']} opacity=".24" />
+        ))}
+        <rect x={margin.left} y={h / 2 - 8} width={scale(v, [0, max], [0, w - margin.left - margin.right])} height="16" rx="4" fill="#E4003B" />
+        <line x1={scale(t, [0, max], [margin.left, w - margin.right])} x2={scale(t, [0, max], [margin.left, w - margin.right])} y1={h / 2 - 28} y2={h / 2 + 28} stroke="#061D3A" strokeWidth="3" />
+      </>
+    );
+  }
+  if (p.chartType === 'radar') {
+    const n = Math.max(data.length, 3), cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 38, max = Math.max(...data.map(d => num(d[key])), 1);
+    const radarPoints = data.map((d, i) => {
+      const a = -Math.PI / 2 + i * Math.PI * 2 / n, rr = r * num(d[key]) / max;
+      return [cx + rr * Math.cos(a), cy + rr * Math.sin(a)] as [number, number];
+    });
+    return (
+      <>
+        {Array.from({ length: n }, (_, i) => {
+          const a = -Math.PI / 2 + i * Math.PI * 2 / n;
+          return <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(a)} y2={cy + r * Math.sin(a)} stroke="#E2E6EC" />;
+        })}
+        <path d={path(radarPoints) + ' Z'} fill="#EB0029" opacity=".2" stroke="#EB0029" strokeWidth="2" />
+      </>
+    );
+  }
+  return <Cartesian p={p} w={w} h={h} data={data} series={p.series || []} chartMonth={chartMonth} onDrilldown={onDrilldown} />;
 }
-export function Chart(p:ChartProps){const [ref,w]=useWidth(),h=p.height||300;const data=rows(p.data,p.dataPath);const title=resolve(p.title,p.data);const series=useMemo(()=>p.series||[],[p.series]);const isRadial=['pie','donut'].includes(p.chartType);return <section ref={ref} className={p.className} style={{background:'#FFFFFF',border:'1px solid #DCE7F0',borderRadius:16,overflow:'hidden',boxShadow:'0 8px 24px -16px rgba(6,29,58,.28)'}}>{title&&<h3 style={{margin:0,padding:'13px 18px',fontSize:16,fontWeight:700,color:'#fff',background:'#EB0029',letterSpacing:'-0.01em'}}>{title}</h3>}<div style={{padding:20}}>{resolve(p.subtitle,p.data)&&<p style={{margin:'0 0 14px',fontSize:12,color:'#6D85A1'}}>{resolve(p.subtitle,p.data)}</p>}<svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={title||p.chartType}>{isRadial?<Radial p={p} w={w} h={h} data={data}/>:p.chartType==='gauge'?<Gauge p={p} w={w} h={h}/>:<Special p={p} w={w} h={h} data={data}/>}</svg>{resolve(p.showLegend,p.data)!==false&&series.length>1&&<div style={{display:'flex',gap:14,flexWrap:'wrap',fontSize:12,color:'#526B87',fontWeight:600}}>{series.map((s,i)=><span key={i}><i style={{display:'inline-block',width:8,height:8,borderRadius:8,background:s.color||palette[i],marginRight:6}}/>{resolve(s.name,p.data)||`Serie ${i+1}`}</span>)}</div>}</div></section>}
+
+export function Chart(p: ChartProps) {
+  const [ref, w] = useWidth(), h = p.height || 300;
+  const [activeDrilldown, setActiveDrilldown] = useState<ChartDrilldownRequest | null>(null);
+  const data = rows(p.data, p.dataPath);
+  const title = resolve(p.title, p.data);
+  const subtitle = resolve(p.subtitle, p.data);
+  const series = useMemo(() => p.series || [], [p.series]);
+  const isRadial = ['pie', 'donut'].includes(p.chartType);
+
+  const chartPeriod = (p.data as any)?.period || (p as any).period || '';
+  const chartMonth = parseMonthString(chartPeriod || subtitle || title || '2026-09');
+
+  return (
+    <>
+      <section
+        ref={ref}
+        className={p.className}
+        style={{
+          background: '#FFFFFF',
+          border: '1px solid #DCE7F0',
+          borderRadius: 16,
+          overflow: 'hidden',
+          boxShadow: '0 8px 24px -16px rgba(6,29,58,.28)'
+        }}
+      >
+        {title && (
+          <h3
+            style={{
+              margin: 0,
+              padding: '13px 18px',
+              fontSize: 16,
+              fontWeight: 700,
+              color: '#fff',
+              background: '#EB0029',
+              letterSpacing: '-0.01em'
+            }}
+          >
+            {title}
+          </h3>
+        )}
+        <div style={{ padding: 20 }}>
+          {subtitle && (
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: '#6D85A1' }}>
+              {subtitle}
+            </p>
+          )}
+          <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={title || p.chartType}>
+            {isRadial ? (
+              <Radial p={p} w={w} h={h} data={data} chartMonth={chartMonth} onDrilldown={setActiveDrilldown} />
+            ) : p.chartType === 'gauge' ? (
+              <Gauge p={p} w={w} h={h} />
+            ) : (
+              <Special p={p} w={w} h={h} data={data} chartMonth={chartMonth} onDrilldown={setActiveDrilldown} />
+            )}
+          </svg>
+          {resolve(p.showLegend, p.data) !== false && series.length > 1 && (
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12, color: '#526B87', fontWeight: 600 }}>
+              {series.map((s, i) => (
+                <span key={i}>
+                  <i style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 8, background: s.color || palette[i], marginRight: 6 }} />
+                  {resolve(s.name, p.data) || `Serie ${i + 1}`}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {activeDrilldown && (
+        <InteractiveDrilldownModal
+          isOpen={!!activeDrilldown}
+          onClose={() => setActiveDrilldown(null)}
+          title={activeDrilldown.title}
+          category={activeDrilldown.category}
+          date={activeDrilldown.date}
+          month={activeDrilldown.month || chartMonth}
+          period={activeDrilldown.period || chartPeriod || subtitle}
+          targetAmount={activeDrilldown.amount}
+          color={activeDrilldown.color}
+          subtitle={activeDrilldown.subtitle}
+        />
+      )}
+    </>
+  );
+}
+
+export default Chart;

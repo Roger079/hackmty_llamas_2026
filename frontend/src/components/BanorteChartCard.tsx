@@ -20,7 +20,7 @@ export const BanorteChartCard: React.FC<BanorteChartCardProps> = ({
   ...rest
 }) => {
   return (
-    <div className="my-3 animate-in fade-in duration-300">
+    <div className="my-3">
       <Chart
         id={id}
         chartType={chartType}
