@@ -518,17 +518,23 @@ export const App: React.FC = () => {
   const handleAction = async (actionContext: ActionContext): Promise<boolean> => {
     if (isLoading) return false;
     const requestHistory = history();
-    const isExploratory = ['query_restructure', 'prepare_spei'].includes(actionContext.action);
-    const actionMessage =
-      actionContext.action === 'query_restructure'
-        ? 'Quiero ver opciones para reestructurar mi tarjeta'
-        : actionContext.action === 'prepare_spei'
-        ? 'Quiero preparar una transferencia SPEI de $850'
-        : actionContext.action.includes('spei')
-        ? 'Confirmar transferencia SPEI con Token Móvil'
-        : actionContext.action.includes('restructure')
-        ? `Aceptar plan de ${actionContext.params.term_months || '24'} meses`.trim()
-        : 'Continuar con esta opción';
+    const isFormSubmission = actionContext.source_component === 'SpeiTransferFormCard';
+    const isExploratory = !isFormSubmission && ['query_restructure'].includes(actionContext.action);
+
+    let actionMessage = 'Continuar con esta opción';
+    if (actionContext.action === 'query_restructure') {
+      actionMessage = 'Quiero ver opciones para reestructurar mi tarjeta';
+    } else if (isFormSubmission) {
+      const amt = Number(actionContext.params?.amount || 850);
+      const ben = actionContext.params?.beneficiary_name || 'destinatario';
+      actionMessage = `Revisar y autorizar transferencia SPEI de $${amt.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN a ${ben}`;
+    } else if (actionContext.action === 'prepare_spei') {
+      actionMessage = 'Quiero preparar una transferencia SPEI';
+    } else if (actionContext.action.includes('spei')) {
+      actionMessage = 'Confirmar transferencia SPEI con Token Móvil';
+    } else if (actionContext.action.includes('restructure')) {
+      actionMessage = `Aceptar plan de ${actionContext.params?.term_months || '24'} meses`.trim();
+    }
 
     setMessages((current) => [
       ...current,

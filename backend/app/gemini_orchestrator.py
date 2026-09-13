@@ -95,6 +95,9 @@ class GeminiOrchestrator:
     def __init__(self):
         self.api_key = settings.gemini_api_key
         self.model = settings.gemini_model
+        # Automatically normalize non-existent or deprecated models to verified gemini-3.7-flash
+        if self.model in ["gemini-3.7-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]:
+            self.model = "gemini-3.7-flash"
         self.client = None
         if self.api_key:
             try:
@@ -300,10 +303,11 @@ Reglas:
             return "Calculando tabla de amortización y proyección de capital..."
         return f"Maya analizando consulta financiera con {self.model}..."
 
-    def _normalize_a2ui_payload(self, a2ui: Optional[A2UIPayload]) -> Optional[A2UIPayload]:
+    def _normalize_a2ui_payload(self, a2ui: Optional[A2UIPayload], user_id: str = "C001") -> Optional[A2UIPayload]:
         if not a2ui or not a2ui.props:
             return a2ui
 
+        uid = user_id or "C001"
         props = dict(a2ui.props)
         comp = a2ui.component
 
@@ -445,6 +449,8 @@ Reglas:
             # If the user explicitly asks for a SPEI transfer and we got a generic BalanceCard, replace with SpeiTransferFormCard
             is_spei_intent = any(k in request.message.lower() for k in ["transfer", "transfie", "enviar dinero", "mandar dinero", "spei", "hacer transferencia"])
             if is_spei_intent and a2ui_payload.component == "BanorteBalanceCard":
+                pass
+            elif request.action_context and request.action_context.action in ["prepare_spei", "review_spei", "setup_spei"] and a2ui_payload.component == "SpeiTransferFormCard":
                 pass
             else:
                 return a2ui_payload
@@ -814,7 +820,7 @@ Reglas:
                         a2ui_payload = self._normalize_a2ui_payload(A2UIPayload(
                             component=comp,
                             props=tool_args.get("props", {})
-                        ))
+                        ), user_id=request.user_id or "C001")
                         yield {"event": "a2ui", "data": a2ui_payload.model_dump()}
 
                         tool_parts.append(
@@ -1028,7 +1034,7 @@ Reglas:
                         a2ui_payload = self._normalize_a2ui_payload(A2UIPayload(
                             component=comp,
                             props=tool_args.get("props", {})
-                        ))
+                        ), user_id=request.user_id or "C001")
                         tool_parts.append(
                             types.Part.from_function_response(
                                 name=tool_name,
