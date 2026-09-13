@@ -1,4 +1,5 @@
 import json
+import re
 import asyncio
 from typing import Any, AsyncGenerator, Dict, List, Optional
 from google import genai
@@ -18,6 +19,7 @@ Tu propósito es asesorar y acompañar a los clientes en sus operaciones bancari
 3. Para consultas financieras o transacciones, invoca siempre las herramientas MCP oficiales (get_account_balance, get_user_debt, get_spending_analytics, commit_restructure, prepare_spei_transfer, etc.).
 4. Acompaña SIEMPRE las respuestas que involucren cuentas, deudas, pagos, transferencias o analíticas con el componente A2UI interactivo correspondiente mediante `render_a2ui`.
 5. Si el cliente solicita explícitamente un tipo de gráfico (diagrama de Sankey/flujo, mapa de calor/heatmap, gráfica de barras, gráfica de líneas/tendencia, treemap o cascada), invoca `render_a2ui` con component: "BanorteChartCard" y el `chartType` correspondiente ('sankey', 'calendarHeatmap', 'bar', 'line', 'treemap', 'waterfall'). No utilices SpendingDonutCard cuando se solicite un diagrama de flujo (Sankey) o mapa de calor.
+6. Si solicita comparar ingresos o ganancias contra gastos durante varios meses, invoca `get_historical_income_expense_trend` y muestra exclusivamente un BanorteChartCard de barras agrupadas o líneas con las dos series. Respeta el número de meses solicitado.
 """
 
 TOOL_STATUS_MESSAGES = {
@@ -29,6 +31,7 @@ TOOL_STATUS_MESSAGES = {
     "execute_spei_transfer": "Liquidando transferencia SPEI ante Banxico...",
     "simulate_investment": "Simulando rendimiento de Pagaré Banorte...",
     "get_spending_analytics": "Analizando categorización de gastos y patrones de consumo...",
+    "get_historical_income_expense_trend": "Comparando ingresos y gastos por mes...",
     "get_financial_health_score": "Calculando diagnóstico integral de salud financiera 360°...",
     "simulate_amortization_schedule": "Calculando corrida financiera y tabla de amortización...",
     "log_user_friction": "Registrando punto de fricción en memoria cognitiva...",
@@ -45,11 +48,35 @@ POST_TOOL_STATUS_MESSAGES = {
     "execute_spei_transfer": "Comprobante digital Banxico (CEP) generado...",
     "simulate_investment": "Proyección financiera calculada con éxito...",
     "get_spending_analytics": "Generando métricas y gráficos de distribución de gasto...",
+    "get_historical_income_expense_trend": "Comparativa mensual de ingresos y gastos lista...",
     "get_financial_health_score": "Score y semáforo de riesgo calculados exitosamente...",
     "simulate_amortization_schedule": "Proyección de capital e intereses calculada...",
     "log_user_friction": "Memoria cognitiva actualizada para futuras sesiones...",
     "manage_home_widgets": "Pantalla principal personalizada exitosamente..."
 }
+
+
+def _requested_month_count(message: str, default: int = 3) -> int:
+    """Extract a requested monthly range from Spanish conversational prompts."""
+    lowered = message.lower()
+    match = re.search(r"\b(\d{1,2})\s*(?:mes|meses)\b", lowered)
+    if match:
+        return max(1, min(int(match.group(1)), 12))
+    words = {"un": 1, "uno": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "doce": 12}
+    for word, count in words.items():
+        if re.search(rf"\b{word}\s+mes(?:es)?\b", lowered):
+            return count
+    return default
+
+
+def _is_income_expense_comparison(message: str) -> bool:
+    """Recognize income-versus-expense requests before generic spending fallbacks."""
+    lowered = message.lower()
+    has_income = any(term in lowered for term in ["ingreso", "ingresos", "ganancia", "ganancias", "nómina", "nomina"])
+    has_expense = any(term in lowered for term in ["gasto", "gastos", "egreso", "egresos", "consumo", "consumos"])
+    comparison_requested = any(term in lowered for term in ["compar", " versus ", " vs ", " contra "])
+    has_monthly_range = bool(re.search(r"\b(?:\d{1,2}|un|uno|dos|tres|cuatro|cinco|seis|doce)\s+mes(?:es)?\b", lowered))
+    return has_income and has_expense and (comparison_requested or has_monthly_range)
 
 class GeminiOrchestrator:
     def __init__(self):
@@ -404,6 +431,33 @@ class GeminiOrchestrator:
         user_id = request.user_id or "C001"
         combined = (request.message + " " + reply_text).lower()
         user_msg = request.message.lower()
+
+        # Keep a paired income-and-expense request from falling through to the
+        # generic spending donut when a live-model response omitted A2UI.
+        if _is_income_expense_comparison(user_msg):
+            comparison = mcp_client.get_historical_income_expense_trend(
+                user_id, _requested_month_count(user_msg)
+            )
+            chart_type = "line" if any(term in user_msg for term in ["línea", "linea", "líneas", "lineas", "tendencia", "evolución", "evolucion"]) else "groupedBar"
+            income_label = "Ingresos estimados" if comparison.get("income_is_estimated") else "Ingresos registrados"
+            return A2UIPayload(
+                component="BanorteChartCard",
+                props={
+                    "id": "banorte-income-expense-comparison",
+                    "chartType": chart_type,
+                    "title": f"Ingresos vs. Gastos · Últimos {comparison['months']} Meses",
+                    "subtitle": "Comparativa mensual de flujo personal",
+                    "categoryKey": "mes",
+                    "valueFormat": "currency",
+                    "currency": "MXN",
+                    "height": 320,
+                    "series": [
+                        {"name": income_label, "xKey": "mes", "yKey": "ingresos", "color": "#008744"},
+                        {"name": "Gastos", "xKey": "mes", "yKey": "gastos", "color": "#EB0029"},
+                    ],
+                    "data": {"data": comparison["data"]},
+                },
+            )
 
         # Action Context: User clicked Review & Continue from SpeiTransferFormCard
         if request.action_context and request.action_context.action in ["prepare_spei", "review_spei", "setup_spei"]:
@@ -1621,10 +1675,47 @@ Diálogo:
         elif any(k in msg for k in [
             "sankey", "flujo", "origen y destino", "cash flow", "heatmap", "mapa de calor", "calendario",
             "barras", "barra", "bar chart", "línea", "líneas", "lineas", "evolución", "evolucion", "tendencia", "histórico", "historico",
+            "compar", "ingreso", "ingresos", "ganancia", "ganancias", "egreso", "egresos",
             "treemap", "árbol", "arbol", "waterfall", "cascada", "gasto", "gasté", "gastos", "categoría", "en qué"
         ]):
-            # A. SANKEY DIAGRAM (Cash Flow / Origen y Destino)
-            if any(k in msg for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de caja", "flujo de ingresos"]):
+            # A. INCOME VS. EXPENSES COMPARISON (must precede the broad gasto fallback)
+            if _is_income_expense_comparison(msg):
+                months = _requested_month_count(msg)
+                comparison, log = await mcp_client.execute_tool(
+                    "get_historical_income_expense_trend",
+                    {"user_id": user_id, "months": months},
+                )
+                mcp_calls.append(log)
+                chart_type = "line" if any(term in msg for term in ["línea", "linea", "líneas", "lineas", "tendencia", "evolución", "evolucion"]) else "groupedBar"
+                income_label = "Ingresos estimados" if comparison.get("income_is_estimated") else "Ingresos registrados"
+                reply = (
+                    f"Hola, {first_name}. Aquí tienes la comparativa de **{income_label.lower()} y gastos** "
+                    f"de los últimos **{comparison['months']} meses**."
+                )
+                if comparison.get("income_is_estimated"):
+                    reply += " La base de demostración no contiene depósitos históricos completos, por lo que la serie de ingresos está marcada como estimada."
+                a2ui = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": "banorte-income-expense-comparison",
+                        "chartType": chart_type,
+                        "title": f"Ingresos vs. Gastos · Últimos {comparison['months']} Meses",
+                        "subtitle": "Comparativa mensual de flujo personal",
+                        "categoryKey": "mes",
+                        "valueFormat": "currency",
+                        "currency": "MXN",
+                        "height": 320,
+                        "series": [
+                            {"name": income_label, "xKey": "mes", "yKey": "ingresos", "color": "#008744"},
+                            {"name": "Gastos", "xKey": "mes", "yKey": "gastos", "color": "#EB0029"},
+                        ],
+                        "data": {"data": comparison["data"]},
+                    },
+                )
+                return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
+
+            # B. SANKEY DIAGRAM (Cash Flow / Origen y Destino)
+            elif any(k in msg for k in ["sankey", "flujo", "origen y destino", "cash flow", "flujo de efectivo", "flujo de caja", "flujo de ingresos"]):
                 sankey_data, log = await mcp_client.execute_tool("get_sankey_cashflow", {"user_id": user_id})
                 mcp_calls.append(log)
                 reply = (
@@ -1652,7 +1743,7 @@ Diálogo:
                 )
                 return ChatResponse(reply=reply, a2ui=a2ui, mcp_calls=mcp_calls)
 
-            # B. CALENDAR HEATMAP (Mapa de calor diario)
+            # C. CALENDAR HEATMAP (Mapa de calor diario)
             elif any(k in msg for k in ["heatmap", "mapa de calor", "calendario de gasto", "calendario", "días de gasto", "frecuencia de gasto"]):
                 heatmap_data, log = await mcp_client.execute_tool("get_spending_heatmap", {"user_id": user_id})
                 mcp_calls.append(log)

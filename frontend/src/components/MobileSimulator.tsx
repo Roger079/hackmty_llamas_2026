@@ -155,18 +155,33 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
         {activeTab === 'home' && (
           <div className="space-y-4">
             {/* Card-first banking area: swipeable products keep the active card centered and substantial on a phone. */}
-            <section aria-label="Tus tarjetas" className="-mx-3.5 overflow-hidden pb-1">
-              <div ref={cardRailRef} onScroll={updateSelectedCardFromScroll} className="card-rail flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-3 pt-1">
+            <section aria-label="Tus tarjetas" className="relative -mx-3.5 overflow-hidden py-3 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:z-20 after:w-4 after:bg-[#F4F6F9]">
+              <div ref={cardRailRef} onScroll={updateSelectedCardFromScroll} className="card-rail isolate flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 py-3">
                 {mobileCards.map((card, index) => (
-                  <button
+                  <div
                     key={`${card.cardType}-${card.last4}`}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => selectMobileCard(index)}
-                    className={`w-[calc(100vw-1.25rem)] max-w-[30rem] shrink-0 snap-center text-left transition duration-300 ${selectedCard === index ? 'scale-100 opacity-100' : 'scale-[0.96] opacity-70'}`}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        selectMobileCard(index);
+                      }
+                    }}
+                    className={`relative w-[calc(100vw-1.25rem)] max-w-[30rem] shrink-0 snap-center text-left transition duration-300 ${selectedCard === index ? 'z-10 scale-100 opacity-100' : 'z-0 scale-[0.96] opacity-70'}`}
                     aria-pressed={selectedCard === index}
                   >
-                    <BanorteCard size="large" holderName={clientName} last4={card.last4} balance={card.balance} cardType={card.cardType} isGold={card.isGold} />
-                  </button>
+                    <BanorteCard
+                      size="large"
+                      holderName={clientName}
+                      last4={card.last4}
+                      balance={card.balance}
+                      cardType={card.cardType}
+                      isGold={card.isGold}
+                      className={selectedCard === index ? 'shadow-none ring-1 ring-black/[0.04]' : 'shadow-none'}
+                    />
+                  </div>
                 ))}
               </div>
               <div className="flex items-center justify-between px-4 text-[10px] font-semibold text-slate-500">

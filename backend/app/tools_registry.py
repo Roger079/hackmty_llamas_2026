@@ -157,6 +157,24 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
         }
     },
     {
+        "name": "get_historical_income_expense_trend",
+        "description": "Obtiene una serie mensual comparable de ingresos y gastos para gráficos de barras agrupadas o líneas. Respeta el número de meses solicitado y marca ingresos como estimados si el ledger de demostración no contiene depósitos históricos.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "user_id": {
+                    "type": "STRING",
+                    "description": "Identificador del cliente"
+                },
+                "months": {
+                    "type": "INTEGER",
+                    "description": "Número de meses a comparar, de 1 a 12"
+                }
+            },
+            "required": ["user_id", "months"]
+        }
+    },
+    {
         "name": "get_financial_health_score",
         "description": "Calcula un diagnóstico 360° de salud financiera: score de 0 a 100, semáforo, ratio de uso de crédito (deuda vs límite), riesgo de trampa de intereses en pago mínimo y radar de dimensiones financieras.",
         "parameters": {
