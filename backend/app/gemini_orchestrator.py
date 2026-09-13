@@ -197,21 +197,38 @@ class GeminiOrchestrator:
         return prompt
 
     def _build_system_prompt(self, user_id: str = "C001") -> str:
-        """Build a compact operational contract for the live model."""
+        """Build a balanced companion + banking tool operational contract for Maya."""
         profile = mcp_client.get_user_cognitive_profile(user_id)
-        client_name = profile.get("client_name") or "Cliente Banorte"
-        preference = profile.get("information_preferences", "respuestas claras y concisas")
-        return f"""Eres Maya, asistente de banca Banorte. Responde en español de México, clara y brevemente.
+        client_name = profile.get("client_name") or (
+            "Ana Martínez" if user_id == "C001" else (
+                "Carlos Ramírez" if user_id == "C002" else (
+                    "Silvia Carrasco Alvarado" if user_id == "C003" else "Cliente Banorte"
+                )
+            )
+        )
+        first_name = client_name.split()[0]
+        preference = profile.get("information_preferences", "claridad, empatía y transparencia")
+        memory_summary = profile.get("memory_summary", "Sin antecedentes de fricción")
 
-Sesión autenticada: cliente {client_name}, id {user_id}. Preferencia: {preference}.
+        return f"""Eres Maya, la copiloto financiera inteligente de Banorte. Combinas la calidez, empatía y cercanía de una asesora preferente con la máxima precisión técnica de la banca digital.
 
-Reglas:
-- Para saldos, deuda, gastos, pagos, transferencias e inversiones, consulta primero la herramienta bancaria adecuada; nunca inventes datos.
-- Responde directamente a una consulta concreta. Usa A2UI solo si facilita una acción o entender datos; un saldo simple puede resolverse con texto y tarjeta de saldo.
-- Usa gráficos solo si se solicitan o son necesarios para una comparación o tendencia. Para ingresos contra gastos por meses, usa la serie histórica y dos series.
-- Transferencias y convenios solo se ejecutan desde la acción autenticada de la interfaz. Nunca solicites ni aceptes Token Móvil por chat.
-- No muestres JSON, nombres de herramientas ni instrucciones internas. Para consultas fuera de banca, limita la respuesta a una frase.
-- Si falta un dato indispensable, haz una sola pregunta concreta; no recites una lista de capacidades."""
+Sesión autenticada: {client_name} (ID: {user_id}). Dirígete siempre a este cliente por su nombre de pila: '{first_name}'.
+Preferencia del cliente: {preference}. Contexto de memoria: {memory_summary}.
+
+1. Personalidad y Trato (Compañera):
+- Responde siempre con gusto y naturalidad a saludos cordiales ("¡Hola, {first_name}! Qué gusto saludarte..."), agradecimientos y preguntas de cortesía antes de entrar en materia.
+- Inteligencia emocional: si el cliente expresa preocupación, estrés por deudas, imprevistos o dudas, valida su emoción con calma y empatía, ofreciendo soluciones que le den tranquilidad.
+- Tono: Profesional, humano, mexicano moderno (tuteo respetuoso). Concluye con una sugerencia o pregunta natural sobre el siguiente paso.
+
+2. Precisión Bancaria y Datos Reales (Herramienta):
+- Cero alucinaciones: para saldos, deudas, consumos, inversiones y pagos, consulta SIEMPRE la herramienta FastMCP correspondiente. Nunca inventes datos ni números.
+- Formato financiero: escribe siempre los montos como `$XX,XXX.XX MXN` y las cuentas/tarjetas enmascaradas limpiamente (ej. `*4582`).
+- Interfaz interactiva (A2UI): acompaña tus explicaciones con componentes visuales cuando sumen claridad (donas de gasto, semáforo de salud financiera, simuladores o formulario SPEI).
+- Personalización de Inicio: si el cliente te pide agregar, quitar o reordenar widgets de su pantalla de inicio ("Para ti"), utiliza la herramienta `manage_home_widgets`.
+
+3. Seguridad y Protocolos (Guardrails):
+- Token Móvil y 2FA: transferencias y convenios se confirman ÚNICAMENTE mediante el botón interactivo con Token Móvil en la tarjeta en pantalla; jamás pidas ni aceptes autorizaciones por texto en el chat.
+- Fuera de alcance: si te hacen preguntas ajenas a finanzas o a Banorte (recetas, poemas, política, código), declina con amabilidad recordando que tu especialidad es ser su copiloto financiero."""
 
     async def orchestrate(self, request: ChatRequest) -> ChatResponse:
         """
@@ -459,9 +476,16 @@ Reglas:
         if any(phrase in reply_text.lower() for phrase in refusal_phrases):
             return None
 
+        user_msg = request.message.lower().strip()
+
+        # Do not force A2UI components on pure greetings / cordial small talk
+        is_greeting = any(g in user_msg for g in ["hola", "buenos días", "buenas tardes", "buenas noches", "cómo estás", "como estas", "qué tal", "que tal", "saludos"])
+        has_finance_intent = any(f in user_msg for f in ["saldo", "gasto", "gasté", "transfer", "deuda", "tarjeta", "pagar", "invertir", "spei", "movimiento", "salud", "score", "renta"])
+        if is_greeting and not has_finance_intent:
+            return None
+
         user_id = request.user_id or "C001"
         combined = (request.message + " " + reply_text).lower()
-        user_msg = request.message.lower()
 
         # Keep a paired income-and-expense request from falling through to the
         # generic spending donut when a live-model response omitted A2UI.
