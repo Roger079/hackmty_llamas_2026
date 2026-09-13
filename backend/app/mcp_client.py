@@ -3,7 +3,7 @@ import json
 import time
 import httpx
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from .config import settings
 from .schemas import McpToolCallLog
 from .security import sanitize_banking_message, sanitize_memory_summary
@@ -295,12 +295,20 @@ class McpClient:
         customer_id: str,
         role: str,
         content: str,
-        a2ui_payload: Optional[Dict[str, Any]] = None,
+        a2ui_payload: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         session_id: str = "default_session"
     ) -> Dict[str, Any]:
         """Saves a sanitized chat message to SQLite for cross-session persistent memory"""
         sanitized_content = sanitize_banking_message(content)
-        a2ui_comp = a2ui_payload.get("component") if a2ui_payload else None
+        if isinstance(a2ui_payload, list):
+            a2ui_comp = f"Multiple ({len(a2ui_payload)})"
+            a2ui_first = a2ui_payload[0] if a2ui_payload else None
+            a2ui_list = a2ui_payload
+        else:
+            a2ui_comp = a2ui_payload.get("component") if a2ui_payload else None
+            a2ui_first = a2ui_payload
+            a2ui_list = [a2ui_payload] if a2ui_payload else []
+
         a2ui_json = json.dumps(a2ui_payload, ensure_ascii=False) if a2ui_payload else None
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -327,7 +335,8 @@ class McpClient:
             "customer_id": customer_id,
             "role": role,
             "content": sanitized_content,
-            "a2ui": a2ui_payload,
+            "a2ui": a2ui_first,
+            "a2uis": a2ui_list,
             "created_at": now_str
         }
 
@@ -338,18 +347,30 @@ class McpClient:
         if conn:
             try:
                 rows = conn.execute("""
-                    SELECT id, session_id, customer_id, role, content, a2ui_component, a2ui_payload_json, created_at
-                    FROM chat_conversation_history
-                    WHERE customer_id = ?
-                    ORDER BY id ASC
-                    LIMIT ?
+                    SELECT * FROM (
+                        SELECT id, session_id, customer_id, role, content, a2ui_component, a2ui_payload_json, created_at
+                        FROM chat_conversation_history
+                        WHERE customer_id = ?
+                        ORDER BY id DESC
+                        LIMIT ?
+                    ) ORDER BY id ASC
                 """, (customer_id, limit)).fetchall()
                 for r in rows:
                     row_dict = dict(r)
                     a2ui = None
+                    a2uis = None
                     if row_dict.get("a2ui_payload_json"):
                         try:
-                            a2ui = json.loads(row_dict["a2ui_payload_json"])
+                            parsed = json.loads(row_dict["a2ui_payload_json"])
+                            if isinstance(parsed, list):
+                                a2uis = parsed
+                                a2ui = parsed[0] if len(parsed) > 0 else None
+                            elif isinstance(parsed, dict) and "visuals" in parsed:
+                                a2uis = parsed["visuals"]
+                                a2ui = a2uis[0] if len(a2uis) > 0 else None
+                            else:
+                                a2ui = parsed
+                                a2uis = [parsed]
                         except Exception:
                             pass
                     history.append({
@@ -357,6 +378,7 @@ class McpClient:
                         "role": row_dict["role"],
                         "content": row_dict["content"],
                         "a2ui": a2ui,
+                        "a2uis": a2uis,
                         "timestamp": row_dict["created_at"]
                     })
             except Exception as e:

@@ -24,6 +24,7 @@ class ChatMessage(BaseModel):
     role: str = Field(..., description="'user', 'assistant', 'system' or 'tool'")
     content: str = Field(default="", description="Text message content")
     a2ui: Optional[A2UIPayload] = Field(None, description="Attached A2UI component payload if any")
+    a2uis: Optional[List[A2UIPayload]] = Field(None, description="Multiple A2UI component payloads if any")
 
 class ChatRequest(BaseModel):
     message: str = Field(default="", description="User input text")
@@ -41,6 +42,7 @@ class McpToolCallLog(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     a2ui: Optional[A2UIPayload] = None
+    a2uis: Optional[List[A2UIPayload]] = None
     mcp_calls: List[McpToolCallLog] = Field(default_factory=list)
     status: str = "success"
 

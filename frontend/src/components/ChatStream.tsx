@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Send, Sparkles, RefreshCw, Maximize2, Minimize2, LayoutDashboard, Check } from 'lucide-react';
-import { ActionContext, ChatMessage, DashboardWidgetItem } from '../types/a2ui';
+import { A2UIPayload, ActionContext, ChatMessage, DashboardWidgetItem } from '../types/a2ui';
 import { broadcastWidgetToDashboard } from '../utils/dashboardSync';
 import { DynamicA2UIRegistry } from './DynamicA2UIRegistry';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -299,56 +299,72 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
                   </div>
                 )}
 
-                {message.a2ui && (
-                  <div className="space-y-2 animate-in fade-in zoom-in-95 duration-150">
-                    <ErrorBoundary fallbackTitle={`Componente ${message.a2ui.component || 'A2UI'}`}>
-                      <DynamicA2UIRegistry payload={message.a2ui} onAction={onAction} disabled={isLoading} />
-                    </ErrorBoundary>
+                {/* Multi-Graph & A2UI Component Rendering */}
+                {(() => {
+                  const visualList: A2UIPayload[] = (message.a2uis && message.a2uis.length > 0)
+                    ? message.a2uis
+                    : (message.a2ui ? [message.a2ui] : []);
 
-                    {/* Send to Power User Dashboard: only shown when explicitly requested */}
-                    {Boolean(
-                      (typeof message.content === 'string' &&
-                        /(dashboard|command\s*center|fijar.*dashboard|enviar.*dashboard|guardar.*dashboard|power\s*user)/i.test(
-                          message.content
-                        )) ||
-                        messages.some(
-                          (m, idx) =>
-                            idx <= index &&
-                            m.role === 'user' &&
-                            /(dashboard|command\s*center|fijar.*dashboard|enviar.*dashboard|guardar.*dashboard|power\s*user)/i.test(
-                              m.content
-                            )
-                        )
-                    ) && (
-                      <div className="flex items-center justify-between pt-1 px-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handlePinWidget(message.a2ui, message.id)}
-                          disabled={Boolean(pinnedIds[message.id])}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition shadow-2xs cursor-pointer ${
-                            pinnedIds[message.id]
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-red-50 hover:bg-red-100/90 text-[#EB0029] border border-red-200 hover:border-red-300'
-                          }`}
-                          title="Enviar este widget al Command Center de tu Dashboard Web"
-                        >
-                          {pinnedIds[message.id] ? (
-                            <>
-                              <Check className="h-3 w-3 text-emerald-600" />
-                              <span>✓ En tu Dashboard Web</span>
-                            </>
-                          ) : (
-                            <>
-                              <LayoutDashboard className="h-3 w-3 text-[#EB0029]" />
-                              <span>📌 Enviar a Dashboard Web</span>
-                            </>
-                          )}
-                        </button>
-                        <span className="text-[10px] text-slate-400 font-medium">Power User Mode</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  if (visualList.length === 0) return null;
+
+                  return (
+                    <div className={`space-y-4 animate-in fade-in zoom-in-95 duration-150 ${visualList.length > 1 ? 'my-2' : ''}`}>
+                      {visualList.map((visualPayload, vIdx) => {
+                        const widgetKey = `${message.id}-v-${vIdx}`;
+                        return (
+                          <div key={widgetKey} className="space-y-2">
+                            <ErrorBoundary fallbackTitle={`Componente ${visualPayload.component || 'A2UI'}`}>
+                              <DynamicA2UIRegistry payload={visualPayload} onAction={onAction} disabled={isLoading} />
+                            </ErrorBoundary>
+
+                            {/* Send to Power User Dashboard: only shown when explicitly requested */}
+                            {Boolean(
+                              (typeof message.content === 'string' &&
+                                /(dashboard|command\s*center|fijar.*dashboard|enviar.*dashboard|guardar.*dashboard|power\s*user)/i.test(
+                                  message.content
+                                )) ||
+                                messages.some(
+                                  (m, idx) =>
+                                    idx <= index &&
+                                    m.role === 'user' &&
+                                    /(dashboard|command\s*center|fijar.*dashboard|enviar.*dashboard|guardar.*dashboard|power\s*user)/i.test(
+                                      m.content
+                                    )
+                                )
+                            ) && (
+                              <div className="flex items-center justify-between pt-1 px-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handlePinWidget(visualPayload, widgetKey)}
+                                  disabled={Boolean(pinnedIds[widgetKey])}
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition shadow-2xs cursor-pointer ${
+                                    pinnedIds[widgetKey]
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-red-50 hover:bg-red-100/90 text-[#EB0029] border border-red-200 hover:border-red-300'
+                                  }`}
+                                  title="Enviar este widget al Command Center de tu Dashboard Web"
+                                >
+                                  {pinnedIds[widgetKey] ? (
+                                    <>
+                                      <Check className="h-3 w-3 text-emerald-600" />
+                                      <span>✓ En tu Dashboard Web</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <LayoutDashboard className="h-3 w-3 text-[#EB0029]" />
+                                      <span>📌 Enviar a Dashboard Web</span>
+                                    </>
+                                  )}
+                                </button>
+                                <span className="text-[10px] text-slate-400 font-medium">Power User Mode</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
 
                 <time

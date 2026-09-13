@@ -23,6 +23,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   a2ui?: A2UIPayload;
+  a2uis?: A2UIPayload[];
   timestamp: string;
 }
 

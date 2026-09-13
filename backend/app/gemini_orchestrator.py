@@ -18,7 +18,9 @@ Tu propósito es asesorar y acompañar a los clientes en sus operaciones bancari
 2. Utiliza siempre la identidad y contexto real del cliente autenticado.
 3. Para consultas financieras o transacciones, invoca siempre las herramientas MCP oficiales (get_account_balance, get_user_debt, get_spending_analytics, commit_restructure, prepare_spei_transfer, etc.).
 4. Acompaña SIEMPRE las respuestas que involucren cuentas, deudas, pagos, transferencias o analíticas con el componente A2UI interactivo correspondiente mediante `render_a2ui`.
-5. Si el cliente solicita explícitamente un tipo de gráfico (diagrama de Sankey/flujo, mapa de calor/heatmap, gráfica de barras, gráfica de líneas/tendencia, treemap o cascada), invoca `render_a2ui` con component: "BanorteChartCard" y el `chartType` correspondiente ('sankey', 'calendarHeatmap', 'bar', 'line', 'treemap', 'waterfall').
+5. Si el cliente solicita explícitamente uno o varios tipos de gráfico (dona de gastos, diagrama de Sankey/flujo, mapa de calor/heatmap, gráfica de barras, gráfica de líneas/tendencia histórica, treemap o cascada), o si pide comparar perspectivas con más de una gráfica a la vez:
+   - Puedes y debes enviar más de un gráfico en la misma respuesta cuando el cliente lo solicite (invocando `render_a2ui` para cada gráfico o usando el parámetro `visuals`).
+   - Por ejemplo, puedes incluir la distribución de gastos por categoría en dona Y la tendencia mensual de ingresos vs gastos en barras o líneas simultáneamente.
 """
 
 TOOL_STATUS_MESSAGES = {
@@ -76,6 +78,24 @@ def _is_income_expense_comparison(message: str) -> bool:
     comparison_requested = any(term in lowered for term in ["compar", " versus ", " vs ", " contra "])
     has_monthly_range = bool(re.search(r"\b(?:\d{1,2}|un|uno|dos|tres|cuatro|cinco|seis|doce)\s+mes(?:es)?\b", lowered))
     return has_income and has_expense and (comparison_requested or has_monthly_range)
+
+
+def _is_multi_graph_request(message: str) -> bool:
+    """Detect when the customer wants 2 or more charts/graphs simultaneously."""
+    lowered = message.lower()
+    multi_indicators = [
+        "2 gráficas", "dos gráficas", "ambas gráficas", "2 graficas", "dos graficas", "ambas graficas",
+        "múltiples gráficas", "multiples graficas", "más de una gráfica", "mas de una grafica",
+        "más de 1 gráfica", "mas de 1 grafica", "varias gráficas", "varias graficas",
+        "2 gráficos", "dos gráficos", "ambos gráficos", "2 graficos", "dos graficos", "ambos graficos",
+        "más de un gráfico", "mas de un grafico", "más de 1 gráfico", "mas de 1 grafico"
+    ]
+    if any(ind in lowered for ind in multi_indicators):
+        return True
+    has_donut = any(k in lowered for k in ["dona", "donut", "distribución", "distribucion", "categorías", "categorias"])
+    has_bars_or_trend = any(k in lowered for k in ["barra", "barras", "línea", "linea", "líneas", "lineas", "tendencia", "ingresos vs", "ingresos y gastos", "comparativa", "histórica", "historica", "heatmap", "sankey"])
+    has_connector = any(k in lowered for k in [" y ", " además", " ademas", " tambien", " también", " junto con", ", "])
+    return has_donut and has_bars_or_trend and has_connector
 
 
 def _is_sankey_request(message: str) -> bool:
@@ -234,7 +254,7 @@ Sesión autenticada: cliente {client_name}, id {user_id}. Preferencia: {preferen
 Reglas:
 - Para saldos, deuda, gastos, pagos, transferencias e inversiones, consulta primero la herramienta bancaria adecuada; nunca inventes datos.
 - Responde directamente a una consulta concreta. Usa A2UI solo si facilita una acción o entender datos; un saldo simple puede resolverse con texto y tarjeta de saldo.
-- Usa gráficos solo si se solicitan o son necesarios para una comparación o tendencia.
+- Si el usuario solicita ver más de una gráfica o visualización (o comparar múltiples perspectivas como gastos por categoría y tendencia histórica), puedes y debes enviar más de una gráfica a la vez invocando render_a2ui para cada una o usando la lista en 'visuals'. Usa gráficos cuando se soliciten o faciliten la comprensión y comparación.
 - Transferencias y convenios solo se ejecutan desde la acción autenticada de la interfaz. Nunca solicites ni aceptes Token Móvil por chat.
 - Si falta un dato indispensable, haz una sola pregunta concreta; no recites una lista de capacidades."""
 
@@ -266,12 +286,18 @@ Reglas:
             resp = await self._run_smart_simulation(request)
 
         # 2. Safely persist assistant response with A2UI component payload
-        a2ui_dict = resp.a2ui.model_dump() if resp.a2ui else None
+        if resp.a2uis and len(resp.a2uis) > 0:
+            a2ui_save = [p.model_dump() for p in resp.a2uis]
+        elif resp.a2ui:
+            a2ui_save = resp.a2ui.model_dump()
+        else:
+            a2ui_save = None
+
         mcp_client.save_chat_message(
             customer_id=user_id,
             role="assistant",
             content=resp.reply,
-            a2ui_payload=a2ui_dict,
+            a2ui_payload=a2ui_save,
             session_id="session-main"
         )
 
@@ -466,6 +492,41 @@ Reglas:
                 props["totalInterest"] = props["total_interest"]
 
         return A2UIPayload(component=comp, props=props)
+
+    def _ensure_a2ui_components(self, request: ChatRequest, reply_text: str) -> List[A2UIPayload]:
+        """Guarantees one or multiple rich A2UI components are attached according to user query."""
+        user_id = request.user_id or "C001"
+        user_msg = request.message.lower()
+
+        # Check for multi-graph requests (e.g. 2 charts requested simultaneously)
+        if _is_multi_graph_request(user_msg):
+            spending = mcp_client._execute_mock("get_spending_analytics", {"user_id": user_id, "period": "last_month"})
+            trend = mcp_client._execute_mock("get_historical_spending_trend", {"user_id": user_id, "months": 6})
+            
+            donut = A2UIPayload(
+                component="SpendingDonutCard",
+                props=spending
+            )
+            trend_comp = "line" if any(t in user_msg for t in ["línea", "linea", "tendencia", "histórico", "historico"]) else "bar"
+            chart_card = A2UIPayload(
+                component="BanorteChartCard",
+                props={
+                    "id": f"banorte-{trend_comp}-multi",
+                    "chartType": trend_comp,
+                    "title": "Evolución Histórica de Gastos" if trend_comp == "line" else "Distribución de Gastos por Categoría",
+                    "subtitle": "Análisis comparativo de consumos",
+                    "categoryKey": "mes" if trend_comp == "line" else "name",
+                    "valueKey": "monto" if trend_comp == "line" else "amount",
+                    "valueFormat": "currency",
+                    "currency": "MXN",
+                    "height": 290,
+                    "data": {"data": trend if trend_comp == "line" else spending.get("categories", [])}
+                }
+            )
+            return [donut, chart_card]
+
+        single = self._ensure_a2ui_component(request, None, reply_text)
+        return [single] if single else []
 
     def _ensure_a2ui_component(self, request: ChatRequest, a2ui_payload: Optional[A2UIPayload], reply_text: str) -> Optional[A2UIPayload]:
         """Guarantees a rich A2UI component is attached whenever financial data or spending is discussed"""
@@ -800,7 +861,7 @@ Reglas:
         contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_prompt)]))
 
         mcp_calls: List[McpToolCallLog] = []
-        a2ui_payload: Optional[A2UIPayload] = None
+        a2ui_payloads: List[A2UIPayload] = []
         final_reply = ""
 
         for step in range(5):
@@ -825,24 +886,46 @@ Reglas:
                         tool_args["user_id"] = request.user_id or "C002"
                         tool_args["customer_id"] = request.user_id or "C002"
 
-                    # Case 1: render_a2ui
+                    # Case 1: render_a2ui (Single or Multi-Graph)
                     if tool_name == "render_a2ui":
-                        comp = tool_args.get("component", "DebtRestructureCard")
-                        yield {"event": "status", "data": f"Generando interfaz interactiva <{comp} /> (A2UI)..."}
-                        await asyncio.sleep(0.04)
+                        visuals_list = tool_args.get("visuals")
+                        if visuals_list and isinstance(visuals_list, list):
+                            for v in visuals_list:
+                                v_comp = v.get("component", "BanorteChartCard")
+                                yield {"event": "status", "data": f"Generando interfaz interactiva <{v_comp} /> (A2UI)..."}
+                                await asyncio.sleep(0.04)
 
-                        a2ui_payload = self._normalize_a2ui_payload(A2UIPayload(
-                            component=comp,
-                            props=tool_args.get("props", {})
-                        ), user_id=request.user_id or "C001")
-                        yield {"event": "a2ui", "data": a2ui_payload.model_dump()}
+                                p = self._normalize_a2ui_payload(A2UIPayload(
+                                    component=v_comp,
+                                    props=v.get("props", {})
+                                ), user_id=request.user_id or "C001")
+                                a2ui_payloads.append(p)
+                                yield {"event": "a2ui", "data": p.model_dump()}
 
-                        tool_parts.append(
-                            types.Part.from_function_response(
-                                name=tool_name,
-                                response={"status": "rendered", "component": comp}
+                            tool_parts.append(
+                                types.Part.from_function_response(
+                                    name=tool_name,
+                                    response={"status": "rendered", "count": len(visuals_list)}
+                                )
                             )
-                        )
+                        else:
+                            comp = tool_args.get("component", "DebtRestructureCard")
+                            yield {"event": "status", "data": f"Generando interfaz interactiva <{comp} /> (A2UI)..."}
+                            await asyncio.sleep(0.04)
+
+                            p = self._normalize_a2ui_payload(A2UIPayload(
+                                component=comp,
+                                props=tool_args.get("props", {})
+                            ), user_id=request.user_id or "C001")
+                            a2ui_payloads.append(p)
+                            yield {"event": "a2ui", "data": p.model_dump()}
+
+                            tool_parts.append(
+                                types.Part.from_function_response(
+                                    name=tool_name,
+                                    response={"status": "rendered", "component": comp}
+                                )
+                            )
 
                     # Case 2: MCP Tool execution
                     else:
@@ -889,12 +972,15 @@ Reglas:
                 final_reply = response.text or ""
                 break
 
-        if not a2ui_payload or (a2ui_payload.component == "BanorteBalanceCard" and any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])):
-            a2ui_payload = self._ensure_a2ui_component(request, None, final_reply)
-            if a2ui_payload:
-                yield {"event": "a2ui", "data": a2ui_payload.model_dump()}
+        if not a2ui_payloads or (len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard" and any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])):
+            ensured_list = self._ensure_a2ui_components(request, final_reply)
+            for p in ensured_list:
+                a2ui_payloads.append(p)
+                yield {"event": "a2ui", "data": p.model_dump()}
 
-        if a2ui_payload and a2ui_payload.component == "SpeiTransferFormCard":
+        primary_a2ui = a2ui_payloads[0] if a2ui_payloads else None
+
+        if primary_a2ui and primary_a2ui.component == "SpeiTransferFormCard":
             if any(k in final_reply.lower() for k in ["compárteme", "comparteme", "proporciona", "cuenta destino", "banco receptor", "concepto de pago", "siguientes datos", "motivo"]):
                 state = mcp_client.get_real_customer_state(request.user_id or "C001")
                 first_name = state.get("client_name", "Cliente").split(" ")[0]
@@ -905,7 +991,7 @@ Reglas:
                     f"ajustar el importe o registrar una cuenta nueva. Tu saldo disponible actual es de **${avail:,.2f} MXN**."
                 )
 
-        if not final_reply and a2ui_payload:
+        if not final_reply and a2ui_payloads:
             final_reply = "He generado la interfaz bancaria interactiva a continuación:"
 
         # Stream text response tokens
@@ -921,7 +1007,8 @@ Reglas:
             "data": {
                 "status": "success",
                 "reply": final_reply,
-                "a2ui": a2ui_payload.model_dump() if a2ui_payload else None,
+                "a2ui": primary_a2ui.model_dump() if primary_a2ui else None,
+                "a2uis": [p.model_dump() for p in a2ui_payloads],
                 "mcp_calls": [c.model_dump() for c in mcp_calls]
             }
         }
@@ -945,11 +1032,12 @@ Reglas:
             yield {"event": "status", "data": post_msg}
             await asyncio.sleep(0.04)
 
-        # Emit A2UI component
-        if res.a2ui:
-            yield {"event": "status", "data": f"Generando componente visual <{res.a2ui.component} /> (A2UI)..."}
+        # Emit A2UI components
+        visuals_to_stream = res.a2uis if (res.a2uis and len(res.a2uis) > 0) else ([res.a2ui] if res.a2ui else [])
+        for p in visuals_to_stream:
+            yield {"event": "status", "data": f"Generando componente visual <{p.component} /> (A2UI)..."}
             await asyncio.sleep(0.04)
-            yield {"event": "a2ui", "data": res.a2ui.model_dump()}
+            yield {"event": "a2ui", "data": p.model_dump()}
 
         # Stream words
         yield {"event": "status", "data": "Maya finalizando respuesta..."}
@@ -965,6 +1053,7 @@ Reglas:
                 "status": "success",
                 "reply": res.reply,
                 "a2ui": res.a2ui.model_dump() if res.a2ui else None,
+                "a2uis": [p.model_dump() for p in visuals_to_stream],
                 "mcp_calls": [c.model_dump() for c in res.mcp_calls]
             }
         }
@@ -1014,7 +1103,7 @@ Reglas:
         contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_prompt)]))
 
         mcp_calls: List[McpToolCallLog] = []
-        a2ui_payload: Optional[A2UIPayload] = None
+        a2ui_payloads: List[A2UIPayload] = []
         final_reply = ""
 
         # Loop up to 5 steps of tool calls
@@ -1042,19 +1131,38 @@ Reglas:
                         tool_args["user_id"] = request.user_id or "C002"
                         tool_args["customer_id"] = request.user_id or "C002"
 
-                    # Case 1: render_a2ui
+                    # Case 1: render_a2ui (Single or Multi-Graph)
                     if tool_name == "render_a2ui":
-                        comp = tool_args.get("component", "DebtRestructureCard")
-                        a2ui_payload = self._normalize_a2ui_payload(A2UIPayload(
-                            component=comp,
-                            props=tool_args.get("props", {})
-                        ), user_id=request.user_id or "C001")
-                        tool_parts.append(
-                            types.Part.from_function_response(
-                                name=tool_name,
-                                response={"status": "rendered", "component": comp}
+                        visuals_list = tool_args.get("visuals")
+                        if visuals_list and isinstance(visuals_list, list):
+                            for v in visuals_list:
+                                v_comp = v.get("component", "BanorteChartCard")
+                                p = self._normalize_a2ui_payload(A2UIPayload(
+                                    component=v_comp,
+                                    props=v.get("props", {})
+                                ), user_id=request.user_id or "C001")
+                                a2ui_payloads.append(p)
+
+                            tool_parts.append(
+                                types.Part.from_function_response(
+                                    name=tool_name,
+                                    response={"status": "rendered", "count": len(visuals_list)}
+                                )
                             )
-                        )
+                        else:
+                            comp = tool_args.get("component", "DebtRestructureCard")
+                            p = self._normalize_a2ui_payload(A2UIPayload(
+                                component=comp,
+                                props=tool_args.get("props", {})
+                            ), user_id=request.user_id or "C001")
+                            a2ui_payloads.append(p)
+                            tool_parts.append(
+                                types.Part.from_function_response(
+                                    name=tool_name,
+                                    response={"status": "rendered", "component": comp}
+                                )
+                            )
+
                     # Case 2: MCP Tool execution
                     else:
                         if tool_name in ["execute_spei_transfer", "commit_restructure"] and not has_authorized_action:
@@ -1090,10 +1198,13 @@ Reglas:
             final_reply = response.text or ""
             break
 
-        if not a2ui_payload or (a2ui_payload.component == "BanorteBalanceCard" and any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])):
-            a2ui_payload = self._ensure_a2ui_component(request, None, final_reply)
+        if not a2ui_payloads or (len(a2ui_payloads) == 1 and a2ui_payloads[0].component == "BanorteBalanceCard" and any(k in request.message.lower() for k in ["transfer", "transfie", "enviar", "envia", "mandar", "manda", "spei"])):
+            ensured_list = self._ensure_a2ui_components(request, final_reply)
+            a2ui_payloads.extend(ensured_list)
 
-        if a2ui_payload and a2ui_payload.component == "SpeiTransferFormCard":
+        primary_a2ui = a2ui_payloads[0] if a2ui_payloads else None
+
+        if primary_a2ui and primary_a2ui.component == "SpeiTransferFormCard":
             if any(k in final_reply.lower() for k in ["compárteme", "comparteme", "proporciona", "cuenta destino", "banco receptor", "concepto de pago", "siguientes datos", "motivo"]):
                 state = mcp_client.get_real_customer_state(request.user_id or "C001")
                 first_name = state.get("client_name", "Cliente").split(" ")[0]
@@ -1104,12 +1215,13 @@ Reglas:
                     f"ajustar el importe o registrar una cuenta nueva. Tu saldo disponible actual es de **${avail:,.2f} MXN**."
                 )
 
-        if not final_reply and a2ui_payload:
+        if not final_reply and a2ui_payloads:
             final_reply = "He generado la interfaz solicitada a continuación:"
 
         return ChatResponse(
             reply=final_reply,
-            a2ui=a2ui_payload,
+            a2ui=primary_a2ui,
+            a2uis=a2ui_payloads,
             mcp_calls=mcp_calls,
             status="success"
         )
@@ -1732,8 +1844,49 @@ Diálogo:
             "compar", "ingreso", "ingresos", "ganancia", "ganancias", "egreso", "egresos",
             "treemap", "árbol", "arbol", "waterfall", "cascada", "gasto", "gasté", "gastos", "categoría", "en qué"
         ]):
+            # 0. MULTI-GRAPH REQUEST (e.g. 2 charts requested simultaneously: donut + historical trend or bar chart)
+            if _is_multi_graph_request(msg):
+                spending, log1 = await mcp_client.execute_tool("get_spending_analytics", {"user_id": user_id})
+                mcp_calls.append(log1)
+                trend, log2 = await mcp_client.execute_tool("get_historical_spending_trend", {"user_id": user_id, "months": 6})
+                mcp_calls.append(log2)
+
+                donut_payload = A2UIPayload(
+                    component="SpendingDonutCard",
+                    props=spending
+                )
+                chart_type = "line" if any(t in msg for t in ["línea", "linea", "tendencia", "histórico", "historico", "meses"]) else "bar"
+                trend_payload = A2UIPayload(
+                    component="BanorteChartCard",
+                    props={
+                        "id": f"banorte-{chart_type}-spending",
+                        "chartType": chart_type,
+                        "title": "Evolución Histórica de Gastos (6 Meses)" if chart_type == "line" else "Distribución de Gastos por Categoría",
+                        "subtitle": "Tendencia auditada de consumos" if chart_type == "line" else f"Consumo auditado · {spending.get('period', 'Septiembre 2026')}",
+                        "categoryKey": "mes" if chart_type == "line" else "name",
+                        "valueKey": "monto" if chart_type == "line" else "amount",
+                        "valueFormat": "currency",
+                        "currency": "MXN",
+                        "height": 290,
+                        "data": {"data": trend if chart_type == "line" else spending.get("categories", [])}
+                    }
+                )
+                visuals_list = [donut_payload, trend_payload]
+                reply = (
+                    f"¡Hola, {first_name}! Con gusto te presento ambas gráficas para analizar tus finanzas desde dos perspectivas complementarias:\n\n"
+                    f"1. **Distribución de Gastos por Categoría:** Desglose porcentual y montos de tus consumos.\n"
+                    f"2. **{trend_payload.props['title']}:** Comportamiento y comparativa de tus gastos.\n\n"
+                    f"Ambas visualizaciones son interactivas; puedes tocar cualquier sección para inspeccionar importes y porcentajes."
+                )
+                return ChatResponse(
+                    reply=reply,
+                    a2ui=visuals_list[0],
+                    a2uis=visuals_list,
+                    mcp_calls=mcp_calls
+                )
+
             # A. INCOME VS. EXPENSES COMPARISON (must precede the broad gasto fallback)
-            if _is_income_expense_comparison(msg):
+            elif _is_income_expense_comparison(msg):
                 months = _requested_month_count(msg)
                 comparison, log = await mcp_client.execute_tool(
                     "get_historical_income_expense_trend",

@@ -279,21 +279,31 @@ TOOL_DECLARATIONS: List[Dict[str, Any]] = [
     # --- HERRAMIENTA DE PERSONA 2: MOTOR A2UI (AGENT-TO-USER INTERFACE) ---
     {
         "name": "render_a2ui",
-        "description": "Emite una especificación JSON declarativa para renderizar un componente interactivo o gráfico en el frontend de Banorte (A2UI). Cumple con el Catálogo A2UI Banca Visuals v1.",
+        "description": "Emite una especificación JSON declarativa para renderizar uno o más componentes interactivos o gráficos en el frontend de Banorte (A2UI). Si el usuario solicita más de una gráfica o visual (ej. dona de gastos Y gráfica de barras/líneas de tendencia histórica), puedes invocar esta herramienta múltiples veces en el mismo turno o enviar la lista completa en 'visuals'. Cumple con el Catálogo A2UI Banca Visuals v1.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "component": {
                     "type": "STRING",
-                    "description": "Nombre exacto del componente Banorte a renderizar: 'SpeiTransferFormCard' (formulario interactivo para capturar/editar transferencias SPEI antes de autorizar), 'SpeiConfirmCard' (autorización final con Token Móvil), 'SpeiReceiptCard' (comprobante digital con folio CEP), 'Chart', 'KpiCard', 'ProgressIndicator', 'DataTable', 'ComparisonTable', 'Timeline', 'GeoMap', 'SpendingDonutCard', 'FinancialHealthGauge', 'DebtRestructureCard', 'ConfirmationReceipt', 'BanorteBalanceCard', 'BarChart', 'LineChart', 'AreaChart', 'StackedBarChart'"
+                    "description": "Nombre exacto del componente Banorte a renderizar: 'SpeiTransferFormCard' (formulario interactivo para capturar/editar transferencias SPEI antes de autorizar), 'SpeiConfirmCard' (autorización final con Token Móvil), 'SpeiReceiptCard' (comprobante digital con folio CEP), 'Chart', 'KpiCard', 'ProgressIndicator', 'DataTable', 'ComparisonTable', 'Timeline', 'GeoMap', 'SpendingDonutCard', 'FinancialHealthGauge', 'DebtRestructureCard', 'ConfirmationReceipt', 'BanorteBalanceCard', 'BarChart', 'LineChart', 'AreaChart', 'StackedBarChart', 'BanorteChartCard'"
                 },
                 "props": {
                     "type": "OBJECT",
-                    "description": "Propiedades requeridas por el componente React para su renderizado según el catálogo banca_visuals_catalog.json. Para BanorteChartCard o Chart, incluye chartType ('sankey', 'calendarHeatmap', 'bar', 'line', 'treemap', 'waterfall') y su estructura de datos.",
+                    "description": "Propiedades requeridas por el componente React para su renderizado según el catálogo banca_visuals_catalog.json. Para BanorteChartCard o Chart, incluye chartType ('sankey', 'calendarHeatmap', 'bar', 'line', 'treemap', 'waterfall', 'groupedBar') y su estructura de datos.",
                     "properties": {}
+                },
+                "visuals": {
+                    "type": "ARRAY",
+                    "description": "Lista opcional de múltiples componentes y gráficos para renderizar simultáneamente en la misma respuesta cuando el cliente pida más de una visualización a la vez. Cada elemento debe ser un objeto con 'component' y 'props'.",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "component": { "type": "STRING" },
+                            "props": { "type": "OBJECT" }
+                        }
+                    }
                 }
-            },
-            "required": ["component", "props"]
+            }
         }
     },
     # --- HERRAMIENTA DE GESTIÓN DE WIDGETS EN PANTALLA PRINCIPAL (MAYA BOT) ---

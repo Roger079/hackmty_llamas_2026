@@ -172,8 +172,8 @@ export const App: React.FC = () => {
       .then((data) => {
         if (data && data.history && data.history.length > 0) {
           setMessages(data.history);
-          const lastWithA2UI = [...data.history].reverse().find((m) => m.a2ui);
-          if (lastWithA2UI) setLastA2UI(lastWithA2UI.a2ui);
+          const lastWithA2UI = [...data.history].reverse().find((m) => m.a2ui || (m.a2uis && m.a2uis.length > 0));
+          if (lastWithA2UI) setLastA2UI(lastWithA2UI.a2ui || lastWithA2UI.a2uis?.[0] || null);
         } else {
           const defaultGreetingName =
             selectedUserId === 'C001'
@@ -291,6 +291,7 @@ export const App: React.FC = () => {
   const appendResponse = (data: {
     reply?: string;
     a2ui?: A2UIPayload | null;
+    a2uis?: A2UIPayload[] | null;
     mcp_calls?: McpCallLog[];
   }) => {
     setMessages((current) => [
@@ -300,6 +301,7 @@ export const App: React.FC = () => {
         role: 'assistant',
         content: data.reply || 'Operación procesada por Maya.',
         a2ui: data.a2ui || undefined,
+        a2uis: data.a2uis || (data.a2ui ? [data.a2ui] : undefined),
         timestamp: timeNow(),
       },
     ]);
@@ -361,7 +363,7 @@ export const App: React.FC = () => {
       },
     ]);
 
-    const updateAssistantMessage = (reply: string, a2ui?: A2UIPayload | null) => {
+    const updateAssistantMessage = (reply: string, a2ui?: A2UIPayload | null, a2uis?: A2UIPayload[] | null) => {
       setMessages((current) =>
         current.map((m) =>
           m.id === assistantMsgId
@@ -369,6 +371,7 @@ export const App: React.FC = () => {
                 ...m,
                 content: reply,
                 a2ui: a2ui || m.a2ui,
+                a2uis: a2uis && a2uis.length > 0 ? a2uis : (a2ui ? [a2ui] : m.a2uis),
               }
             : m
         )
@@ -385,7 +388,7 @@ export const App: React.FC = () => {
 
       if (!response.ok || !response.body) {
         const fallbackData = await postChat(payload);
-        updateAssistantMessage(fallbackData.reply, fallbackData.a2ui);
+        updateAssistantMessage(fallbackData.reply, fallbackData.a2ui, (fallbackData as any).a2uis);
         return fallbackData;
       }
 
@@ -394,6 +397,7 @@ export const App: React.FC = () => {
       let buffer = '';
       let fullReply = '';
       let capturedA2UI: A2UIPayload | null = null;
+      const capturedA2UIs: A2UIPayload[] = [];
 
       while (true) {
         const { value, done } = await reader.read();
@@ -427,7 +431,7 @@ export const App: React.FC = () => {
 
           if (event === 'token' && typeof dataJson === 'string') {
             fullReply += dataJson;
-            updateAssistantMessage(fullReply, capturedA2UI);
+            updateAssistantMessage(fullReply, capturedA2UI, capturedA2UIs);
           } else if (event === 'mcp_call' && dataJson) {
             setMcpLogs((current) => [dataJson, ...current]);
             if (dataJson.tool_name === 'manage_home_widgets' && dataJson.arguments) {
@@ -442,7 +446,8 @@ export const App: React.FC = () => {
             }
           } else if (event === 'a2ui' && dataJson) {
             capturedA2UI = dataJson;
-            updateAssistantMessage(fullReply, dataJson);
+            capturedA2UIs.push(dataJson);
+            updateAssistantMessage(fullReply, capturedA2UI, capturedA2UIs);
           } else if (event === 'done' && dataJson) {
             if (Array.isArray(dataJson.mcp_calls)) {
               for (const call of dataJson.mcp_calls) {
@@ -461,12 +466,17 @@ export const App: React.FC = () => {
             if (dataJson.reply && (!fullReply || fullReply.trim().length === 0)) {
               fullReply = dataJson.reply;
             }
+            if (Array.isArray(dataJson.a2uis) && dataJson.a2uis.length > 0) {
+              capturedA2UIs.length = 0;
+              capturedA2UIs.push(...dataJson.a2uis);
+            }
             if (dataJson.a2ui) {
               capturedA2UI = dataJson.a2ui;
             }
             updateAssistantMessage(
               fullReply || dataJson.reply || 'Operación completada por Maya Banorte.',
-              capturedA2UI || dataJson.a2ui
+              capturedA2UI || dataJson.a2ui,
+              capturedA2UIs.length > 0 ? capturedA2UIs : (dataJson.a2uis || (dataJson.a2ui ? [dataJson.a2ui] : []))
             );
           }
         }
@@ -474,11 +484,11 @@ export const App: React.FC = () => {
 
       if (!fullReply.trim()) {
         const fallbackData = await postChat(payload);
-        updateAssistantMessage(fallbackData.reply, fallbackData.a2ui);
+        updateAssistantMessage(fallbackData.reply, fallbackData.a2ui, (fallbackData as any).a2uis);
         return fallbackData;
       }
 
-      return { reply: fullReply, a2ui: capturedA2UI };
+      return { reply: fullReply, a2ui: capturedA2UI, a2uis: capturedA2UIs };
     } catch (err) {
       console.warn('Streaming failed, falling back to POST /api/chat:', err);
       try {
