@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Maximize2, Minimize2, X, ChevronDown, ExternalLink } from 'lucide-react';
 import { BanorteLogo as BrandLogo } from './BanorteLogo';
 
 /**
@@ -46,8 +47,8 @@ export const BanortePortalHeader: React.FC<{
                 }`}
               >
                 <span>{item.label}</span>
-                {item.hasDropdown && <span className="text-[10px] opacity-75">▾</span>}
-                {item.isExternal && <span className="text-[10px] opacity-75">↗</span>}
+                {item.hasDropdown && <ChevronDown className="h-3 w-3 opacity-75" />}
+                {item.isExternal && <ExternalLink className="h-3 w-3 opacity-75" />}
               </button>
             ))}
           </nav>
@@ -96,11 +97,13 @@ export const MayaChatWidget: React.FC<{
   onToggle?: () => void;
   onSendPrompt?: (prompt: string) => void;
   onExpandToFull?: () => void;
+  isCompact?: boolean;
 }> = ({
   isOpen = true,
   onToggle,
   onSendPrompt,
-  onExpandToFull
+  onExpandToFull,
+  isCompact = false,
 }) => {
   const [inputText, setInputText] = useState('');
   const dispatchPrompt = (prompt: string) => {
@@ -128,12 +131,22 @@ export const MayaChatWidget: React.FC<{
       <button
         onClick={onToggle}
         aria-label="Abrir Maya, asistente virtual"
-        className="fixed bottom-20 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border-2 border-white bg-[#EB0029] p-2 pr-4 text-white shadow-[0_16px_42px_rgba(151,0,32,0.36)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(151,0,32,0.45)] cursor-pointer sm:bottom-6 sm:right-6"
+        className={`fixed bottom-24 right-4 z-40 flex items-center rounded-full border-2 border-white bg-[#EB0029] text-white shadow-[0_16px_42px_rgba(151,0,32,0.36)] transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer sm:bottom-6 sm:right-6 ${
+          isCompact
+            ? 'h-12 w-12 p-2.5 justify-center shadow-lg'
+            : 'gap-3 p-2 pr-4 max-w-[calc(100vw-2rem)]'
+        }`}
       >
-        <MayaAvatar size="md" />
-        <div className="min-w-0 text-left leading-tight">
+        <MayaAvatar size={isCompact ? 'sm' : 'md'} />
+        <div
+          className={`overflow-hidden transition-all duration-300 text-left leading-tight ${
+            isCompact ? 'max-w-0 opacity-0 pointer-events-none' : 'max-w-[220px] opacity-100'
+          }`}
+        >
           <span className="block text-sm font-black tracking-tight text-white">Maya</span>
-          <span className="block max-w-[205px] truncate text-[10px] font-bold text-white drop-shadow-sm">Pregúntame por una gráfica de tus gastos</span>
+          <span className="block max-w-[205px] truncate text-[10px] font-bold text-white drop-shadow-sm">
+            Pregúntame por una gráfica de tus gastos
+          </span>
         </div>
       </button>
     );
@@ -146,18 +159,28 @@ export const MayaChatWidget: React.FC<{
         <div className="flex items-center gap-2">
           <MayaAvatar size="sm" />
           <div>
-            <h4 className="text-xs font-bold text-white">Maya — Asistente Virtual</h4>
+            <h4 className="text-xs font-bold text-white">Maya</h4>
             <span className="text-[10px] font-mono text-amber-200">En línea</span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           {onExpandToFull && (
-            <button onClick={onExpandToFull} className="rounded p-1 text-white/80 transition hover:bg-white/15 hover:text-white" title="Pantalla completa">
-              ↗
+            <button
+              onClick={onExpandToFull}
+              className="rounded-lg p-1.5 text-white/80 transition hover:bg-white/15 hover:text-white cursor-pointer"
+              title="Pantalla completa"
+              aria-label="Pantalla completa"
+            >
+              <Maximize2 className="h-4 w-4" />
             </button>
           )}
-          <button onClick={onToggle} className="rounded p-1 text-white/80 transition hover:bg-white/15 hover:text-white" title="Minimizar">
-            –
+          <button
+            onClick={onToggle}
+            className="rounded-lg p-1.5 text-white/80 transition hover:bg-white/15 hover:text-white cursor-pointer"
+            title="Minimizar"
+            aria-label="Minimizar"
+          >
+            <Minimize2 className="h-4 w-4" />
           </button>
         </div>
       </div>

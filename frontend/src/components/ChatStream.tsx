@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Send, Sparkles, RefreshCw, Maximize2, Minimize2, LayoutDashboard, Check, Pin } from 'lucide-react';
+import { Send, Sparkles, RefreshCw, Maximize2, Minimize2, LayoutDashboard, Check, Pin, ChevronDown, ArrowLeft } from 'lucide-react';
 import { ActionContext, ChatMessage, DashboardWidgetItem } from '../types/a2ui';
 import { broadcastWidgetToDashboard } from '../utils/dashboardSync';
 import { executeHomeWidgetsAction } from '../utils/homeWidgetsManager';
@@ -223,22 +223,33 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
   return (
     <section
       className={className || "banorte-card flex h-[calc(100svh-204px)] min-h-[700px] w-full min-w-0 flex-col overflow-hidden bg-white"}
-      aria-label="Conversación con Maya Copiloto"
+      aria-label="Conversación con Maya"
     >
       {/* Zen Header: Official Banorte Header styling */}
       {!hideHeader && (
         <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-red-900/20 bg-[#EB0029] px-4 text-white sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
+            {onMinimize && (
+              <button
+                type="button"
+                onClick={onMinimize}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white hover:bg-white/25 transition cursor-pointer shrink-0"
+                title="Volver a inicio"
+                aria-label="Volver a inicio"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            )}
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white ring-2 ring-white/50">
               <BanorteLogo variant="icon" className="h-6 w-6" alt="" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="truncate text-sm font-bold tracking-tight text-white">
-                  Maya Copiloto
+                <h2 className="truncate text-base font-extrabold tracking-tight text-white">
+                  Maya
                 </h2>
                 <span className="hidden rounded-lg bg-white/15 px-2 py-0.5 text-[11px] font-medium text-white sm:inline-block">
-                  IA Bancaria
+                  Asistente Virtual
                 </span>
               </div>
               <p className="truncate text-xs text-red-100">
@@ -270,18 +281,6 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
                 aria-label="Reiniciar conversación"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
-              </button>
-            )}
-
-            {onMinimize && (
-              <button
-                type="button"
-                onClick={onMinimize}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 hover:bg-white/15 hover:text-white transition cursor-pointer"
-                title="Cerrar chat y volver a inicio"
-                aria-label="Volver a inicio"
-              >
-                <Minimize2 className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -345,13 +344,13 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
                         >
                           {homePinnedIds[message.id] ? (
                             <>
-                              <Check className="h-3 w-3 text-emerald-600" />
-                              <span>✓ En inicio</span>
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                              <span>En inicio</span>
                             </>
                           ) : (
                             <>
-                              <Pin className="h-3 w-3 text-[#EB0029]" />
-                              <span>📌 Fijar en inicio</span>
+                              <Pin className="h-3.5 w-3.5 text-[#EB0029]" />
+                              <span>Fijar en inicio</span>
                             </>
                           )}
                         </button>
@@ -384,13 +383,13 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
                           >
                             {pinnedIds[message.id] ? (
                               <>
-                                <Check className="h-3 w-3 text-emerald-600" />
-                                <span>✓ En tu Dashboard</span>
+                                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                <span>En tu Dashboard</span>
                               </>
                             ) : (
                               <>
-                                <LayoutDashboard className="h-3 w-3 text-[#EB0029]" />
-                                <span>📌 Enviar a Dashboard</span>
+                                <LayoutDashboard className="h-3.5 w-3.5 text-[#EB0029]" />
+                                <span>Enviar a Dashboard</span>
                               </>
                             )}
                           </button>
