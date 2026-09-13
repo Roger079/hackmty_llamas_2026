@@ -506,25 +506,23 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
     }
   };
 
-  // 1-Click Direct SPEI Transfer Function
+  // 1-Click Direct to SpeiConfirmCard: Immediately presents the confirmation card with Token Móvil button
   const handleQuick1ClickSpei = async (
     beneficiary = "SOFÍA MENDOZA RÍOS",
     bank = "BBVA México",
     clabe = "012 180 01594839201 9",
     amount = 850.0,
-    concept = "Pago inmediato 1-Clic"
+    concept = "Pago por servicios"
   ) => {
     if (isLoading) return;
     setIsLoading(true);
-    showToast(`⚡ Procesando envío de $${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN en 1 solo clic...`);
 
     try {
-      // 1. Prepare SPEI order
-      const prepRes = await fetch('/api/chat', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Preparar transferencia SPEI de $${amount} a ${beneficiary}`,
+          message: `Revisar y preparar orden SPEI de $${amount} a ${beneficiary}`,
           user_id: selectedUserId,
           action_context: {
             action: 'prepare_spei',
@@ -540,87 +538,57 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
         }),
       });
 
-      const prepData = await prepRes.json();
-      const transferId = prepData?.a2ui?.props?.transferId || `prep-spei-${Date.now()}`;
-
-      // 2. Direct 1-Click execution with OTP Token
-      const execRes = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `Confirmar transferencia SPEI con Token Móvil`,
-          user_id: selectedUserId,
-          action_context: {
-            action: 'execute_spei',
-            source_component: 'SpeiConfirmCard',
-            params: {
-              transfer_id: transferId,
-              amount: amount,
-              beneficiary: beneficiary,
-              bank: bank,
-              clabe: clabe.replace(/\s/g, ''),
-              concept: concept,
-              auth_token: 'OTP-BANORTE-TOKEN-VALID',
-            },
+      if (res.ok) {
+        const data = await res.json();
+        const confirmPayload: A2UIPayload = data.a2ui || {
+          component: 'SpeiConfirmCard',
+          props: {
+            transferId: `prep-spei-${Date.now()}`,
+            amount: amount,
+            beneficiary: beneficiary,
+            bank: bank,
+            clabe: clabe,
+            concept: concept,
           },
-        }),
-      });
-
-      if (execRes.ok) {
-        const execData = await execRes.json();
-        const receiptPayload = execData.a2ui;
+        };
 
         setMessages((prev) => [
           ...prev,
           {
             id: `usr-${Date.now()}`,
             role: 'user',
-            content: `⚡ Transferencia 1-Clic enviada: $${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN a ${beneficiary}`,
+            content: `Preparar transferencia de $${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN para ${beneficiary}`,
             timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
           },
           {
             id: `asst-${Date.now()}`,
             role: 'assistant',
-            content: execData.reply || `Transferencia liquidada exitosamente ante Banco de México en 1 solo clic. Clave de rastreo: ${receiptPayload?.props?.trackingKey || 'BNTE-OK'}.`,
-            a2ui: receiptPayload,
+            content: data.reply || `He preparado tu orden SPEI por **$${amount.toFixed(2)} MXN** a favor de **${beneficiary}**. Presiona **Autorizar con Token Móvil** para confirmar la transferencia.`,
+            a2ui: confirmPayload,
             timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
 
-        if (receiptPayload) {
-          const receiptWidget: DashboardWidgetItem = {
-            id: `dock-widget-${Date.now()}`,
-            title: `Comprobante SPEI · $${amount.toFixed(2)} MXN`,
-            component: 'SpeiReceiptCard',
-            payload: receiptPayload,
-            source: 'studio',
-            pinnedAt: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-          };
-          setWidgets((prev) => {
-            const updated = [receiptWidget, ...prev];
-            savePinnedWidgets(selectedUserId, updated);
-            return updated;
-          });
-        }
-
-        const newTx: TransactionItem = {
-          id: `tx-spei-${Date.now()}`,
-          date: 'Hoy',
-          description: `SPEI 1-Clic a ${beneficiary} (${bank})`,
-          account: 'Débito Enlace',
-          amount: -amount,
-          type: 'debit',
-          status: 'Liquidado',
-          category: 'Transferencias',
+        const confirmWidget: DashboardWidgetItem = {
+          id: `dock-widget-${Date.now()}`,
+          title: `Confirmar SPEI · $${amount.toFixed(2)} MXN`,
+          component: 'SpeiConfirmCard',
+          payload: confirmPayload,
+          source: 'studio',
+          pinnedAt: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
         };
-        setTransactions((prev) => [newTx, ...prev]);
 
-        await refreshBankState(selectedUserId);
-        showToast(`✓ $${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN transferidos en 1 clic a ${beneficiary.split(' ')[0]}`);
+        setWidgets((prev) => {
+          const updated = [confirmWidget, ...prev];
+          savePinnedWidgets(selectedUserId, updated);
+          return updated;
+        });
+
+        showToast(`✓ Tarjeta SPEI lista para autorizar con Token Móvil`);
       }
     } catch (err) {
-      console.error('1-Click SPEI failed:', err);
-      showToast('❌ Error al procesar transferencia 1-Clic');
+      console.error('1-Click SpeiConfirmCard failed:', err);
+      showToast('❌ Error al generar la confirmación SPEI');
     } finally {
       setIsLoading(false);
     }
