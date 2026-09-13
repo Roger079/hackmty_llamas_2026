@@ -1259,6 +1259,19 @@ export const PowerUserDashboard: React.FC<PowerUserDashboardProps> = ({
                 <Sparkles className="h-3.5 w-3.5 text-amber-400" />
                 <span>{isDockCollapsed ? 'Abrir Asistente' : 'Ocultar Asistente'}</span>
               </button>
+
+              {/* Navigate to Mobile View */}
+              {onNavigateHome && (
+                <button
+                  type="button"
+                  onClick={onNavigateHome}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition cursor-pointer"
+                  title="Ver Vista Móvil (Teléfono / Monitor Vertical)"
+                >
+                  <Smartphone className="h-3.5 w-3.5 text-[#EB0029]" />
+                  <span>Vista Móvil</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

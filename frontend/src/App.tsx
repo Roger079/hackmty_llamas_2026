@@ -55,60 +55,20 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<PortalTab>('global');
   const [isMayaExpanded, setIsMayaExpanded] = useState(false);
 
-  const checkIsMobileDevice = () => {
-    if (typeof window === 'undefined') return false;
-    const ua = navigator.userAgent || '';
-    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    return isMobileUA || window.innerWidth < 768;
-  };
-
   const [currentPath, setCurrentPath] = useState<string>(() => {
     if (typeof window === 'undefined') return '/';
-    const p = window.location.pathname;
-    if (p === '/' || p === '') {
-      if (!checkIsMobileDevice()) {
-        try {
-          window.history.replaceState({}, '', '/dashboard');
-        } catch (_) {}
-        return '/dashboard';
-      }
-      return '/';
-    }
-    return p;
+    return window.location.pathname || '/';
   });
 
-  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    const p = window.location.pathname;
-    if (p.startsWith('/dashboard') || p.startsWith('/display') || p.startsWith('/portal')) return false;
-    if (p.startsWith('/mobile')) return true;
-    return checkIsMobileDevice();
-  });
-
-  const handleNavigateView = (view: 'mobile' | 'dashboard') => {
-    const target = view === 'mobile' ? '/' : '/dashboard';
+  const handleNavigateView = (view: 'mobile' | 'dashboard' | 'portal') => {
+    const target = view === 'mobile' ? '/' : view === 'dashboard' ? '/dashboard' : '/portal';
     window.history.pushState({}, '', target);
     setCurrentPath(target);
-    setIsMobileViewport(view === 'mobile');
   };
 
   useEffect(() => {
     const handlePopState = () => {
-      const p = window.location.pathname;
-      setCurrentPath(p);
-      if (p.startsWith('/dashboard') || p.startsWith('/display') || p.startsWith('/portal')) {
-        setIsMobileViewport(false);
-      } else if (p.startsWith('/mobile')) {
-        setIsMobileViewport(true);
-      } else {
-        if (!checkIsMobileDevice()) {
-          window.history.replaceState({}, '', '/dashboard');
-          setCurrentPath('/dashboard');
-          setIsMobileViewport(false);
-        } else {
-          setIsMobileViewport(true);
-        }
-      }
+      setCurrentPath(window.location.pathname || '/');
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -139,20 +99,7 @@ export const App: React.FC = () => {
     return bankAccounts.totalDebt === 0 || mcpLogs.some((l) => l.tool_name === 'commit_restructure');
   }, [bankAccounts.totalDebt, mcpLogs]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      const p = window.location.pathname;
-      if (p.startsWith('/dashboard') || p.startsWith('/display') || p.startsWith('/portal')) {
-        setIsMobileViewport(false);
-      } else if (p.startsWith('/mobile')) {
-        setIsMobileViewport(true);
-      } else {
-        setIsMobileViewport(checkIsMobileDevice());
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+
 
   // Sync health & MCP status on mount
   useEffect(() => {
@@ -746,7 +693,7 @@ export const App: React.FC = () => {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
-  if (currentPath.startsWith('/dashboard')) {
+  if (currentPath.startsWith('/dashboard') || currentPath.startsWith('/display')) {
     return (
       <PowerUserDashboard
         initialUserId={selectedUserId}
@@ -756,33 +703,9 @@ export const App: React.FC = () => {
     );
   }
 
-  if (isMobileViewport) {
+  if (currentPath.startsWith('/portal')) {
     return (
-      <div className="relative min-h-screen">
-        <MobileSimulator
-          clientName={clientName}
-          messages={messages}
-          isLoading={isLoading}
-          onSendMessage={handleSendMessage}
-          onAction={handleAction}
-          onResetDemo={handleResetDemo}
-          accounts={bankAccounts}
-          transactions={transactions}
-          hasRestructure={hasRestructure}
-          mcpLogs={mcpLogs}
-          onOpenInspector={() => setIsInspectorOpen(true)}
-          userId={selectedUserId}
-          onLogout={handleLogout}
-          onNavigateDisplay={() => handleNavigateView('dashboard')}
-        />
-        {isInspectorOpen && renderInspectorDrawer()}
-      </div>
-    );
-  }
-
-
-  return (
-    <div className="app-shell min-h-screen bg-[#F3F7FA] text-[#061D3A] flex flex-col justify-between">
+      <div className="app-shell min-h-screen bg-[#F3F7FA] text-[#061D3A] flex flex-col justify-between">
       <div>
         {/* Official Banorte Header (Banca en Línea) */}
         <BanortePortalHeader
@@ -874,6 +797,29 @@ export const App: React.FC = () => {
       <BanorteFooter />
 
       {/* MCP Inspector Drawer Modal on Desktop */}
+      {isInspectorOpen && renderInspectorDrawer()}
+    </div>
+    );
+  }
+
+  return (
+    <div className="relative min-h-screen">
+      <MobileSimulator
+        clientName={clientName}
+        messages={messages}
+        isLoading={isLoading}
+        onSendMessage={handleSendMessage}
+        onAction={handleAction}
+        onResetDemo={handleResetDemo}
+        accounts={bankAccounts}
+        transactions={transactions}
+        hasRestructure={hasRestructure}
+        mcpLogs={mcpLogs}
+        onOpenInspector={() => setIsInspectorOpen(true)}
+        userId={selectedUserId}
+        onLogout={handleLogout}
+        onNavigateDisplay={() => handleNavigateView('dashboard')}
+      />
       {isInspectorOpen && renderInspectorDrawer()}
     </div>
   );

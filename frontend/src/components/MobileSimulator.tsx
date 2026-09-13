@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   ChevronDown,
   Zap,
+  LayoutDashboard,
 } from 'lucide-react';
 import { ChatStream } from './ChatStream';
 import { ActionContext, ChatMessage, McpCallLog } from '../types/a2ui';
@@ -250,6 +251,19 @@ export const MobileSimulator: React.FC<MobileSimulatorProps> = ({
                         <Sparkles className="h-4 w-4 text-[#EB0029]" />
                         <span>Chatear con Maya</span>
                       </button>
+                      {onNavigateDisplay && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProfileMenuOpen(false);
+                            onNavigateDisplay();
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-slate-50 transition cursor-pointer font-medium text-slate-700"
+                        >
+                          <LayoutDashboard className="h-4 w-4 text-blue-600" />
+                          <span>Abrir Dashboard Desktop</span>
+                        </button>
+                      )}
                     </div>
 
                     <div className="pt-1">
